@@ -1,0 +1,421 @@
+.stats-page {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.stats-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.stats-header h1 {
+  margin-bottom: 0.5rem;
+}
+
+/* Summary Cards */
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  padding: 1.5rem;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.stat-icon {
+  font-size: 3rem;
+  filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+}
+
+.stat-content h3 {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary-light), var(--secondary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.stat-value.cost {
+  background: linear-gradient(135deg, var(--accent), var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-value.prediction {
+  background: linear-gradient(135deg, var(--secondary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-subtext {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Week-over-Week Comparison */
+.comparison-card {
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.comparison-card h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+}
+
+.comparison-content {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 2rem;
+  align-items: center;
+}
+
+.week-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.week-label {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.week-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-light);
+}
+
+.week-cost {
+  font-size: 1rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.comparison-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.change-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 2rem;
+}
+
+.change-indicator.increase {
+  color: var(--secondary);
+}
+
+.change-indicator.decrease {
+  color: var(--accent);
+}
+
+.change-indicator span {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* Top Lights Podium */
+.top-lights {
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.top-lights h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.podium-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+}
+
+.podium-item.rank-1 {
+  border-color: #FFD700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.podium-item.rank-2 {
+  border-color: #C0C0C0;
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.3);
+}
+
+.podium-item.rank-3 {
+  border-color: #CD7F32;
+  box-shadow: 0 0 15px rgba(205, 127, 50, 0.3);
+}
+
+.podium-item:hover {
+  transform: translateY(-5px);
+}
+
+.podium-rank {
+  font-size: 3rem;
+  filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
+}
+
+.podium-content {
+  text-align: center;
+}
+
+.podium-content h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.podium-type {
+  font-size: 0.75rem;
+  color: var(--primary-light);
+  margin-bottom: 0.75rem;
+}
+
+.podium-energy {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.25rem;
+}
+
+.podium-cost {
+  font-size: 0.875rem;
+  color: var(--secondary-light);
+  font-weight: 600;
+}
+
+/* Chart Containers */
+.chart-container {
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.chart-container h2 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.chart-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+/* Consumption Table */
+.consumption-table {
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  overflow-x: auto;
+}
+
+.consumption-table h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+}
+
+.consumption-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.consumption-table thead th {
+  text-align: left;
+  padding: 1rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+}
+
+.consumption-table tbody td {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.consumption-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.consumption-table .cost {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.consumption-table .lamp-type {
+  font-size: 0.875rem;
+  color: var(--primary-light);
+  font-weight: 500;
+}
+
+.consumption-table .no-data {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Info Box */
+.info-box {
+  padding: 1.5rem;
+  border-radius: 16px;
+  border-left: 4px solid var(--primary);
+}
+
+.info-box h3 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.info-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.info-box li {
+  padding: 0.5rem 0;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-box li::before {
+  content: '→';
+  color: var(--primary-light);
+  font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stats-page {
+    padding: 1rem;
+  }
+
+  .stats-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-icon {
+    font-size: 2rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .comparison-card {
+    padding: 1.5rem;
+  }
+
+  .comparison-content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .comparison-arrow {
+    order: -1;
+  }
+
+  .podium {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .podium-item {
+    padding: 1rem;
+  }
+
+  .podium-rank {
+    font-size: 2.5rem;
+  }
+
+  .top-lights {
+    padding: 1.5rem;
+  }
+
+  .chart-container {
+    padding: 1rem;
+  }
+
+  .consumption-table {
+    padding: 1rem;
+  }
+
+  .consumption-table table {
+    font-size: 0.875rem;
+  }
+
+  .consumption-table thead th,
+  .consumption-table tbody td {
+    padding: 0.75rem 0.5rem;
+  }
+}

@@ -1,0 +1,223 @@
+.light-card {
+  position: relative;
+  padding: 2rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  min-width: 250px;
+}
+
+.light-card.unreachable {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Animated glow effect */
+.light-card-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    circle,
+    var(--light-color, rgba(255, 255, 255, 0.1)) 0%,
+    transparent 70%
+  );
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  filter: blur(20px);
+}
+
+.light-card.light-on .light-card-glow {
+  opacity: 1;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 1;
+  }
+}
+
+.light-card-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Light icon */
+.light-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.light-card.light-on .light-icon {
+  background: var(--light-color);
+  border-color: var(--light-color);
+  box-shadow: 0 0 30px var(--light-color);
+  color: #ffffff;
+}
+
+.light-card.light-off .light-icon {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Light name */
+.light-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+/* Light info */
+.light-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.light-type {
+  padding: 0.25rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.light-brightness {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Status indicator */
+.status-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.status-dot.status-on {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+.status-dot.status-off {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.status-text {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+/* Hover effects */
+.light-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.light-card.light-on:hover {
+  border-color: var(--light-color);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+}
+
+/* Active state */
+.light-card:active {
+  transform: scale(0.98);
+}
+
+/* Expand button */
+.expand-button {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.expand-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--primary-light);
+}
+
+/* Expanded state */
+.light-card.expanded {
+  cursor: default;
+}
+
+.light-card.expanded:hover {
+  transform: none;
+}
+
+/* Light controls */
+.light-controls {
+  width: 100%;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 1rem;
+  overflow: hidden;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .light-card {
+    padding: 1.5rem;
+    min-width: 200px;
+  }
+
+  .light-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .light-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .light-name {
+    font-size: 1rem;
+  }
+}

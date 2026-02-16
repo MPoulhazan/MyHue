@@ -1,0 +1,138 @@
+.color-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+/* Control Groups */
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.control-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.control-label span:first-child {
+  font-size: 1.25rem;
+}
+
+.control-value {
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Sliders */
+.slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.brightness-slider {
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 1)
+  );
+}
+
+.temperature-slider {
+  background: linear-gradient(
+    to right,
+    #6ba3ff,
+    #aad4ff,
+    #ffffff,
+    #ffaa00,
+    #ff6b00
+  );
+}
+
+/* Slider Thumb */
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 12px var(--primary-light);
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 12px var(--primary-light);
+}
+
+/* Color Presets */
+.color-presets {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.5rem;
+}
+
+.color-preset {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.color-preset:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Temperature Labels */
+.temperature-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .color-presets {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .color-picker {
+    gap: 1rem;
+  }
+}

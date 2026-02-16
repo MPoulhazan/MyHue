@@ -1,0 +1,122 @@
+.main-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 1rem 2rem;
+  border-radius: 0 0 20px 20px;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.nav-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  transition: transform 0.3s ease;
+}
+
+.nav-logo:hover {
+  transform: scale(1.05);
+}
+
+.logo-icon {
+  font-size: 2rem;
+  filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+}
+
+.logo-text {
+  background: linear-gradient(135deg, var(--primary-light), var(--secondary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1rem;
+}
+
+.nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-weight: 600;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link.active {
+  color: var(--text-primary);
+  background: rgba(99, 102, 241, 0.1);
+  border-color: var(--primary);
+}
+
+.nav-icon {
+  font-size: 1.25rem;
+}
+
+.nav-indicator {
+  position: absolute;
+  bottom: -1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main-nav {
+    padding: 0.75rem 1rem;
+    border-radius: 0 0 16px 16px;
+  }
+
+  .nav-logo {
+    font-size: 1.25rem;
+  }
+
+  .logo-icon {
+    font-size: 1.5rem;
+  }
+
+  .nav-link {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .nav-link span:not(.nav-icon) {
+    display: none;
+  }
+
+  .nav-icon {
+    font-size: 1.5rem;
+  }
+}
