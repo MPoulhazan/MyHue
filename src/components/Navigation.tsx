@@ -110,6 +110,25 @@ export const Navigation = () => {
                             />
                         )}
                     </Link>
+
+                    <Link
+                        to="/music"
+                        className={`nav-link ${isActive('/music') ? 'active' : ''}`}
+                    >
+                        <span className="nav-icon">🎵</span>
+                        <span>Music</span>
+                        {isActive('/music') && (
+                            <motion.div
+                                className="nav-indicator"
+                                layoutId="indicator"
+                                transition={{
+                                    type: 'spring',
+                                    stiffness: 300,
+                                    damping: 30,
+                                }}
+                            />
+                        )}
+                    </Link>
                 </div>
             </div>
         </nav>

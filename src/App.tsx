@@ -5,6 +5,7 @@ import { Stats } from './pages/Stats';
 import { Scenes } from './pages/Scenes';
 import { Rooms } from './pages/Rooms';
 import { Agent } from './pages/Agent';
+import Music from './pages/Music';
 import './App.css';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
                     <Route path="/scenes" element={<Scenes />} />
                     <Route path="/stats" element={<Stats />} />
                     <Route path="/agent" element={<Agent />} />
+                    <Route path="/music" element={<Music />} />
                 </Routes>
             </div>
         </Router>

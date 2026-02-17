@@ -1,6 +1,8 @@
 import express from 'express';
 import axios from 'axios';
 import dotenv from 'dotenv';
+import * as castService from './castService.js';
+import * as youtubeService from './youtubeService.js';
 
 dotenv.config();
 
@@ -101,13 +103,14 @@ const getHueContext = async () => {
 };
 
 const buildSystemPrompt =
-    () => `You are the MyHue assistant. You can observe the Hue state and propose recommendations or actions.
+    (castDevices) => `You are the MyHue assistant. You can control Philips Hue lights and Google Cast devices (Google Home, Chromecast, Nest).
 Return ONLY valid JSON. No markdown, no extra text.
 
 JSON schema:
 {
   "message": string,
   "actions": [
+    // Hue actions
     {
       "type": "toggle_light",
       "id": string,
@@ -144,16 +147,44 @@ JSON schema:
       "type": "set_group_state",
       "id": string,
       "state": object
+    },
+    // Google Cast actions
+    {
+      "type": "cast_media",
+      "deviceName": string,
+      "mediaUrl": string,
+      "contentType": string,
+      "metadata": object
+    },
+    {
+      "type": "cast_youtube",
+      "deviceName": string,
+      "videoId": string
+    },
+    {
+      "type": "cast_control",
+      "deviceName": string,
+      "command": "play" | "pause" | "stop"
+    },
+    {
+      "type": "cast_volume",
+      "deviceName": string,
+      "level": number
     }
   ]
 }
 
 Rules:
 - Use only actions above.
-- Use light/group IDs from the context.
+- Use light/group IDs from the Hue context.
+- For Cast actions, use deviceName to match against available Cast devices.
+- For cast_youtube, extract video ID from YouTube URLs (e.g., "dQw4w9WgXcQ" from "youtube.com/watch?v=dQw4w9WgXcQ").
+- For cast_volume, level is between 0 and 1 (0 = mute, 1 = max).
 - If no action is needed, return an empty actions array.
 - Keep numbers within valid Hue ranges: bri 0-254, hue 0-65535, sat 0-254, ct 153-500, rgb 0-255.
 - Keep the message in French.
+
+Available Cast devices: ${JSON.stringify(castDevices)}
 `;
 
 const extractJson = (text) => {
@@ -170,14 +201,14 @@ const executeActions = async (actions) => {
         return [];
     }
 
-    ensureHueConfigured();
-
     const results = [];
 
     for (const action of actions) {
         try {
             switch (action.type) {
+                // Hue actions
                 case 'toggle_light': {
+                    ensureHueConfigured();
                     await hueClient.put(`/lights/${action.id}/state`, {
                         on: Boolean(action.on),
                     });
@@ -185,6 +216,7 @@ const executeActions = async (actions) => {
                     break;
                 }
                 case 'toggle_all': {
+                    ensureHueConfigured();
                     await hueClient.put('/groups/0/action', {
                         on: Boolean(action.on),
                     });
@@ -192,12 +224,14 @@ const executeActions = async (actions) => {
                     break;
                 }
                 case 'set_brightness': {
+                    ensureHueConfigured();
                     const bri = clamp(Number(action.bri), 0, 254);
                     await hueClient.put(`/lights/${action.id}/state`, { bri });
                     results.push({ action: { ...action, bri }, status: 'ok' });
                     break;
                 }
                 case 'set_color': {
+                    ensureHueConfigured();
                     const hue = clamp(Number(action.hue), 0, 65535);
                     const sat = clamp(Number(action.sat), 0, 254);
                     await hueClient.put(`/lights/${action.id}/state`, {
@@ -211,12 +245,14 @@ const executeActions = async (actions) => {
                     break;
                 }
                 case 'set_color_temperature': {
+                    ensureHueConfigured();
                     const ct = clamp(Number(action.ct), 153, 500);
                     await hueClient.put(`/lights/${action.id}/state`, { ct });
                     results.push({ action: { ...action, ct }, status: 'ok' });
                     break;
                 }
                 case 'set_rgb': {
+                    ensureHueConfigured();
                     const r = clamp(Number(action.r), 0, 255);
                     const g = clamp(Number(action.g), 0, 255);
                     const b = clamp(Number(action.b), 0, 255);
@@ -231,11 +267,55 @@ const executeActions = async (actions) => {
                     break;
                 }
                 case 'set_group_state': {
+                    ensureHueConfigured();
                     await hueClient.put(
                         `/groups/${action.id}/action`,
                         action.state || {},
                     );
                     results.push({ action, status: 'ok' });
+                    break;
+                }
+                // Google Cast actions
+                case 'cast_media': {
+                    const device = castService.findDevice(action.deviceName);
+                    if (!device) {
+                        throw new Error(`Appareil non trouvé: ${action.deviceName}`);
+                    }
+                    const result = await castService.castMedia(
+                        device.id,
+                        action.mediaUrl,
+                        action.contentType || 'video/mp4',
+                        action.metadata || {}
+                    );
+                    results.push({ action, status: 'ok', result });
+                    break;
+                }
+                case 'cast_youtube': {
+                    const device = castService.findDevice(action.deviceName);
+                    if (!device) {
+                        throw new Error(`Appareil non trouvé: ${action.deviceName}`);
+                    }
+                    const result = await castService.castYouTube(device.id, action.videoId);
+                    results.push({ action, status: 'ok', result });
+                    break;
+                }
+                case 'cast_control': {
+                    const device = castService.findDevice(action.deviceName);
+                    if (!device) {
+                        throw new Error(`Appareil non trouvé: ${action.deviceName}`);
+                    }
+                    const result = await castService.controlPlayback(device.id, action.command);
+                    results.push({ action, status: 'ok', result });
+                    break;
+                }
+                case 'cast_volume': {
+                    const device = castService.findDevice(action.deviceName);
+                    if (!device) {
+                        throw new Error(`Appareil non trouvé: ${action.deviceName}`);
+                    }
+                    const level = clamp(Number(action.level), 0, 1);
+                    const result = await castService.setVolume(device.id, level);
+                    results.push({ action: { ...action, level }, status: 'ok', result });
                     break;
                 }
                 default: {
@@ -260,11 +340,14 @@ const executeActions = async (actions) => {
 
 app.get('/api/agent/status', async (_req, res) => {
     const groqConfigured = Boolean(GROQ_API_KEY);
+    const castDevices = castService.getDevices();
     res.json({
         ok: true,
         hueConfigured: Boolean(hueBaseUrl),
         groqConfigured,
         model: GROQ_MODEL,
+        castDevices: castDevices.length,
+        devices: castDevices,
     });
 });
 
@@ -283,7 +366,8 @@ app.post('/api/agent', async (req, res) => {
         }
 
         const context = await getHueContext();
-        const systemPrompt = buildSystemPrompt();
+        const castDevices = castService.getDevices();
+        const systemPrompt = buildSystemPrompt(castDevices);
 
         const historyMessages = Array.isArray(history)
             ? history.slice(-8).map((item) => ({
@@ -292,12 +376,17 @@ app.post('/api/agent', async (req, res) => {
               }))
             : [];
 
+        const fullContext = {
+            hue: context,
+            cast: castDevices
+        };
+
         const messages = [
             { role: 'system', content: systemPrompt },
             ...historyMessages,
             {
                 role: 'user',
-                content: `Demande: ${message}\n\nContexte JSON: ${JSON.stringify(context)}`,
+                content: `Demande: ${message}\n\nContexte JSON: ${JSON.stringify(fullContext)}`,
             },
         ];
 
@@ -323,6 +412,124 @@ app.post('/api/agent', async (req, res) => {
     } catch (error) {
         const message = error?.response?.data?.error?.message || error?.message || 'Agent error';
         res.status(500).json({ error: message });
+    }
+});
+
+// --- Direct Cast API endpoints (no AI needed) ---
+
+app.post('/api/cast/play', async (req, res) => {
+    try {
+        const { deviceId, mediaUrl, contentType, metadata } = req.body;
+        if (!deviceId || !mediaUrl) {
+            return res.status(400).json({ error: 'deviceId and mediaUrl are required' });
+        }
+        const result = await castService.castMedia(deviceId, mediaUrl, contentType || 'audio/mpeg', metadata || {});
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error?.message || 'Cast failed' });
+    }
+});
+
+app.post('/api/cast/control', async (req, res) => {
+    try {
+        const { deviceId, command } = req.body;
+        if (!deviceId || !command) {
+            return res.status(400).json({ error: 'deviceId and command are required' });
+        }
+        const result = await castService.controlPlayback(deviceId, command);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error?.message || 'Control failed' });
+    }
+});
+
+app.post('/api/cast/volume', async (req, res) => {
+    try {
+        const { deviceId, level } = req.body;
+        if (!deviceId || level === undefined) {
+            return res.status(400).json({ error: 'deviceId and level are required' });
+        }
+        const result = await castService.setVolume(deviceId, Number(level));
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error?.message || 'Volume failed' });
+    }
+});
+
+// --- YouTube OAuth2 endpoints ---
+
+app.get('/api/youtube/auth/status', (_req, res) => {
+    res.json({
+        authenticated: youtubeService.isAuthenticated(),
+        oauthConfigured: youtubeService.isOAuthConfigured(),
+    });
+});
+
+app.get('/api/youtube/auth/url', (_req, res) => {
+    try {
+        const url = youtubeService.getAuthUrl();
+        res.json({ url });
+    } catch (error) {
+        res.status(500).json({ error: error?.message });
+    }
+});
+
+app.get('/api/youtube/callback', async (req, res) => {
+    try {
+        const { code } = req.query;
+        if (!code) return res.status(400).send('Missing code');
+        await youtubeService.exchangeCode(code);
+        // Redirect back to the Music page
+        res.send('<html><body><script>window.close(); window.opener && window.opener.postMessage("youtube-auth-success","*");</script><p>Connecte ! Tu peux fermer cette fenetre.</p></body></html>');
+    } catch (error) {
+        res.status(500).send(`Erreur OAuth: ${error?.message}`);
+    }
+});
+
+// --- YouTube Playlist API endpoints ---
+
+app.get('/api/youtube/playlists', async (_req, res) => {
+    try {
+        // If authenticated, fetch user's playlists + defaults + customs
+        let userPlaylists = [];
+        if (youtubeService.isAuthenticated()) {
+            userPlaylists = await youtubeService.fetchMyPlaylists();
+        }
+        const configured = youtubeService.getAllPlaylists();
+        res.json({ playlists: [...userPlaylists, ...configured], authenticated: youtubeService.isAuthenticated() });
+    } catch (error) {
+        res.status(500).json({ error: error?.message || 'Failed to get playlists' });
+    }
+});
+
+app.get('/api/youtube/playlist/:id', async (req, res) => {
+    try {
+        const data = await youtubeService.fetchPlaylistItems(req.params.id);
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error?.message || 'Failed to fetch playlist' });
+    }
+});
+
+app.post('/api/youtube/extract-audio', async (req, res) => {
+    try {
+        const { videoId } = req.body;
+        if (!videoId) return res.status(400).json({ error: 'videoId is required' });
+        const result = await youtubeService.extractAudioUrl(videoId);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error?.message || 'Audio extraction failed' });
+    }
+});
+
+app.post('/api/youtube/playlist/add', async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url) return res.status(400).json({ error: 'url is required' });
+        const playlist = await youtubeService.addCustomPlaylist(url);
+        res.json(playlist);
+    } catch (error) {
+        res.status(500).json({ error: error?.message || 'Failed to add playlist' });
     }
 });
 

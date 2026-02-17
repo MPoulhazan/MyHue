@@ -1,6 +1,6 @@
-# MyHue - Smart Light Controller
+# MyHue - Smart Home Controller
 
-A modern web3-style interface for controlling your Philips Hue lights. Built with React, TypeScript, and Framer Motion.
+A modern smart home interface for controlling Philips Hue lights and casting content to Google Home/Chromecast devices. Built with React, TypeScript, and Framer Motion.
 
 ## Features
 
@@ -12,14 +12,18 @@ A modern web3-style interface for controlling your Philips Hue lights. Built wit
 - 📱 Fully responsive design
 - 🌈 Dynamic light color representation
 - ⚡ Optimistic UI updates for instant feedback
-- 🤖 Assistant IA local (observations, recommandations, actions)
+- 🤖 AI Assistant powered by Groq (fast, cloud-based LLM)
+- 📲 Telegram bot for remote control
+- 🎬 Google Cast support (Google Home, Chromecast, Nest)
 
 ## Prerequisites
 
 - Node.js (v16 or higher)
 - A Philips Hue Bridge connected to your network
 - Physical access to your Hue Bridge (to press the link button)
-- (Optionnel) Ollama pour l'agent IA local et gratuit
+- Groq API key (free at https://console.groq.com)
+- (Optional) Telegram bot token for remote control
+- (Optional) Google Home/Chromecast devices on your network
 
 ## Setup
 
@@ -64,26 +68,54 @@ The script will automatically update your `.env` file with the generated token.
 npm run dev
 ```
 
-### 5. (Optionnel) Lancer l'agent IA local
+### 5. Configure Groq AI (Required)
 
-Installe Ollama : https://ollama.com/
+Get your free API key at https://console.groq.com and add it to your `.env`:
 
-Télécharge un modèle local (gratuit) :
-
-```bash
-ollama pull llama3.1:8b
+```env
+GROQ_API_KEY=your_api_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
-Puis lance l'agent :
+Then start the agent server:
 
 ```bash
 npm run agent
 ```
 
-Si ton modèle est lent au premier prompt, tu peux augmenter le timeout côté agent :
+### 6. (Optional) Setup Telegram Bot
+
+Create a bot via [@BotFather](https://t.me/BotFather) on Telegram, then add to `.env`:
 
 ```env
-OLLAMA_TIMEOUT_MS=90000
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_ALLOWED_USER_IDS=your_telegram_user_id
+```
+
+Start the Telegram bot:
+
+```bash
+npm run telegram
+```
+
+### 7. (Optional) Setup Google Cast
+
+Google Cast devices are auto-discovered on your network. To verify or manually configure:
+
+```bash
+npm run discover-cast
+```
+
+If auto-discovery doesn't work, manually add devices to `.env`:
+
+```env
+CAST_DEVICES=Living Room:192.168.0.100,Bedroom:192.168.0.101
+```
+
+### 8. Start the Web Interface
+
+```bash
+npm run dev
 ```
 
 Open your browser and navigate to the URL shown in the terminal (usually `http://localhost:5173`).
@@ -97,13 +129,30 @@ Open your browser and navigate to the URL shown in the terminal (usually `http:/
 - **All Off**: Turn all lights off simultaneously
 - **Refresh**: Manually refresh the lights status
 
-### Assistant IA
+### AI Assistant
 
-- Va dans l'onglet **Agent**
-- Tu peux demander :
-    - "Éteins toutes les lampes"
-    - "Quelles lampes sont allumées ?"
-    - "Crée une ambiance chaude dans le salon"
+Go to the **Agent** tab and interact naturally:
+
+**Hue Commands:**
+- "Éteins toutes les lampes"
+- "Quelles lampes sont allumées ?"
+- "Crée une ambiance chaude dans le salon"
+- "Mets la lampe du salon à 50%"
+
+**Google Cast Commands:**
+- "Lance une vidéo YouTube sur la Google Home"
+- "Joue du contenu sur le Chromecast"
+- "Mets pause sur la Nest"
+- "Monte le volume à 50% sur la Google Home"
+
+### Telegram Bot
+
+Send messages to your bot just like the web interface:
+- "Turn off all lights"
+- "Play music on Google Home"
+- "What lights are on?"
+- Use `/status` to check system status
+- Use `/reset` to clear conversation history
 
 ### Light Status Indicators
 
@@ -120,19 +169,26 @@ MyHue/
 │   ├── components/
 │   │   ├── LightCard.tsx       # Individual light component
 │   │   └── LightCard.css       # Light card styles
+│   ├── pages/
+│   │   ├── Agent.tsx           # AI chat interface
+│   │   └── Agent.css           # Chat interface styles
 │   ├── services/
-│   │   └── hueApi.ts          # Hue API integration
+│   │   ├── hueApi.ts           # Hue API integration
+│   │   └── agentApi.ts         # Agent API integration
 │   ├── types/
-│   │   └── hue.ts             # TypeScript types
-│   ├── App.tsx                # Main app component
-│   ├── App.css                # Main app styles
-│   └── index.css              # Global styles
+│   │   └── hue.ts              # TypeScript types
+│   ├── App.tsx                 # Main app component
+│   ├── App.css                 # Main app styles
+│   └── index.css               # Global styles
 ├── scripts/
-│   ├── discover-bridge.js     # Bridge discovery utility
-│   └── generate-token.js      # Token generation utility
+│   ├── discover-bridge.js      # Bridge discovery utility
+│   ├── generate-token.js       # Token generation utility
+│   └── discover-cast.js        # Cast device discovery
 ├── server/
-│   └── agentServer.js         # Agent IA local (Ollama)
-└── .env                       # Environment configuration
+│   ├── agentServer.js          # AI Agent server (Groq)
+│   ├── telegramBot.js          # Telegram bot server
+│   └── castService.js          # Google Cast service
+└── .env                        # Environment configuration
 ```
 
 ## Technologies Used
@@ -142,7 +198,12 @@ MyHue/
 - **Vite** - Build tool
 - **Framer Motion** - Animation library
 - **Axios** - HTTP client
+- **Express** - Backend server
 - **Philips Hue API** - Bridge communication
+- **Groq API** - Fast LLM inference (Llama 3.3 70B)
+- **Telegram Bot API** - Remote control via Telegram
+- **castv2-client** - Google Cast protocol
+- **mdns-js** - Device discovery
 
 ## Troubleshooting
 
@@ -163,17 +224,25 @@ MyHue/
 
 The Hue Bridge uses a self-signed certificate. The app is configured to handle this automatically.
 
-### Agent IA hors-ligne
+### AI Agent Offline
 
-1. Vérifie que Ollama tourne bien (http://localhost:11434)
-2. Vérifie que `npm run agent` est lancé
-3. Vérifie `OLLAMA_MODEL` dans `.env`
+1. Check that `npm run agent` is running
+2. Verify `GROQ_API_KEY` is set in `.env`
+3. Check agent server logs for errors
 
-### "timeout of 20000ms exceeded"
+### Google Cast Not Working
 
-- Ce timeout vient du serveur agent, pas d'Ollama UI
-- Augmente `OLLAMA_TIMEOUT_MS` dans `.env` (ex: `90000` ou `120000`)
-- Redémarre `npm run agent` après modification
+1. Run `npm run discover-cast` to find devices
+2. Make sure devices are on the same network
+3. Try manually configuring with `CAST_DEVICES` in `.env`
+4. Check Windows firewall settings (allow Node.js)
+
+### Telegram Bot Issues
+
+1. Verify bot token with [@BotFather](https://t.me/BotFather)
+2. Check `TELEGRAM_ALLOWED_USER_IDS` includes your user ID
+3. Restart bot: `npm run telegram`
+4. Check bot logs for connection errors
 
 ## API Documentation
 

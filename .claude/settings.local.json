@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill:*)",
+      "Bash(npm run:*)",
+      "Bash(curl:*)",
+      "Bash(node -e:*)"
+    ]
+  }
+}

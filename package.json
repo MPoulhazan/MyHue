@@ -11,13 +11,17 @@
         "lint": "eslint .",
         "preview": "vite preview",
         "discover-bridge": "node scripts/discover-bridge.js",
-        "generate-token": "node scripts/generate-token.js"
+        "generate-token": "node scripts/generate-token.js",
+        "discover-cast": "node scripts/discover-cast.js"
     },
     "dependencies": {
+        "@distube/ytdl-core": "^4.16.12",
         "axios": "^1.13.5",
+        "castv2-client": "^1.2.0",
         "dotenv": "^17.3.1",
         "express": "^5.1.0",
         "framer-motion": "^12.34.0",
+        "mdns-js": "^1.0.3",
         "myhue": "file:",
         "node-telegram-bot-api": "^0.67.0",
         "react": "^19.2.0",
