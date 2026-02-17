@@ -12,12 +12,14 @@ A modern web3-style interface for controlling your Philips Hue lights. Built wit
 - 📱 Fully responsive design
 - 🌈 Dynamic light color representation
 - ⚡ Optimistic UI updates for instant feedback
+- 🤖 Assistant IA local (observations, recommandations, actions)
 
 ## Prerequisites
 
 - Node.js (v16 or higher)
 - A Philips Hue Bridge connected to your network
 - Physical access to your Hue Bridge (to press the link button)
+- (Optionnel) Ollama pour l'agent IA local et gratuit
 
 ## Setup
 
@@ -50,6 +52,7 @@ npm run generate-token
 ```
 
 Follow the prompts:
+
 1. Press the link button on your Hue Bridge
 2. Press ENTER in the terminal
 
@@ -59,6 +62,28 @@ The script will automatically update your `.env` file with the generated token.
 
 ```bash
 npm run dev
+```
+
+### 5. (Optionnel) Lancer l'agent IA local
+
+Installe Ollama : https://ollama.com/
+
+Télécharge un modèle local (gratuit) :
+
+```bash
+ollama pull llama3.1:8b
+```
+
+Puis lance l'agent :
+
+```bash
+npm run agent
+```
+
+Si ton modèle est lent au premier prompt, tu peux augmenter le timeout côté agent :
+
+```env
+OLLAMA_TIMEOUT_MS=90000
 ```
 
 Open your browser and navigate to the URL shown in the terminal (usually `http://localhost:5173`).
@@ -71,6 +96,14 @@ Open your browser and navigate to the URL shown in the terminal (usually `http:/
 - **All On**: Turn all lights on simultaneously
 - **All Off**: Turn all lights off simultaneously
 - **Refresh**: Manually refresh the lights status
+
+### Assistant IA
+
+- Va dans l'onglet **Agent**
+- Tu peux demander :
+    - "Éteins toutes les lampes"
+    - "Quelles lampes sont allumées ?"
+    - "Crée une ambiance chaude dans le salon"
 
 ### Light Status Indicators
 
@@ -97,6 +130,8 @@ MyHue/
 ├── scripts/
 │   ├── discover-bridge.js     # Bridge discovery utility
 │   └── generate-token.js      # Token generation utility
+├── server/
+│   └── agentServer.js         # Agent IA local (Ollama)
 └── .env                       # Environment configuration
 ```
 
@@ -128,9 +163,22 @@ MyHue/
 
 The Hue Bridge uses a self-signed certificate. The app is configured to handle this automatically.
 
+### Agent IA hors-ligne
+
+1. Vérifie que Ollama tourne bien (http://localhost:11434)
+2. Vérifie que `npm run agent` est lancé
+3. Vérifie `OLLAMA_MODEL` dans `.env`
+
+### "timeout of 20000ms exceeded"
+
+- Ce timeout vient du serveur agent, pas d'Ollama UI
+- Augmente `OLLAMA_TIMEOUT_MS` dans `.env` (ex: `90000` ou `120000`)
+- Redémarre `npm run agent` après modification
+
 ## API Documentation
 
 For more information about the Philips Hue API:
+
 - [Official Hue API Documentation](https://developers.meethue.com/)
 
 ## License
