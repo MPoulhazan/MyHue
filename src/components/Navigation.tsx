@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import './Navigation.css';
 
-type MenuKey = 'lights' | 'rooms' | 'scenes' | 'stats' | 'agent' | 'music';
+type MenuKey = 'lights' | 'rooms' | 'scenes' | 'stats' | 'agent' | 'music' | 'google-home';
 
 interface MenuItem {
     key: MenuKey;
@@ -21,6 +21,7 @@ const MENU_ITEMS: MenuItem[] = [
     { key: 'stats', path: '/stats', icon: '📊', label: 'Stats' },
     { key: 'agent', path: '/agent', icon: '🤖', label: 'Agent' },
     { key: 'music', path: '/music', icon: '🎵', label: 'Music' },
+    { key: 'google-home', path: '/google-home', icon: '🏠', label: 'Google Home' },
 ];
 
 const STORAGE_KEY = 'myhue.menu.visibility.v1';
@@ -33,6 +34,7 @@ const menuItemMap: Record<MenuKey, MenuItem> = {
     stats: MENU_ITEMS[3],
     agent: MENU_ITEMS[4],
     music: MENU_ITEMS[5],
+    'google-home': MENU_ITEMS[6],
 };
 
 const getDefaultOrder = (): MenuKey[] => [
@@ -42,6 +44,7 @@ const getDefaultOrder = (): MenuKey[] => [
     'scenes',
     'stats',
     'music',
+    'google-home',
 ];
 
 const normalizeOrder = (rawOrder: unknown): MenuKey[] => {
@@ -75,6 +78,7 @@ const getDefaultVisibility = (): MenuVisibility => ({
     stats: true,
     agent: true,
     music: true,
+    'google-home': true,
 });
 
 const loadVisibility = (): MenuVisibility => {
@@ -93,6 +97,7 @@ const loadVisibility = (): MenuVisibility => {
             stats: parsed.stats ?? defaults.stats,
             agent: parsed.agent ?? defaults.agent,
             music: parsed.music ?? defaults.music,
+            'google-home': parsed['google-home'] ?? defaults['google-home'],
         };
     } catch {
         return defaults;

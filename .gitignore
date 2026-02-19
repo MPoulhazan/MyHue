@@ -25,3 +25,6 @@ dist-ssr
 
 # Environment variables
 .env
+
+# Temp debug files
+*-player-script.js

@@ -3,6 +3,8 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import * as castService from './castService.js';
 import * as youtubeService from './youtubeService.js';
+import * as googleHomeService from './googleHomeService.js';
+import * as xiaomiService from './xiaomiService.js';
 
 dotenv.config();
 
@@ -90,7 +92,9 @@ const getHueContext = async () => {
     }));
 
     const groups = Object.entries(groupsResponse.data)
-        .filter(([_, group]) => group.type !== 'Room' || group.lights?.length > 0)
+        .filter(
+            ([_, group]) => group.type !== 'Room' || group.lights?.length > 0,
+        )
         .map(([id, group]) => ({
             id,
             name: group.name,
@@ -102,8 +106,11 @@ const getHueContext = async () => {
     return { lights, groups };
 };
 
-const buildSystemPrompt =
-    (castDevices) => `You are the MyHue assistant. You can control Philips Hue lights and Google Cast devices (Google Home, Chromecast, Nest).
+const buildSystemPrompt = (
+    castDevices,
+    sensors,
+) => `You are the MyHue assistant. You can control Philips Hue lights and Google Cast devices (Google Home, Chromecast, Nest).
+You also have access to Xiaomi/Aqara sensor data (temperature, humidity, door sensors, smoke detector, water leak sensor).
 Return ONLY valid JSON. No markdown, no extra text.
 
 JSON schema:
@@ -182,9 +189,12 @@ Rules:
 - For cast_volume, level is between 0 and 1 (0 = mute, 1 = max).
 - If no action is needed, return an empty actions array.
 - Keep numbers within valid Hue ranges: bri 0-254, hue 0-65535, sat 0-254, ct 153-500, rgb 0-255.
+- When the user asks about sensors (temperature, humidity, doors, smoke, water leak), read the sensor data from the context and answer in your message. No action is needed for sensor queries.
+- For door sensors: props.isOpen indicates if the door is currently open. props.lastOpen is the last time it was opened.
 - Keep the message in French.
 
 Available Cast devices: ${JSON.stringify(castDevices)}
+Available sensors: ${JSON.stringify(sensors)}
 `;
 
 const extractJson = (text) => {
@@ -279,13 +289,15 @@ const executeActions = async (actions) => {
                 case 'cast_media': {
                     const device = castService.findDevice(action.deviceName);
                     if (!device) {
-                        throw new Error(`Appareil non trouvé: ${action.deviceName}`);
+                        throw new Error(
+                            `Appareil non trouvé: ${action.deviceName}`,
+                        );
                     }
                     const result = await castService.castMedia(
                         device.id,
                         action.mediaUrl,
                         action.contentType || 'video/mp4',
-                        action.metadata || {}
+                        action.metadata || {},
                     );
                     results.push({ action, status: 'ok', result });
                     break;
@@ -293,29 +305,48 @@ const executeActions = async (actions) => {
                 case 'cast_youtube': {
                     const device = castService.findDevice(action.deviceName);
                     if (!device) {
-                        throw new Error(`Appareil non trouvé: ${action.deviceName}`);
+                        throw new Error(
+                            `Appareil non trouvé: ${action.deviceName}`,
+                        );
                     }
-                    const result = await castService.castYouTube(device.id, action.videoId);
+                    const result = await castService.castYouTube(
+                        device.id,
+                        action.videoId,
+                    );
                     results.push({ action, status: 'ok', result });
                     break;
                 }
                 case 'cast_control': {
                     const device = castService.findDevice(action.deviceName);
                     if (!device) {
-                        throw new Error(`Appareil non trouvé: ${action.deviceName}`);
+                        throw new Error(
+                            `Appareil non trouvé: ${action.deviceName}`,
+                        );
                     }
-                    const result = await castService.controlPlayback(device.id, action.command);
+                    const result = await castService.controlPlayback(
+                        device.id,
+                        action.command,
+                    );
                     results.push({ action, status: 'ok', result });
                     break;
                 }
                 case 'cast_volume': {
                     const device = castService.findDevice(action.deviceName);
                     if (!device) {
-                        throw new Error(`Appareil non trouvé: ${action.deviceName}`);
+                        throw new Error(
+                            `Appareil non trouvé: ${action.deviceName}`,
+                        );
                     }
                     const level = clamp(Number(action.level), 0, 1);
-                    const result = await castService.setVolume(device.id, level);
-                    results.push({ action: { ...action, level }, status: 'ok', result });
+                    const result = await castService.setVolume(
+                        device.id,
+                        level,
+                    );
+                    results.push({
+                        action: { ...action, level },
+                        status: 'ok',
+                        result,
+                    });
                     break;
                 }
                 default: {
@@ -367,7 +398,8 @@ app.post('/api/agent', async (req, res) => {
 
         const context = await getHueContext();
         const castDevices = castService.getDevices();
-        const systemPrompt = buildSystemPrompt(castDevices);
+        const sensors = await xiaomiService.getSensorsWithData();
+        const systemPrompt = buildSystemPrompt(castDevices, sensors);
 
         const historyMessages = Array.isArray(history)
             ? history.slice(-8).map((item) => ({
@@ -378,7 +410,8 @@ app.post('/api/agent', async (req, res) => {
 
         const fullContext = {
             hue: context,
-            cast: castDevices
+            cast: castDevices,
+            sensors,
         };
 
         const messages = [
@@ -410,7 +443,10 @@ app.post('/api/agent', async (req, res) => {
             model: GROQ_MODEL,
         });
     } catch (error) {
-        const message = error?.response?.data?.error?.message || error?.message || 'Agent error';
+        const message =
+            error?.response?.data?.error?.message ||
+            error?.message ||
+            'Agent error';
         res.status(500).json({ error: message });
     }
 });
@@ -421,9 +457,16 @@ app.post('/api/cast/play', async (req, res) => {
     try {
         const { deviceId, mediaUrl, contentType, metadata } = req.body;
         if (!deviceId || !mediaUrl) {
-            return res.status(400).json({ error: 'deviceId and mediaUrl are required' });
+            return res
+                .status(400)
+                .json({ error: 'deviceId and mediaUrl are required' });
         }
-        const result = await castService.castMedia(deviceId, mediaUrl, contentType || 'audio/mpeg', metadata || {});
+        const result = await castService.castMedia(
+            deviceId,
+            mediaUrl,
+            contentType || 'audio/mpeg',
+            metadata || {},
+        );
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: error?.message || 'Cast failed' });
@@ -434,7 +477,9 @@ app.post('/api/cast/control', async (req, res) => {
     try {
         const { deviceId, command } = req.body;
         if (!deviceId || !command) {
-            return res.status(400).json({ error: 'deviceId and command are required' });
+            return res
+                .status(400)
+                .json({ error: 'deviceId and command are required' });
         }
         const result = await castService.controlPlayback(deviceId, command);
         res.json(result);
@@ -447,7 +492,9 @@ app.post('/api/cast/volume', async (req, res) => {
     try {
         const { deviceId, level } = req.body;
         if (!deviceId || level === undefined) {
-            return res.status(400).json({ error: 'deviceId and level are required' });
+            return res
+                .status(400)
+                .json({ error: 'deviceId and level are required' });
         }
         const result = await castService.setVolume(deviceId, Number(level));
         res.json(result);
@@ -480,7 +527,9 @@ app.get('/api/youtube/callback', async (req, res) => {
         if (!code) return res.status(400).send('Missing code');
         await youtubeService.exchangeCode(code);
         // Redirect back to the Music page
-        res.send('<html><body><script>window.close(); window.opener && window.opener.postMessage("youtube-auth-success","*");</script><p>Connecte ! Tu peux fermer cette fenetre.</p></body></html>');
+        res.send(
+            '<html><body><script>window.close(); window.opener && window.opener.postMessage("youtube-auth-success","*");</script><p>Connecte ! Tu peux fermer cette fenetre.</p></body></html>',
+        );
     } catch (error) {
         res.status(500).send(`Erreur OAuth: ${error?.message}`);
     }
@@ -496,9 +545,14 @@ app.get('/api/youtube/playlists', async (_req, res) => {
             userPlaylists = await youtubeService.fetchMyPlaylists();
         }
         const configured = youtubeService.getAllPlaylists();
-        res.json({ playlists: [...userPlaylists, ...configured], authenticated: youtubeService.isAuthenticated() });
+        res.json({
+            playlists: [...userPlaylists, ...configured],
+            authenticated: youtubeService.isAuthenticated(),
+        });
     } catch (error) {
-        res.status(500).json({ error: error?.message || 'Failed to get playlists' });
+        res.status(500).json({
+            error: error?.message || 'Failed to get playlists',
+        });
     }
 });
 
@@ -507,18 +561,23 @@ app.get('/api/youtube/playlist/:id', async (req, res) => {
         const data = await youtubeService.fetchPlaylistItems(req.params.id);
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: error?.message || 'Failed to fetch playlist' });
+        res.status(500).json({
+            error: error?.message || 'Failed to fetch playlist',
+        });
     }
 });
 
 app.post('/api/youtube/extract-audio', async (req, res) => {
     try {
         const { videoId } = req.body;
-        if (!videoId) return res.status(400).json({ error: 'videoId is required' });
+        if (!videoId)
+            return res.status(400).json({ error: 'videoId is required' });
         const result = await youtubeService.extractAudioUrl(videoId);
         res.json(result);
     } catch (error) {
-        res.status(500).json({ error: error?.message || 'Audio extraction failed' });
+        res.status(500).json({
+            error: error?.message || 'Audio extraction failed',
+        });
     }
 });
 
@@ -529,7 +588,64 @@ app.post('/api/youtube/playlist/add', async (req, res) => {
         const playlist = await youtubeService.addCustomPlaylist(url);
         res.json(playlist);
     } catch (error) {
-        res.status(500).json({ error: error?.message || 'Failed to add playlist' });
+        res.status(500).json({
+            error: error?.message || 'Failed to add playlist',
+        });
+    }
+});
+
+// --- Google Home device info endpoints ---
+
+app.get('/api/google-home/devices', async (_req, res) => {
+    try {
+        const devices = await googleHomeService.getGoogleHomeDevices();
+        res.json({ devices });
+    } catch (error) {
+        res.status(500).json({
+            error: error?.message || 'Failed to fetch Google Home devices',
+        });
+    }
+});
+
+// --- Xiaomi gateway LAN endpoints ---
+
+app.get('/api/xiaomi/status', (_req, res) => {
+    res.json(xiaomiService.getAuthStatus());
+});
+
+app.post('/api/xiaomi/login', async (_req, res) => {
+    try {
+        const result = await xiaomiService.startLogin();
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error?.message || 'Discovery failed' });
+    }
+});
+
+app.post('/api/xiaomi/logout', (_req, res) => {
+    xiaomiService.logout();
+    res.json({ status: 'ok' });
+});
+
+app.get('/api/xiaomi/devices', async (_req, res) => {
+    try {
+        const devices = await xiaomiService.getDevices();
+        res.json({ devices });
+    } catch (error) {
+        res.status(500).json({
+            error: error?.message || 'Failed to fetch Xiaomi devices',
+        });
+    }
+});
+
+app.get('/api/xiaomi/sensors', async (_req, res) => {
+    try {
+        const sensors = await xiaomiService.getSensorsWithData();
+        res.json({ sensors });
+    } catch (error) {
+        res.status(500).json({
+            error: error?.message || 'Failed to fetch Xiaomi sensors',
+        });
     }
 });
 
