@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { AgentWidget } from './components/AgentWidget';
+import { AppLauncher } from './pages/AppLauncher';
 import { Home } from './pages/Home';
 import { Stats } from './pages/Stats';
 import { Scenes } from './pages/Scenes';
@@ -18,7 +19,8 @@ function App() {
             <div className="app">
                 <Navigation />
                 <Routes>
-                    <Route path="/" element={<Home />} />
+                    <Route path="/" element={<AppLauncher />} />
+                    <Route path="/lights" element={<Home />} />
                     <Route path="/rooms" element={<Rooms />} />
                     <Route path="/scenes" element={<Scenes />} />
                     <Route path="/stats" element={<Stats />} />

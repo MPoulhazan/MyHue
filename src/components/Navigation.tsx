@@ -24,7 +24,7 @@ interface MenuItem {
 type MenuVisibility = Record<MenuKey, boolean>;
 
 const MENU_ITEMS: MenuItem[] = [
-    { key: 'lights', path: '/', icon: '💡', label: 'Lights' },
+    { key: 'lights', path: '/lights', icon: '💡', label: 'Lights' },
     { key: 'rooms', path: '/rooms', icon: '🏠', label: 'Rooms' },
     { key: 'scenes', path: '/scenes', icon: '🎬', label: 'Scenes' },
     { key: 'stats', path: '/stats', icon: '📊', label: 'Stats' },

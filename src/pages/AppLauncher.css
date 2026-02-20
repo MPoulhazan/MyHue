@@ -1,0 +1,230 @@
+.app-launcher {
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+}
+
+.launcher-header {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.launcher-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.launcher-header p {
+    font-size: 1.1rem;
+    color: var(--color-text-secondary, #999);
+}
+
+.apps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 1rem;
+}
+
+.app-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-decoration: none;
+    padding: 1.5rem 1rem;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.app-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.app-card:active {
+    transform: translateY(-4px);
+}
+
+.app-icon-container {
+    width: 100px;
+    height: 100px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+}
+
+.app-card:hover .app-icon-container {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    transform: scale(1.05);
+}
+
+.app-icon {
+    font-size: 3rem;
+    display: block;
+    line-height: 1;
+}
+
+.app-name {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-text-primary, #333);
+    text-align: center;
+}
+
+.app-description {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary, #999);
+    text-align: center;
+    line-height: 1.4;
+}
+
+.launcher-footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--color-text-secondary, #999);
+    font-size: 0.9rem;
+    border-top: 1px solid var(--color-border, #e0e0e0);
+    margin-top: 2rem;
+}
+
+.launcher-footer p {
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .apps-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .app-icon-container {
+        width: 80px;
+        height: 80px;
+    }
+
+    .app-icon {
+        font-size: 2.5rem;
+    }
+
+    .app-name {
+        font-size: 1rem;
+    }
+
+    .app-description {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-launcher {
+        padding: 1rem;
+        gap: 2rem;
+    }
+
+    .launcher-header h1 {
+        font-size: 2rem;
+    }
+
+    .launcher-header p {
+        font-size: 1rem;
+    }
+
+    .apps-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        padding: 0;
+    }
+
+    .app-card {
+        padding: 1rem 0.5rem;
+        gap: 0.75rem;
+    }
+
+    .app-icon-container {
+        width: 70px;
+        height: 70px;
+    }
+
+    .app-icon {
+        font-size: 2rem;
+    }
+
+    .app-name {
+        font-size: 0.9rem;
+    }
+
+    .app-description {
+        font-size: 0.7rem;
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .apps-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+    }
+
+    .app-card {
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .app-icon-container {
+        width: 60px;
+        height: 60px;
+    }
+
+    .app-icon {
+        font-size: 1.75rem;
+    }
+
+    .app-name {
+        font-size: 0.8rem;
+    }
+
+    .launcher-footer {
+        font-size: 0.8rem;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .app-launcher {
+        background: linear-gradient(
+            135deg,
+            rgba(17, 24, 39, 0.95) 0%,
+            rgba(30, 41, 59, 0.95) 100%
+        );
+    }
+
+    .app-card:hover {
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .app-icon-container {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .app-card:hover .app-icon-container {
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    }
+}
