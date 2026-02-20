@@ -157,7 +157,7 @@ const loadMedia = (mediaChannel, mediaUrl, contentType, metadata) => {
             media: {
                 contentId: mediaUrl,
                 contentType,
-                streamType: 'LIVE',
+                streamType: contentType === 'audio/mpeg' ? 'LIVE' : 'BUFFERED',
                 metadata: {
                     type: 0,
                     metadataType: 0,
@@ -193,10 +193,11 @@ export const castMedia = async (deviceId, mediaUrl, contentType = 'audio/mpeg', 
     }
 };
 
-export const castYouTube = async (deviceId, videoId) => {
-    // YouTube videos must use the web player URL as a media source
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
-    return castMedia(deviceId, url, 'video/mp4', {
+export const castYouTube = async (deviceId, videoId, serverProxyUrl) => {
+    if (!serverProxyUrl) {
+        throw new Error('Server proxy URL required for YouTube casting');
+    }
+    return castMedia(deviceId, serverProxyUrl, 'audio/mp4', {
         title: 'YouTube',
         subtitle: videoId,
     });

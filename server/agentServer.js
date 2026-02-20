@@ -1,12 +1,17 @@
 import express from 'express';
 import axios from 'axios';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import dotenv from 'dotenv';
 import * as castService from './castService.js';
 import * as youtubeService from './youtubeService.js';
 import * as googleHomeService from './googleHomeService.js';
 import * as xiaomiService from './xiaomiService.js';
 
+const execFileAsync = promisify(execFile);
+
 dotenv.config();
+
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -309,9 +314,11 @@ const executeActions = async (actions) => {
                             `Appareil non trouvé: ${action.deviceName}`,
                         );
                     }
+                    const ytAudioUrl = await getYtDlpAudioUrl(action.videoId);
                     const result = await castService.castYouTube(
                         device.id,
                         action.videoId,
+                        ytAudioUrl,
                     );
                     results.push({ action, status: 'ok', result });
                     break;
@@ -572,12 +579,81 @@ app.post('/api/youtube/extract-audio', async (req, res) => {
         const { videoId } = req.body;
         if (!videoId)
             return res.status(400).json({ error: 'videoId is required' });
-        const result = await youtubeService.extractAudioUrl(videoId);
-        res.json(result);
+        const audioUrl = await getYtDlpAudioUrl(videoId);
+        res.json({ audioUrl, contentType: 'audio/mp4' });
     } catch (error) {
         res.status(500).json({
             error: error?.message || 'Audio extraction failed',
         });
+    }
+});
+
+// YouTube audio streaming proxy using yt-dlp
+// Gets direct audio URL via yt-dlp, then proxies with Range support for Cast devices
+const ytDlpUrlCache = new Map(); // videoId -> { url, expiresAt }
+
+const getYtDlpAudioUrl = async (videoId) => {
+    const cached = ytDlpUrlCache.get(videoId);
+    if (cached && cached.expiresAt > Date.now()) return cached.url;
+
+    const { stdout } = await execFileAsync('yt-dlp', [
+        '-f', 'bestaudio[ext=m4a]/bestaudio',
+        '--get-url',
+        '--no-warnings',
+        '--no-playlist',
+        `https://www.youtube.com/watch?v=${videoId}`,
+    ], { timeout: 15000 });
+
+    const url = stdout.trim();
+    if (!url) throw new Error('yt-dlp returned empty URL');
+
+    // Cache for 4 hours (YouTube URLs expire after ~6h)
+    ytDlpUrlCache.set(videoId, { url, expiresAt: Date.now() + 4 * 60 * 60 * 1000 });
+    return url;
+};
+
+app.get('/api/youtube/stream/:videoId', async (req, res) => {
+    const { videoId } = req.params;
+    try {
+        console.log(`🎵 Stream proxy for ${videoId} (Range: ${req.headers.range || 'none'})`);
+        const audioUrl = await getYtDlpAudioUrl(videoId);
+
+        // Proxy the request to YouTube's audio URL, forwarding Range headers
+        const headers = {};
+        if (req.headers.range) {
+            headers['Range'] = req.headers.range;
+        }
+
+        const upstream = await axios.get(audioUrl, {
+            headers,
+            responseType: 'stream',
+            timeout: 30000,
+            validateStatus: (s) => s >= 200 && s < 400,
+        });
+
+        // Forward relevant headers from YouTube
+        const fwd = ['content-type', 'content-length', 'content-range', 'accept-ranges'];
+        for (const h of fwd) {
+            if (upstream.headers[h]) res.setHeader(h, upstream.headers[h]);
+        }
+        // Ensure content-type is audio
+        if (!res.getHeader('content-type')?.toString().startsWith('audio/')) {
+            res.setHeader('Content-Type', 'audio/mp4');
+        }
+        res.setHeader('Accept-Ranges', 'bytes');
+
+        res.status(upstream.status);
+        upstream.data.pipe(res);
+        upstream.data.on('error', (err) => {
+            console.error(`❌ Stream error for ${videoId}:`, err.message);
+            res.end();
+        });
+        req.on('close', () => upstream.data.destroy());
+    } catch (error) {
+        console.error(`❌ Stream proxy error for ${videoId}:`, error.message);
+        if (!res.headersSent) {
+            res.status(500).json({ error: error?.message || 'Stream failed' });
+        }
     }
 });
 
