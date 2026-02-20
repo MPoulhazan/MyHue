@@ -122,6 +122,80 @@ bot.onText(/\/status/, async (msg) => {
     }
 });
 
+// Commande /rules
+bot.onText(/\/rules/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from?.id;
+    const username = msg.from?.username || msg.from?.first_name || 'Unknown';
+
+    if (!checkAccess(userId, username)) {
+        bot.sendMessage(chatId, '🚫 Accès refusé.');
+        return;
+    }
+
+    try {
+        const response = await axios.get(`${AGENT_API_URL}/api/rules`);
+        const rules = response.data;
+
+        if (rules.length === 0) {
+            bot.sendMessage(chatId, '📋 Aucune règle de notification active.\n\nDis-moi par exemple : "Préviens-moi si la température dépasse 25°C"');
+            return;
+        }
+
+        let text = `📋 Règles de notification (${rules.length})\n\n`;
+        rules.forEach((rule, i) => {
+            const status = rule.enabled ? '✅' : '⏸️';
+            const triggers = rule.triggerCount > 0 ? ` (${rule.triggerCount}x)` : '';
+            text += `${status} ${i + 1}. ${rule.name}${triggers}\n`;
+            text += `   ${rule.sensorName} — ${rule.condition.property} ${rule.condition.operator} ${rule.condition.value ?? ''}\n`;
+            text += `   ${rule.message}\n\n`;
+        });
+        text += `Pour supprimer : /delrule <numéro>`;
+
+        bot.sendMessage(chatId, text);
+    } catch (error) {
+        bot.sendMessage(chatId, '❌ Erreur lors de la récupération des règles.');
+    }
+});
+
+// Commande /delrule
+bot.onText(/\/delrule\s+(.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from?.id;
+    const username = msg.from?.username || msg.from?.first_name || 'Unknown';
+
+    if (!checkAccess(userId, username)) {
+        bot.sendMessage(chatId, '🚫 Accès refusé.');
+        return;
+    }
+
+    const arg = match[1].trim();
+
+    try {
+        const response = await axios.get(`${AGENT_API_URL}/api/rules`);
+        const rules = response.data;
+
+        let ruleId;
+        const num = parseInt(arg);
+        if (!isNaN(num) && num >= 1 && num <= rules.length) {
+            ruleId = rules[num - 1].id;
+        } else {
+            const found = rules.find(r => r.id.startsWith(arg));
+            ruleId = found?.id;
+        }
+
+        if (!ruleId) {
+            bot.sendMessage(chatId, `❌ Règle "${arg}" non trouvée. Utilise /rules pour voir la liste.`);
+            return;
+        }
+
+        await axios.delete(`${AGENT_API_URL}/api/rules/${ruleId}`);
+        bot.sendMessage(chatId, '✅ Règle supprimée !');
+    } catch (error) {
+        bot.sendMessage(chatId, '❌ Erreur lors de la suppression.');
+    }
+});
+
 // Gérer tous les messages texte
 bot.on('message', async (msg) => {
     // Ignorer les commandes (elles sont gérées séparément)

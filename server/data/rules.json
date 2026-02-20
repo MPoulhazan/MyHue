@@ -1,0 +1,36 @@
+[
+  {
+    "id": "47dcec5e-3975-4e72-a132-1152d0e39a36",
+    "name": "Porte chambre ouverte",
+    "sensorDid": "lumi.magnet.chambre",
+    "sensorName": "Porte chambre",
+    "condition": {
+      "property": "isOpen",
+      "operator": "is_true",
+      "value": null
+    },
+    "message": "La porte de la chambre est ouverte",
+    "cooldownMinutes": 30,
+    "enabled": false,
+    "createdAt": "2026-02-20T13:43:03.773Z",
+    "lastTriggeredAt": "2026-02-20T14:13:14.452Z",
+    "triggerCount": 2
+  },
+  {
+    "id": "8acefb56-bee7-4df1-8d06-4d94be117059",
+    "name": "Température basse",
+    "sensorDid": "lumi.weather.salon",
+    "sensorName": "Salon",
+    "condition": {
+      "property": "temperature",
+      "operator": "lt",
+      "value": 15
+    },
+    "message": "La température est inférieure à 15 degrés",
+    "cooldownMinutes": 30,
+    "enabled": true,
+    "createdAt": "2026-02-20T13:55:38.222Z",
+    "lastTriggeredAt": null,
+    "triggerCount": 0
+  }
+]

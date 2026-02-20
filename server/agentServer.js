@@ -7,6 +7,7 @@ import * as castService from './castService.js';
 import * as youtubeService from './youtubeService.js';
 import * as googleHomeService from './googleHomeService.js';
 import * as xiaomiService from './xiaomiService.js';
+import * as rulesEngine from './rulesEngine.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -114,6 +115,7 @@ const getHueContext = async () => {
 const buildSystemPrompt = (
     castDevices,
     sensors,
+    rules,
 ) => `You are the MyHue assistant. You can control Philips Hue lights and Google Cast devices (Google Home, Chromecast, Nest).
 You also have access to Xiaomi/Aqara sensor data (temperature, humidity, door sensors, smoke detector, water leak sensor).
 Return ONLY valid JSON. No markdown, no extra text.
@@ -182,6 +184,22 @@ JSON schema:
       "type": "cast_volume",
       "deviceName": string,
       "level": number
+    },
+    // Notification rule actions
+    {
+      "type": "create_rule",
+      "sensorDid": string,
+      "sensorName": string,
+      "property": string,
+      "operator": "gt" | "lt" | "gte" | "lte" | "eq" | "neq" | "is_true" | "is_false",
+      "value": number | null,
+      "message": string,
+      "name": string,
+      "cooldownMinutes": number
+    },
+    {
+      "type": "delete_rule",
+      "ruleId": string
     }
   ]
 }
@@ -197,9 +215,16 @@ Rules:
 - When the user asks about sensors (temperature, humidity, doors, smoke, water leak), read the sensor data from the context and answer in your message. No action is needed for sensor queries.
 - For door sensors: props.isOpen indicates if the door is currently open. props.lastOpen is the last time it was opened.
 - Keep the message in French.
+- When the user asks to be notified/alerted about a sensor condition, use create_rule with the sensor's did from context.
+- For boolean sensors (door isOpen, smokeDetected, leakDetected), use is_true or is_false operators. value should be null for these.
+- For numeric sensors (temperature, humidity), use gt/lt/gte/lte with a numeric value.
+- Default cooldownMinutes is 30 unless the user specifies otherwise.
+- When the user asks to see/list notification rules, read from the rules context and answer in your message. No action needed.
+- When the user asks to delete a rule, use delete_rule with the ruleId from context.
 
 Available Cast devices: ${JSON.stringify(castDevices)}
 Available sensors: ${JSON.stringify(sensors)}
+Active notification rules: ${JSON.stringify(rules)}
 `;
 
 const extractJson = (text) => {
@@ -356,6 +381,26 @@ const executeActions = async (actions) => {
                     });
                     break;
                 }
+                case 'create_rule': {
+                    const rule = rulesEngine.addRule({
+                        name: action.name,
+                        sensorDid: action.sensorDid,
+                        sensorName: action.sensorName,
+                        property: action.property,
+                        operator: action.operator,
+                        value: action.value,
+                        message: action.message,
+                        cooldownMinutes: action.cooldownMinutes || 30,
+                    });
+                    results.push({ action, status: 'ok', result: { ruleId: rule.id, name: rule.name } });
+                    break;
+                }
+                case 'delete_rule': {
+                    const deleted = rulesEngine.deleteRule(action.ruleId);
+                    if (!deleted) throw new Error(`Règle non trouvée: ${action.ruleId}`);
+                    results.push({ action, status: 'ok' });
+                    break;
+                }
                 default: {
                     results.push({
                         action,
@@ -406,7 +451,8 @@ app.post('/api/agent', async (req, res) => {
         const context = await getHueContext();
         const castDevices = castService.getDevices();
         const sensors = await xiaomiService.getSensorsWithData();
-        const systemPrompt = buildSystemPrompt(castDevices, sensors);
+        const activeRules = rulesEngine.getRules();
+        const systemPrompt = buildSystemPrompt(castDevices, sensors, activeRules);
 
         const historyMessages = Array.isArray(history)
             ? history.slice(-8).map((item) => ({
@@ -725,7 +771,28 @@ app.get('/api/xiaomi/sensors', async (_req, res) => {
     }
 });
 
+// --- Rules API endpoints ---
+
+app.get('/api/rules', (_req, res) => {
+    res.json(rulesEngine.getRules());
+});
+
+app.delete('/api/rules/:id', (req, res) => {
+    const deleted = rulesEngine.deleteRule(req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'Rule not found' });
+    res.json({ ok: true });
+});
+
+app.patch('/api/rules/:id/toggle', (req, res) => {
+    const rule = rulesEngine.toggleRule(req.params.id);
+    if (!rule) return res.status(404).json({ error: 'Rule not found' });
+    res.json(rule);
+});
+
+// --- Start server & rules engine ---
+
 app.listen(PORT, () => {
     console.log(`🤖 MyHue agent server running on http://localhost:${PORT}`);
     console.log(`Using Groq with model: ${GROQ_MODEL}`);
+    rulesEngine.startEngine(xiaomiService.getSensorsWithData);
 });
