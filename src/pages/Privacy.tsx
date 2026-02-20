@@ -79,9 +79,26 @@ export function Privacy() {
                         <p>
                             Your MyHue application maintains strong privacy
                             practices by keeping most data on your local network
-                            and devices. OAuth with Google is used for YouTube
-                            integration, which reduces the score slightly.
+                            and devices. The main privacy factors are:
                         </p>
+                        <ul style={{ marginTop: '1rem', fontSize: '0.95rem' }}>
+                            <li>
+                                ✅ Local-first: Hue Bridge, Xiaomi Hub, and
+                                Stats are 100% local
+                            </li>
+                            <li>
+                                ✅ No surveillance: Cast device discovery via
+                                mDNS (local)
+                            </li>
+                            <li>
+                                ⚠️ Cloud AI: Agent uses Groq API for LLM
+                                processing
+                            </li>
+                            <li>
+                                ⚠️ YouTube: OAuth and playlist data via Google
+                                Cloud
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </motion.div>
