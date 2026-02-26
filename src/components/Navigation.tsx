@@ -12,6 +12,7 @@ type MenuKey =
     | 'music'
     | 'google-home'
     | 'rules'
+    | 'heating'
     | 'privacy';
 
 interface MenuItem {
@@ -37,6 +38,7 @@ const MENU_ITEMS: MenuItem[] = [
         label: 'Google Home',
     },
     { key: 'rules', path: '/rules', icon: '🔔', label: 'Rules' },
+    { key: 'heating', path: '/heating', icon: '🔥', label: 'Chauffage' },
     { key: 'privacy', path: '/privacy', icon: '🔒', label: 'Privacy' },
 ];
 
@@ -52,7 +54,8 @@ const menuItemMap: Record<MenuKey, MenuItem> = {
     music: MENU_ITEMS[5],
     'google-home': MENU_ITEMS[6],
     rules: MENU_ITEMS[7],
-    privacy: MENU_ITEMS[8],
+    heating: MENU_ITEMS[8],
+    privacy: MENU_ITEMS[9],
 };
 
 const getDefaultOrder = (): MenuKey[] => [
@@ -64,6 +67,7 @@ const getDefaultOrder = (): MenuKey[] => [
     'music',
     'google-home',
     'rules',
+    'heating',
     'privacy',
 ];
 
@@ -100,6 +104,7 @@ const getDefaultVisibility = (): MenuVisibility => ({
     music: true,
     'google-home': true,
     rules: true,
+    heating: true,
     privacy: true,
 });
 
@@ -121,6 +126,7 @@ const loadVisibility = (): MenuVisibility => {
             music: parsed.music ?? defaults.music,
             'google-home': parsed['google-home'] ?? defaults['google-home'],
             rules: parsed.rules ?? defaults.rules,
+            heating: parsed.heating ?? defaults.heating,
             privacy: parsed.privacy ?? defaults.privacy,
         };
     } catch {
@@ -131,6 +137,7 @@ const loadVisibility = (): MenuVisibility => {
 export const Navigation = () => {
     const location = useLocation();
     const settingsRef = useRef<HTMLDivElement | null>(null);
+    const navLinksRef = useRef<HTMLDivElement | null>(null);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [visibility, setVisibility] = useState<MenuVisibility>(() =>
         loadVisibility(),
@@ -138,6 +145,9 @@ export const Navigation = () => {
     const [menuOrder, setMenuOrder] = useState<MenuKey[]>(() => loadOrder());
     const [draggedKey, setDraggedKey] = useState<MenuKey | null>(null);
     const [dragOverKey, setDragOverKey] = useState<MenuKey | null>(null);
+    const [isScrolling, setIsScrolling] = useState(false);
+    const [scrollStartX, setScrollStartX] = useState(0);
+    const [scrollStartLeft, setScrollStartLeft] = useState(0);
 
     const isActive = (path: string) => location.pathname === path;
 
@@ -238,6 +248,47 @@ export const Navigation = () => {
         };
     }, []);
 
+    useEffect(() => {
+        const navElement = navLinksRef.current;
+        if (!navElement) return;
+
+        const onMouseDown = (e: MouseEvent) => {
+            // Only start scroll if clicking on nav-links, not on a nav-link or settings
+            if (
+                (e.target as HTMLElement).closest('.nav-link') ||
+                (e.target as HTMLElement).closest('.nav-settings')
+            ) {
+                return;
+            }
+
+            setIsScrolling(true);
+            setScrollStartX(e.clientX);
+            setScrollStartLeft(navElement.scrollLeft);
+            e.preventDefault();
+        };
+
+        const onMouseMove = (e: MouseEvent) => {
+            if (!isScrolling) return;
+
+            const diff = e.clientX - scrollStartX;
+            navElement.scrollLeft = scrollStartLeft - diff;
+        };
+
+        const onMouseUp = () => {
+            setIsScrolling(false);
+        };
+
+        navElement.addEventListener('mousedown', onMouseDown);
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+
+        return () => {
+            navElement.removeEventListener('mousedown', onMouseDown);
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+    }, [isScrolling, scrollStartX, scrollStartLeft]);
+
     return (
         <nav className="main-nav glass">
             <div className="nav-content">
@@ -246,7 +297,10 @@ export const Navigation = () => {
                     <span className="logo-text">MyHue</span>
                 </Link>
 
-                <div className="nav-links">
+                <div
+                    className={`nav-links ${isScrolling ? 'is-scrolling' : ''}`}
+                    ref={navLinksRef}
+                >
                     {visibleMenuItems.map((item) => (
                         <Link
                             key={item.key}

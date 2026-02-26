@@ -16,19 +16,25 @@
     },
     "dependencies": {
         "@distube/ytdl-core": "^4.16.12",
+        "aedes": "^1.0.0",
         "axios": "^1.13.5",
         "castv2-client": "^1.2.0",
         "dotenv": "^17.3.1",
         "express": "^5.1.0",
         "framer-motion": "^12.34.0",
+        "kiwicam-broadlinkjs-rm": "^0.9.22",
         "mdns-js": "^1.0.3",
+        "mqtt": "^5.15.0",
         "myhue": "file:",
         "node-mihome": "^0.0.32",
         "node-telegram-bot-api": "^0.67.0",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
         "react-router-dom": "^7.13.0",
-        "recharts": "^3.7.0"
+        "recharts": "^3.7.0",
+        "zigbee-herdsman": "^9.0.7",
+        "zigbee-herdsman-converters": "^26.11.0",
+        "zigbee2mqtt": "^2.8.0"
     },
     "devDependencies": {
         "@eslint/js": "^9.39.1",

@@ -1,0 +1,10 @@
+{
+    "0x00158d0002741953": {
+        "temperature": 21.07,
+        "humidity": 32.19,
+        "pressure": 1005.3,
+        "voltage": 2965,
+        "battery": 77,
+        "power_outage_count": 38855
+    }
+}

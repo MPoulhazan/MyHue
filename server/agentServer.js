@@ -8,11 +8,12 @@ import * as youtubeService from './youtubeService.js';
 import * as googleHomeService from './googleHomeService.js';
 import * as xiaomiService from './xiaomiService.js';
 import * as rulesEngine from './rulesEngine.js';
+import * as broadlinkService from './broadlinkService.js';
+import * as zigbeeService from './zigbeeService.js';
 
 const execFileAsync = promisify(execFile);
 
 dotenv.config();
-
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -116,8 +117,10 @@ const buildSystemPrompt = (
     castDevices,
     sensors,
     rules,
+    heatingState,
 ) => `You are the MyHue assistant. You can control Philips Hue lights and Google Cast devices (Google Home, Chromecast, Nest).
 You also have access to Xiaomi/Aqara sensor data (temperature, humidity, door sensors, smoke detector, water leak sensor).
+You can also control the Mitsubishi heat pump (heating/cooling) via Broadlink IR.
 Return ONLY valid JSON. No markdown, no extra text.
 
 JSON schema:
@@ -200,6 +203,15 @@ JSON schema:
     {
       "type": "delete_rule",
       "ruleId": string
+    },
+    // Heating / cooling (Mitsubishi heat pump via Broadlink IR)
+    {
+      "type": "set_heating",
+      "power": boolean,
+      "mode": "heat" | "cool" | "dry" | "fan" | "auto",
+      "temperature": number,
+      "fanSpeed": "auto" | "low" | "med" | "high" | "quiet",
+      "vaneVertical": "auto" | "1" | "2" | "3" | "4" | "5" | "swing"
     }
   ]
 }
@@ -221,10 +233,14 @@ Rules:
 - Default cooldownMinutes is 30 unless the user specifies otherwise.
 - When the user asks to see/list notification rules, read from the rules context and answer in your message. No action needed.
 - When the user asks to delete a rule, use delete_rule with the ruleId from context.
+- For heating/cooling control, use set_heating. Only include fields the user wants to change; other fields keep their current values.
+- Temperature range: 16-31°C. Modes: heat, cool, dry, fan, auto. Fan speeds: auto, quiet, low, med, high. Vane: auto, 1-5, swing.
+- Current heating state is provided in context. When the user asks about heating status, read from context and answer in your message.
 
 Available Cast devices: ${JSON.stringify(castDevices)}
 Available sensors: ${JSON.stringify(sensors)}
 Active notification rules: ${JSON.stringify(rules)}
+Current heating state: ${JSON.stringify(heatingState)}
 `;
 
 const extractJson = (text) => {
@@ -392,13 +408,41 @@ const executeActions = async (actions) => {
                         message: action.message,
                         cooldownMinutes: action.cooldownMinutes || 30,
                     });
-                    results.push({ action, status: 'ok', result: { ruleId: rule.id, name: rule.name } });
+                    results.push({
+                        action,
+                        status: 'ok',
+                        result: { ruleId: rule.id, name: rule.name },
+                    });
                     break;
                 }
                 case 'delete_rule': {
                     const deleted = rulesEngine.deleteRule(action.ruleId);
-                    if (!deleted) throw new Error(`Règle non trouvée: ${action.ruleId}`);
+                    if (!deleted)
+                        throw new Error(`Règle non trouvée: ${action.ruleId}`);
                     results.push({ action, status: 'ok' });
+                    break;
+                }
+                case 'set_heating': {
+                    const curState = broadlinkService.getState();
+                    const newState = {
+                        power:
+                            action.power !== undefined
+                                ? action.power
+                                : curState.power,
+                        mode: action.mode || curState.mode,
+                        temperature: action.temperature
+                            ? clamp(action.temperature, 16, 31)
+                            : curState.temperature,
+                        fanSpeed: action.fanSpeed || curState.fanSpeed,
+                        vaneVertical:
+                            action.vaneVertical || curState.vaneVertical,
+                    };
+                    if (broadlinkService.isConnected()) {
+                        await broadlinkService.sendCommand(newState);
+                    } else {
+                        broadlinkService.sendCommandDryRun(newState);
+                    }
+                    results.push({ action, status: 'ok', result: newState });
                     break;
                 }
                 default: {
@@ -452,7 +496,13 @@ app.post('/api/agent', async (req, res) => {
         const castDevices = castService.getDevices();
         const sensors = await xiaomiService.getSensorsWithData();
         const activeRules = rulesEngine.getRules();
-        const systemPrompt = buildSystemPrompt(castDevices, sensors, activeRules);
+        const heatingState = broadlinkService.getState();
+        const systemPrompt = buildSystemPrompt(
+            castDevices,
+            sensors,
+            activeRules,
+            heatingState,
+        );
 
         const historyMessages = Array.isArray(history)
             ? history.slice(-8).map((item) => ({
@@ -465,6 +515,7 @@ app.post('/api/agent', async (req, res) => {
             hue: context,
             cast: castDevices,
             sensors,
+            heating: heatingState,
         };
 
         const messages = [
@@ -642,26 +693,36 @@ const getYtDlpAudioUrl = async (videoId) => {
     const cached = ytDlpUrlCache.get(videoId);
     if (cached && cached.expiresAt > Date.now()) return cached.url;
 
-    const { stdout } = await execFileAsync('yt-dlp', [
-        '-f', 'bestaudio[ext=m4a]/bestaudio',
-        '--get-url',
-        '--no-warnings',
-        '--no-playlist',
-        `https://www.youtube.com/watch?v=${videoId}`,
-    ], { timeout: 15000 });
+    const { stdout } = await execFileAsync(
+        'yt-dlp',
+        [
+            '-f',
+            'bestaudio[ext=m4a]/bestaudio',
+            '--get-url',
+            '--no-warnings',
+            '--no-playlist',
+            `https://www.youtube.com/watch?v=${videoId}`,
+        ],
+        { timeout: 15000 },
+    );
 
     const url = stdout.trim();
     if (!url) throw new Error('yt-dlp returned empty URL');
 
     // Cache for 4 hours (YouTube URLs expire after ~6h)
-    ytDlpUrlCache.set(videoId, { url, expiresAt: Date.now() + 4 * 60 * 60 * 1000 });
+    ytDlpUrlCache.set(videoId, {
+        url,
+        expiresAt: Date.now() + 4 * 60 * 60 * 1000,
+    });
     return url;
 };
 
 app.get('/api/youtube/stream/:videoId', async (req, res) => {
     const { videoId } = req.params;
     try {
-        console.log(`🎵 Stream proxy for ${videoId} (Range: ${req.headers.range || 'none'})`);
+        console.log(
+            `🎵 Stream proxy for ${videoId} (Range: ${req.headers.range || 'none'})`,
+        );
         const audioUrl = await getYtDlpAudioUrl(videoId);
 
         // Proxy the request to YouTube's audio URL, forwarding Range headers
@@ -678,7 +739,12 @@ app.get('/api/youtube/stream/:videoId', async (req, res) => {
         });
 
         // Forward relevant headers from YouTube
-        const fwd = ['content-type', 'content-length', 'content-range', 'accept-ranges'];
+        const fwd = [
+            'content-type',
+            'content-length',
+            'content-range',
+            'accept-ranges',
+        ];
         for (const h of fwd) {
             if (upstream.headers[h]) res.setHeader(h, upstream.headers[h]);
         }
@@ -763,7 +829,53 @@ app.get('/api/xiaomi/devices', async (_req, res) => {
 app.get('/api/xiaomi/sensors', async (_req, res) => {
     try {
         const sensors = await xiaomiService.getSensorsWithData();
-        res.json({ sensors });
+
+        // Replace mock temperature/humidity sensors with real Zigbee data.
+        // Include devices known to be temp sensors even if state hasn't arrived yet.
+        const TEMP_MODELS = ['WSDCGQ11LM', 'WSDCGQ12LM', 'lumi.weather'];
+        const zigbeeDevices = zigbeeService.getDevices();
+        const zigbeeTempDevices = zigbeeDevices.filter(
+            (d) =>
+                (d.state && 'temperature' in d.state) ||
+                TEMP_MODELS.some((m) => (d.model || '').includes(m)) ||
+                (d.description || '').toLowerCase().includes('temperature'),
+        );
+
+        let merged;
+        if (zigbeeTempDevices.length > 0) {
+            const nonTempSensors = sensors.filter(
+                (s) => s.type !== 'temperature_humidity',
+            );
+            const zigbeeMapped = zigbeeTempDevices.map((d) => ({
+                did: d.ieeeAddr,
+                name:
+                    d.friendlyName === d.ieeeAddr
+                        ? d.vendor
+                            ? `${d.vendor} ${d.model}`
+                            : d.description || 'Capteur Zigbee'
+                        : d.friendlyName,
+                model: d.model || 'WSDCGQ11LM',
+                type: 'temperature_humidity',
+                icon: '🌡️',
+                isOnline: d.available !== false,
+                mac: d.ieeeAddr,
+                props: {
+                    temperature: d.state?.temperature ?? null,
+                    humidity: d.state?.humidity ?? null,
+                    pressure: d.state?.pressure ?? null,
+                    battery: d.state?.battery ?? null,
+                },
+                lastUpdated: d.lastSeen
+                    ? new Date(d.lastSeen).toISOString()
+                    : null,
+                source: 'zigbee',
+            }));
+            merged = [...zigbeeMapped, ...nonTempSensors];
+        } else {
+            merged = sensors;
+        }
+
+        res.json({ sensors: merged });
     } catch (error) {
         res.status(500).json({
             error: error?.message || 'Failed to fetch Xiaomi sensors',
@@ -789,10 +901,105 @@ app.patch('/api/rules/:id/toggle', (req, res) => {
     res.json(rule);
 });
 
+// --- Heating API endpoints ---
+
+app.get('/api/heating/status', (_req, res) => {
+    res.json(broadlinkService.getStatus());
+});
+
+app.post('/api/heating/control', async (req, res) => {
+    try {
+        const curState = broadlinkService.getState();
+        const body = req.body || {};
+        const newState = {
+            power: body.power !== undefined ? body.power : curState.power,
+            mode: body.mode || curState.mode,
+            temperature: body.temperature
+                ? clamp(body.temperature, 16, 31)
+                : curState.temperature,
+            fanSpeed: body.fanSpeed || curState.fanSpeed,
+            vaneVertical: body.vaneVertical || curState.vaneVertical,
+        };
+
+        let result;
+        if (broadlinkService.isConnected()) {
+            result = await broadlinkService.sendCommand(newState);
+        } else {
+            result = broadlinkService.sendCommandDryRun(newState);
+        }
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({
+            error: error?.message || 'Heating control failed',
+        });
+    }
+});
+
+app.post('/api/heating/discover', async (_req, res) => {
+    try {
+        await broadlinkService.discover();
+        res.json({ ok: true, ...broadlinkService.getStatus() });
+    } catch (error) {
+        res.status(500).json({ error: error?.message || 'Discovery failed' });
+    }
+});
+
+// --- Zigbee routes ---
+
+app.get('/zigbee/devices', (_req, res) => {
+    res.json(zigbeeService.getDevices());
+});
+
+app.get('/zigbee/temperature', (_req, res) => {
+    res.json(zigbeeService.getTemperatureSensors());
+});
+
+app.get('/zigbee/device/:ieee', (req, res) => {
+    const device = zigbeeService.getDevice(req.params.ieee);
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+    res.json(device);
+});
+
+app.post('/zigbee/permit-join', async (req, res) => {
+    try {
+        const seconds = req.body.seconds ?? 60;
+        await zigbeeService.permitJoin(seconds);
+        res.json({ ok: true, seconds });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/zigbee/stop-join', async (_req, res) => {
+    try {
+        await zigbeeService.disallowJoin();
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/zigbee/status', (_req, res) => {
+    res.json({ running: zigbeeService.isRunning() });
+});
+
+app.get('/api/zigbee/history/:deviceId', (req, res) => {
+    const points = zigbeeService.getHistory(
+        decodeURIComponent(req.params.deviceId),
+    );
+    res.json({ deviceId: req.params.deviceId, points });
+});
+
 // --- Start server & rules engine ---
 
 app.listen(PORT, () => {
     console.log(`🤖 MyHue agent server running on http://localhost:${PORT}`);
     console.log(`Using Groq with model: ${GROQ_MODEL}`);
     rulesEngine.startEngine(xiaomiService.getSensorsWithData);
+    broadlinkService
+        .discover()
+        .catch((err) => console.warn('⚠️  Broadlink:', err.message));
+    zigbeeService
+        .start()
+        .catch((err) => console.warn('⚠️  Zigbee:', err.message));
 });

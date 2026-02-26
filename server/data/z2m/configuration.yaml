@@ -1,0 +1,45 @@
+homeassistant:
+  enabled: false
+mqtt:
+  base_topic: zigbee2mqtt
+  server: mqtt://localhost:1883
+serial:
+  port: COM3
+  adapter: ember
+  rtscts: false
+frontend:
+  enabled: false
+advanced:
+  log_level: debug
+  network_key:
+    - 1
+    - 3
+    - 5
+    - 7
+    - 9
+    - 11
+    - 13
+    - 15
+    - 0
+    - 2
+    - 4
+    - 6
+    - 8
+    - 10
+    - 12
+    - 13
+  pan_id: 6755
+  ext_pan_id:
+    - 221
+    - 221
+    - 221
+    - 221
+    - 221
+    - 221
+    - 221
+    - 221
+  channel: 11
+version: 5
+devices:
+  '0x00158d0002741953':
+    friendly_name: '0x00158d0002741953'

@@ -1,6 +1,16 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import {
+    ResponsiveContainer,
+    ComposedChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+} from 'recharts';
 import './GoogleHome.css';
 
 interface EurekaInfo {
@@ -42,10 +52,21 @@ interface XiaomiSensor {
     props: {
         temperature?: number | null;
         humidity?: number | null;
+        pressure?: number | null;
+        battery?: number | null;
         lastMotion?: string | null;
         lastOpen?: string | null;
     };
     lastUpdated: string | null;
+    source?: string;
+}
+
+interface HistoryPoint {
+    ts: number;
+    temperature: number | null;
+    humidity: number | null;
+    pressure: number | null;
+    battery: number | null;
 }
 
 const getDeviceIcon = (device: GoogleHomeDevice): string => {
@@ -101,6 +122,29 @@ export const GoogleHome = () => {
     const [error, setError] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
 
+    // Historique
+    const [selectedSensor, setSelectedSensor] = useState<XiaomiSensor | null>(
+        null,
+    );
+    const [historyData, setHistoryData] = useState<HistoryPoint[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+
+    const openHistory = useCallback(async (sensor: XiaomiSensor) => {
+        setSelectedSensor(sensor);
+        setHistoryData([]);
+        setHistoryLoading(true);
+        try {
+            const res = await axios.get(
+                `/api/zigbee/history/${encodeURIComponent(sensor.did)}`,
+            );
+            setHistoryData(res.data.points || []);
+        } catch {
+            setHistoryData([]);
+        } finally {
+            setHistoryLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         loadAll();
     }, []);
@@ -127,13 +171,13 @@ export const GoogleHome = () => {
 
     const loadXiaomi = async () => {
         try {
-            const statusRes = await axios.get(`/api/xiaomi/status`);
+            setSensorsLoading(true);
+            const [statusRes, sensorsRes] = await Promise.all([
+                axios.get(`/api/xiaomi/status`),
+                axios.get(`/api/xiaomi/sensors`),
+            ]);
             setXiaomiLoggedIn(statusRes.data.loggedIn);
-            if (statusRes.data.loggedIn) {
-                setSensorsLoading(true);
-                const sensorsRes = await axios.get(`/api/xiaomi/sensors`);
-                setSensors(sensorsRes.data.sensors || []);
-            }
+            setSensors(sensorsRes.data.sensors || []);
         } catch (err) {
             console.error('Failed to fetch Xiaomi sensors:', err);
         } finally {
@@ -300,7 +344,7 @@ export const GoogleHome = () => {
             )}
 
             {/* Xiaomi Section */}
-            {!xiaomiLoggedIn && (
+            {!xiaomiLoggedIn && sensors.length === 0 && (
                 <motion.section
                     className="xiaomi-section"
                     initial={{ opacity: 0, y: 20 }}
@@ -334,14 +378,14 @@ export const GoogleHome = () => {
                 </motion.section>
             )}
 
-            {xiaomiLoggedIn && sensors.length > 0 && (
+            {sensors.length > 0 && (
                 <motion.section
                     className="xiaomi-section"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                 >
-                    <h2 className="section-title">Capteurs Xiaomi</h2>
+                    <h2 className="section-title">Capteurs</h2>
                     <div className="sensors-grid">
                         {sensors
                             .filter(
@@ -352,10 +396,15 @@ export const GoogleHome = () => {
                             .map((sensor, index) => (
                                 <motion.div
                                     key={sensor.did}
-                                    className={`sensor-card glass ${sensor.isOnline ? 'sensor-online' : 'sensor-offline'}`}
+                                    className={`sensor-card glass ${sensor.isOnline ? 'sensor-online' : 'sensor-offline'}${sensor.type === 'temperature_humidity' ? ' sensor-clickable' : ''}`}
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: index * 0.05 }}
+                                    onClick={
+                                        sensor.type === 'temperature_humidity'
+                                            ? () => openHistory(sensor)
+                                            : undefined
+                                    }
                                 >
                                     <div className="sensor-header">
                                         <span className="sensor-icon">
@@ -459,6 +508,12 @@ export const GoogleHome = () => {
                                         <div className="sensor-footer">
                                             Mis à jour{' '}
                                             {formatTimeAgo(sensor.lastUpdated)}
+                                            {sensor.type ===
+                                                'temperature_humidity' && (
+                                                <span className="sensor-history-hint">
+                                                    📈 24h
+                                                </span>
+                                            )}
                                         </div>
                                     )}
                                 </motion.div>
@@ -466,6 +521,323 @@ export const GoogleHome = () => {
                     </div>
                 </motion.section>
             )}
+
+            {/* Modal historique */}
+            <AnimatePresence>
+                {selectedSensor && (
+                    <motion.div
+                        className="history-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setSelectedSensor(null)}
+                    >
+                        <motion.div
+                            className="history-modal glass"
+                            initial={{ scale: 0.9, opacity: 0, y: 30 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 30 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="history-modal-header">
+                                <div>
+                                    <h3>{selectedSensor.name}</h3>
+                                    <p className="history-modal-subtitle">
+                                        Historique des dernières 24h
+                                    </p>
+                                </div>
+                                <button
+                                    className="history-close-btn"
+                                    onClick={() => setSelectedSensor(null)}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            {historyLoading && (
+                                <div className="history-loading">
+                                    Chargement...
+                                </div>
+                            )}
+
+                            {!historyLoading && historyData.length === 0 && (
+                                <div className="history-empty">
+                                    <p>Aucune donnée disponible.</p>
+                                    <p className="history-empty-hint">
+                                        Les mesures s'accumulent
+                                        automatiquement. Revenez dans quelques
+                                        minutes.
+                                    </p>
+                                </div>
+                            )}
+
+                            {!historyLoading && historyData.length > 0 && (
+                                <>
+                                    <div className="history-chart-container">
+                                        <p className="history-chart-label">
+                                            Température (°C)
+                                        </p>
+                                        <ResponsiveContainer
+                                            width="100%"
+                                            height={180}
+                                        >
+                                            <ComposedChart
+                                                data={historyData.map((p) => ({
+                                                    time: new Date(
+                                                        p.ts,
+                                                    ).toLocaleTimeString(
+                                                        'fr-FR',
+                                                        {
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        },
+                                                    ),
+                                                    temp:
+                                                        p.temperature != null
+                                                            ? Math.round(
+                                                                  p.temperature *
+                                                                      10,
+                                                              ) / 10
+                                                            : null,
+                                                    hum:
+                                                        p.humidity != null
+                                                            ? Math.round(
+                                                                  p.humidity *
+                                                                      10,
+                                                              ) / 10
+                                                            : null,
+                                                }))}
+                                            >
+                                                <CartesianGrid
+                                                    strokeDasharray="3 3"
+                                                    stroke="rgba(255,255,255,0.1)"
+                                                />
+                                                <XAxis
+                                                    dataKey="time"
+                                                    tick={{
+                                                        fontSize: 11,
+                                                        fill: '#aaa',
+                                                    }}
+                                                    interval="preserveStartEnd"
+                                                />
+                                                <YAxis
+                                                    yAxisId="temp"
+                                                    domain={['auto', 'auto']}
+                                                    tick={{
+                                                        fontSize: 11,
+                                                        fill: '#f87171',
+                                                    }}
+                                                    unit="°"
+                                                    width={35}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{
+                                                        background:
+                                                            'rgba(20,20,40,0.95)',
+                                                        border: '1px solid rgba(255,255,255,0.15)',
+                                                        borderRadius: 8,
+                                                    }}
+                                                    labelStyle={{
+                                                        color: '#ccc',
+                                                        fontSize: 12,
+                                                    }}
+                                                    formatter={(
+                                                        v: number,
+                                                        name: string,
+                                                    ) =>
+                                                        name === 'temp'
+                                                            ? [
+                                                                  `${v}°C`,
+                                                                  'Température',
+                                                              ]
+                                                            : [
+                                                                  `${v}%`,
+                                                                  'Humidité',
+                                                              ]
+                                                    }
+                                                />
+                                                <Legend
+                                                    formatter={(v) =>
+                                                        v === 'temp'
+                                                            ? 'Température'
+                                                            : 'Humidité'
+                                                    }
+                                                    wrapperStyle={{
+                                                        fontSize: 12,
+                                                    }}
+                                                />
+                                                <Line
+                                                    yAxisId="temp"
+                                                    type="monotone"
+                                                    dataKey="temp"
+                                                    stroke="#f87171"
+                                                    strokeWidth={2}
+                                                    dot={false}
+                                                    connectNulls
+                                                />
+                                            </ComposedChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    <div className="history-chart-container">
+                                        <p className="history-chart-label">
+                                            Humidité (%)
+                                        </p>
+                                        <ResponsiveContainer
+                                            width="100%"
+                                            height={160}
+                                        >
+                                            <ComposedChart
+                                                data={historyData.map((p) => ({
+                                                    time: new Date(
+                                                        p.ts,
+                                                    ).toLocaleTimeString(
+                                                        'fr-FR',
+                                                        {
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        },
+                                                    ),
+                                                    hum:
+                                                        p.humidity != null
+                                                            ? Math.round(
+                                                                  p.humidity *
+                                                                      10,
+                                                              ) / 10
+                                                            : null,
+                                                }))}
+                                            >
+                                                <CartesianGrid
+                                                    strokeDasharray="3 3"
+                                                    stroke="rgba(255,255,255,0.1)"
+                                                />
+                                                <XAxis
+                                                    dataKey="time"
+                                                    tick={{
+                                                        fontSize: 11,
+                                                        fill: '#aaa',
+                                                    }}
+                                                    interval="preserveStartEnd"
+                                                />
+                                                <YAxis
+                                                    domain={['auto', 'auto']}
+                                                    tick={{
+                                                        fontSize: 11,
+                                                        fill: '#60a5fa',
+                                                    }}
+                                                    unit="%"
+                                                    width={35}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{
+                                                        background:
+                                                            'rgba(20,20,40,0.95)',
+                                                        border: '1px solid rgba(255,255,255,0.15)',
+                                                        borderRadius: 8,
+                                                    }}
+                                                    labelStyle={{
+                                                        color: '#ccc',
+                                                        fontSize: 12,
+                                                    }}
+                                                    formatter={(v: number) => [
+                                                        `${v}%`,
+                                                        'Humidité',
+                                                    ]}
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="hum"
+                                                    stroke="#60a5fa"
+                                                    strokeWidth={2}
+                                                    dot={false}
+                                                    connectNulls
+                                                />
+                                            </ComposedChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    <div className="history-stats">
+                                        {(() => {
+                                            const temps = historyData
+                                                .map((p) => p.temperature)
+                                                .filter(
+                                                    (v): v is number =>
+                                                        v != null,
+                                                );
+                                            const hums = historyData
+                                                .map((p) => p.humidity)
+                                                .filter(
+                                                    (v): v is number =>
+                                                        v != null,
+                                                );
+                                            return (
+                                                <>
+                                                    {temps.length > 0 && (
+                                                        <div className="history-stat glass">
+                                                            <span className="hstat-label">
+                                                                Temp min
+                                                            </span>
+                                                            <span className="hstat-value">
+                                                                {Math.min(
+                                                                    ...temps,
+                                                                ).toFixed(1)}
+                                                                °C
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {temps.length > 0 && (
+                                                        <div className="history-stat glass">
+                                                            <span className="hstat-label">
+                                                                Temp max
+                                                            </span>
+                                                            <span className="hstat-value">
+                                                                {Math.max(
+                                                                    ...temps,
+                                                                ).toFixed(1)}
+                                                                °C
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {hums.length > 0 && (
+                                                        <div className="history-stat glass">
+                                                            <span className="hstat-label">
+                                                                Humidité moy.
+                                                            </span>
+                                                            <span className="hstat-value">
+                                                                {(
+                                                                    hums.reduce(
+                                                                        (
+                                                                            a,
+                                                                            b,
+                                                                        ) =>
+                                                                            a +
+                                                                            b,
+                                                                        0,
+                                                                    ) /
+                                                                    hums.length
+                                                                ).toFixed(0)}
+                                                                %
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    <div className="history-stat glass">
+                                                        <span className="hstat-label">
+                                                            Points
+                                                        </span>
+                                                        <span className="hstat-value">
+                                                            {historyData.length}
+                                                        </span>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                </>
+                            )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {sensorsLoading && (
                 <motion.div

@@ -77,6 +77,14 @@ const APPS: AppItem[] = [
         color: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
     },
     {
+        id: 'heating',
+        name: 'Heating',
+        icon: '🔥',
+        description: 'Heat pump control',
+        path: '/heating',
+        color: 'linear-gradient(135deg, #ff6b6b 0%, #ffd93d 100%)',
+    },
+    {
         id: 'privacy',
         name: 'Privacy',
         icon: '🔒',

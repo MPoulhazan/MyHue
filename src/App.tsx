@@ -10,6 +10,7 @@ import { Agent } from './pages/Agent';
 import Music from './pages/Music';
 import { GoogleHome } from './pages/GoogleHome';
 import { Rules } from './pages/Rules';
+import { Heating } from './pages/Heating';
 import { Privacy } from './pages/Privacy';
 import './App.css';
 
@@ -28,6 +29,7 @@ function App() {
                     <Route path="/music" element={<Music />} />
                     <Route path="/google-home" element={<GoogleHome />} />
                     <Route path="/rules" element={<Rules />} />
+                    <Route path="/heating" element={<Heating />} />
                     <Route path="/privacy" element={<Privacy />} />
                 </Routes>
                 <AgentWidget />

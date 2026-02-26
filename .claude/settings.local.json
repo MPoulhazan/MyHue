@@ -4,7 +4,11 @@
       "Bash(taskkill:*)",
       "Bash(npm run:*)",
       "Bash(curl:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(ZIGBEE2MQTT_DATA=./server/data/z2m timeout 20 node node_modules/zigbee2mqtt/index.js)",
+      "WebFetch(domain:github.com)",
+      "Bash(cmd.exe /c \"python --version\")",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }
