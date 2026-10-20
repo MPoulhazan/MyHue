@@ -6,7 +6,14 @@ export default defineConfig({
     plugins: [react()],
     server: {
         proxy: {
-            '/api': 'http://localhost:5174',
+            '/api/sensors/events': {
+                target: 'http://localhost:5174',
+                changeOrigin: true,
+            },
+            '/api': {
+                target: 'http://localhost:5174',
+                changeOrigin: true,
+            },
         },
     },
 });

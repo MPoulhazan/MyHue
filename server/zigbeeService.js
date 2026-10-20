@@ -8,9 +8,12 @@ import { spawn, execFile } from 'child_process';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
+import { EventEmitter } from 'events';
 import mqtt from 'mqtt';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+export const emitter = new EventEmitter();
 
 const MQTT_PORT = 1883;
 const Z2M_DATA = resolve(__dirname, 'data/z2m');
@@ -35,6 +38,10 @@ let running = false;
 
 // devices[friendlyName] = { friendlyName, ieeeAddr, model, state, lastSeen }
 const devices = {};
+
+// Dernier événement de join pour feedback UI
+let lastJoinEvent = null; // { ieee, friendlyName, ts }
+let permitJoinActive = false;
 
 // history[friendlyName] = [{ ts, temperature, humidity, pressure, battery }, ...]
 const history = {};
@@ -203,7 +210,7 @@ function subscribeToZ2m() {
                 const msg = JSON.parse(payload.toString());
                 const parts = topic.split('/');
 
-                // zigbee2mqtt/bridge/devices -> liste des appareils
+                // zigbee2mqtt/bridge/devices -> liste complète des appareils
                 if (topic === 'zigbee2mqtt/bridge/devices') {
                     for (const d of msg) {
                         if (d.type === 'Coordinator') continue;
@@ -223,6 +230,35 @@ function subscribeToZ2m() {
                     return;
                 }
 
+                // zigbee2mqtt/bridge/event -> détection immédiate d'un join
+                if (topic === 'zigbee2mqtt/bridge/event') {
+                    if (msg.type === 'device_joined' || msg.type === 'device_announce') {
+                        const ieee = msg.data?.ieee_address || msg.data?.friendly_name;
+                        const name = msg.data?.friendly_name || ieee;
+                        if (ieee) {
+                            if (!devices[name]) devices[name] = { friendlyName: name, state: {} };
+                            devices[name].ieeeAddr = ieee;
+                            devices[name].lastSeen = Date.now();
+                            lastJoinEvent = { ieee, friendlyName: name, ts: Date.now() };
+                            console.log(`[Zigbee] Nouvel appareil joint: ${name} (${ieee})`);
+                        }
+                    }
+                    if (msg.type === 'device_leave') {
+                        const name = msg.data?.friendly_name;
+                        if (name && devices[name]) {
+                            devices[name].available = false;
+                        }
+                    }
+                    return;
+                }
+
+                // zigbee2mqtt/bridge/response/permit_join -> confirmation z2m
+                if (topic === 'zigbee2mqtt/bridge/response/permit_join') {
+                    permitJoinActive = msg.data?.value === true;
+                    console.log(`[Zigbee] Permit join: ${permitJoinActive ? 'actif' : 'inactif'}`);
+                    return;
+                }
+
                 // zigbee2mqtt/<device> -> données du capteur
                 if (
                     parts.length === 2 &&
@@ -234,6 +270,7 @@ function subscribeToZ2m() {
                         devices[name] = { friendlyName: name, state: {} };
                     devices[name].state = { ...devices[name].state, ...msg };
                     devices[name].lastSeen = Date.now();
+                    emitter.emit('update', name);
 
                     // Historique : on enregistre si données de mesure présentes
                     const HAS_MEASURE = [
@@ -361,6 +398,42 @@ export async function disallowJoin() {
     console.log('[Zigbee] Appairage désactivé');
 }
 
+export async function setFriendlyName(fromName, toName) {
+    if (!mqttClient) throw new Error('Service non démarré');
+    // Mettre à jour le cache local immédiatement
+    if (devices[fromName]) {
+        devices[toName] = { ...devices[fromName], friendlyName: toName };
+        if (history[fromName]) {
+            history[toName] = history[fromName];
+            delete history[fromName];
+        }
+        delete devices[fromName];
+    }
+    // Envoyer la demande de renommage à zigbee2mqtt
+    mqttClient.publish(
+        'zigbee2mqtt/bridge/request/device/rename',
+        JSON.stringify({ from: fromName, to: toName }),
+    );
+    console.log(`[Zigbee] Renommage: "${fromName}" → "${toName}"`);
+}
+
+export async function addInstallCode(code) {
+    if (!mqttClient) throw new Error('Service non démarré');
+    mqttClient.publish(
+        'zigbee2mqtt/bridge/request/install_code/add',
+        JSON.stringify({ value: code }),
+    );
+    console.log(`[Zigbee] Install code soumis: ${code.substring(0, 20)}...`);
+}
+
 export function isRunning() {
     return running;
+}
+
+export function getLastJoinEvent() {
+    return lastJoinEvent;
+}
+
+export function isPermitJoinActive() {
+    return permitJoinActive;
 }

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import QrScanner from 'qr-scanner';
 import {
     ResponsiveContainer,
     ComposedChart,
@@ -56,9 +57,11 @@ interface XiaomiSensor {
         battery?: number | null;
         lastMotion?: string | null;
         lastOpen?: string | null;
+        isOpen?: boolean | null;
     };
     lastUpdated: string | null;
     source?: string;
+    zigbeeName?: string;
 }
 
 interface HistoryPoint {
@@ -68,6 +71,26 @@ interface HistoryPoint {
     pressure: number | null;
     battery: number | null;
 }
+
+interface ZigbeeRawDevice {
+    ieeeAddr: string;
+    friendlyName: string;
+    model: string | null;
+    vendor: string | null;
+    description: string | null;
+    lastSeen: string | null;
+}
+
+const SENSOR_TYPE_OPTIONS = [
+    { value: 'temperature_humidity', label: 'Température / Humidité' },
+    { value: 'door', label: 'Porte / Fenêtre' },
+    { value: 'motion', label: 'Mouvement' },
+    { value: 'smoke', label: 'Fumée' },
+    { value: 'water_leak', label: 'Inondation' },
+    { value: 'vibration', label: 'Vibration' },
+    { value: 'button', label: 'Bouton' },
+    { value: 'other', label: 'Autre' },
+];
 
 const getDeviceIcon = (device: GoogleHomeDevice): string => {
     const name = (device.eureka?.name || device.name).toLowerCase();
@@ -129,6 +152,231 @@ export const GoogleHome = () => {
     const [historyData, setHistoryData] = useState<HistoryPoint[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
 
+    // Appairage
+    const [pairingActive, setPairingActive] = useState(false);
+    const [pairingSecondsLeft, setPairingSecondsLeft] = useState(0);
+    const [pairingError, setPairingError] = useState<string | null>(null);
+    const pairingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // Édition / enregistrement capteur dans le registre
+    const [unregistered, setUnregistered] = useState<ZigbeeRawDevice[]>([]);
+    const [editTarget, setEditTarget] = useState<{
+        ieee: string;
+        name: string;
+        type: string;
+        model?: string | null;
+    } | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editType, setEditType] = useState('temperature_humidity');
+    const [editSaving, setEditSaving] = useState(false);
+    const [editError, setEditError] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState<string | null>(null);
+
+    // QR code scanner
+    const [qrOpen, setQrOpen] = useState(false);
+    const [qrDetected, setQrDetected] = useState<string | null>(null);
+    const [qrManual, setQrManual] = useState('');
+    const [qrSubmitting, setQrSubmitting] = useState(false);
+    const [qrResult, setQrResult] = useState<'ok' | 'error' | null>(null);
+    const qrVideoRef = useRef<HTMLVideoElement | null>(null);
+    const qrScannerRef = useRef<QrScanner | null>(null);
+
+    const openQrScanner = useCallback(() => {
+        setQrDetected(null);
+        setQrManual('');
+        setQrResult(null);
+        setQrOpen(true);
+    }, []);
+
+    const closeQrScanner = useCallback(() => {
+        qrScannerRef.current?.stop();
+        qrScannerRef.current?.destroy();
+        qrScannerRef.current = null;
+        setQrOpen(false);
+        setQrDetected(null);
+        setQrManual('');
+        setQrResult(null);
+    }, []);
+
+    // Start camera when QR modal opens
+    useEffect(() => {
+        if (!qrOpen || !qrVideoRef.current) return;
+        const video = qrVideoRef.current;
+        const scanner = new QrScanner(
+            video,
+            (result) => {
+                if (qrDetected) return; // already detected
+                setQrDetected(result.data);
+                scanner.stop();
+            },
+            {
+                returnDetailedScanResult: true,
+                highlightScanRegion: true,
+                highlightCodeOutline: true,
+                preferredCamera: 'environment',
+            },
+        );
+        qrScannerRef.current = scanner;
+        scanner.start().catch(() => {
+            // Camera not available — user can type manually
+        });
+        return () => {
+            scanner.stop();
+            scanner.destroy();
+        };
+    }, [qrOpen]);
+
+    const startPairing = useCallback(async () => {
+        const DURATION = 120;
+        setPairingError(null);
+        try {
+            await axios.post('/api/zigbee/permit-join', { seconds: DURATION });
+            setPairingActive(true);
+            setPairingSecondsLeft(DURATION);
+            let tick = 0;
+            pairingTimerRef.current = setInterval(() => {
+                tick++;
+                setPairingSecondsLeft((s) => {
+                    if (s <= 1) {
+                        clearInterval(pairingTimerRef.current!);
+                        pairingTimerRef.current = null;
+                        setPairingActive(false);
+                        loadXiaomi();
+                        loadUnregistered();
+                        return 0;
+                    }
+                    // Poll toutes les 3s pour détecter les nouveaux appareils rapidement
+                    if (tick % 3 === 0) {
+                        loadUnregistered();
+                    }
+                    return s - 1;
+                });
+            }, 1000);
+        } catch {
+            setPairingError(
+                "Impossible de démarrer l'appairage. Vérifiez que le service Zigbee est actif.",
+            );
+        }
+    }, []);
+
+    const stopPairing = useCallback(async () => {
+        if (pairingTimerRef.current) {
+            clearInterval(pairingTimerRef.current);
+            pairingTimerRef.current = null;
+        }
+        setPairingActive(false);
+        setPairingSecondsLeft(0);
+        try {
+            await axios.post('/api/zigbee/stop-join');
+        } catch {
+            /* ignore */
+        }
+        loadXiaomi();
+    }, []);
+
+    const loadUnregistered = useCallback(async () => {
+        try {
+            const res = await axios.get('/api/zigbee/unregistered');
+            setUnregistered(res.data.devices || []);
+        } catch {
+            setUnregistered([]);
+        }
+    }, []);
+
+    const submitInstallCode = useCallback(async () => {
+        const code = (qrDetected || qrManual).trim();
+        if (!code) return;
+        setQrSubmitting(true);
+        try {
+            await axios.post('/api/zigbee/install-code', { code });
+            setQrResult('ok');
+            setTimeout(() => {
+                closeQrScanner();
+                loadUnregistered();
+            }, 2000);
+        } catch {
+            setQrResult('error');
+        } finally {
+            setQrSubmitting(false);
+        }
+    }, [qrDetected, qrManual, closeQrScanner, loadUnregistered]);
+
+    const openEdit = useCallback((sensor: XiaomiSensor) => {
+        setEditTarget({
+            ieee: sensor.did,
+            name: sensor.name,
+            type: sensor.type,
+            model: sensor.model,
+        });
+        setEditName(sensor.name);
+        setEditType(sensor.type);
+        setEditError(null);
+    }, []);
+
+    const openRegister = useCallback((device: ZigbeeRawDevice) => {
+        const label =
+            device.vendor && device.model
+                ? `${device.vendor} ${device.model}`
+                : device.friendlyName || device.ieeeAddr;
+        setEditTarget({
+            ieee: device.ieeeAddr,
+            name: label,
+            type: 'temperature_humidity',
+            model: device.model,
+        });
+        setEditName(label);
+        setEditType('temperature_humidity');
+        setEditError(null);
+    }, []);
+
+    const handleSaveEdit = useCallback(async () => {
+        if (!editTarget || !editName.trim()) return;
+        setEditSaving(true);
+        setEditError(null);
+        try {
+            await axios.post('/api/sensors/registry', {
+                ieee: editTarget.ieee,
+                name: editName.trim(),
+                type: editType,
+            });
+            setEditTarget(null);
+            await Promise.all([loadXiaomi(), loadUnregistered()]);
+        } catch (err) {
+            setEditError(
+                axios.isAxiosError(err)
+                    ? err.response?.data?.error || "Erreur d'enregistrement"
+                    : "Erreur d'enregistrement",
+            );
+        } finally {
+            setEditSaving(false);
+        }
+    }, [editTarget, editName, editType, loadUnregistered]);
+
+    const handleDelete = useCallback(
+        async (ieee: string) => {
+            setDeleting(ieee);
+            try {
+                await axios.delete(
+                    `/api/sensors/registry/${encodeURIComponent(ieee)}`,
+                );
+                await Promise.all([loadXiaomi(), loadUnregistered()]);
+            } catch {
+                /* ignore */
+            } finally {
+                setDeleting(null);
+            }
+        },
+        [loadUnregistered],
+    );
+
+    // Nettoyage au démontage
+    useEffect(
+        () => () => {
+            if (pairingTimerRef.current) clearInterval(pairingTimerRef.current);
+        },
+        [],
+    );
+
     const openHistory = useCallback(async (sensor: XiaomiSensor) => {
         setSelectedSensor(sensor);
         setHistoryData([]);
@@ -149,8 +397,20 @@ export const GoogleHome = () => {
         loadAll();
     }, []);
 
+    // SSE: real-time sensor updates without polling
+    useEffect(() => {
+        const es = new EventSource('/api/sensors/events');
+        es.onmessage = (e) => {
+            try {
+                const sensors = JSON.parse(e.data);
+                setSensors(sensors);
+            } catch { /* ignore */ }
+        };
+        return () => es.close();
+    }, []);
+
     const loadAll = async () => {
-        await Promise.all([loadDevices(), loadXiaomi()]);
+        await Promise.all([loadDevices(), loadXiaomi(), loadUnregistered()]);
     };
 
     const loadDevices = async () => {
@@ -351,7 +611,71 @@ export const GoogleHome = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                 >
-                    <h2 className="section-title">Capteurs Xiaomi</h2>
+                    <div className="section-title-row">
+                        <h2 className="section-title">Capteurs</h2>
+                        <motion.button
+                            className={`pair-btn glass ${pairingActive ? 'pair-btn-active' : ''}`}
+                            onClick={pairingActive ? stopPairing : startPairing}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            {pairingActive ? (
+                                <>
+                                    <span className="pair-pulse" />
+                                    Appairage… {pairingSecondsLeft}s — Annuler
+                                </>
+                            ) : (
+                                <>+ Ajouter un capteur</>
+                            )}
+                        </motion.button>
+                        <motion.button
+                            className="qr-btn glass"
+                            onClick={openQrScanner}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            title="Appairer via QR code (Zigbee 3.0)"
+                        >
+                            QR
+                        </motion.button>
+                    </div>
+                    {pairingError && (
+                        <div className="pairing-error">{pairingError}</div>
+                    )}
+                    {pairingActive && (
+                        <motion.div
+                            className={`pairing-banner glass ${unregistered.length > 0 ? 'pairing-banner-found' : ''}`}
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                        >
+                            <span className="pair-pulse-lg" />
+                            <div>
+                                {unregistered.length > 0 ? (
+                                    <>
+                                        <strong style={{ color: '#4ade80' }}>
+                                            ✓ Appareil détecté !
+                                        </strong>
+                                        <p>
+                                            Cliquez sur{' '}
+                                            <strong>+ Configurer</strong>{' '}
+                                            ci-dessous pour lui donner un nom.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <strong>Mode appairage actif</strong>
+                                        <p>
+                                            Maintenez le bouton de votre
+                                            capteur appuyé 5 secondes jusqu'au
+                                            clignotement, puis relâchez.
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                            <span className="pairing-countdown">
+                                {pairingSecondsLeft}s
+                            </span>
+                        </motion.div>
+                    )}
                     <div className="xiaomi-auth glass">
                         <div className="auth-prompt">
                             <p>
@@ -385,7 +709,71 @@ export const GoogleHome = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                 >
-                    <h2 className="section-title">Capteurs</h2>
+                    <div className="section-title-row">
+                        <h2 className="section-title">Capteurs</h2>
+                        <motion.button
+                            className={`pair-btn glass ${pairingActive ? 'pair-btn-active' : ''}`}
+                            onClick={pairingActive ? stopPairing : startPairing}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            {pairingActive ? (
+                                <>
+                                    <span className="pair-pulse" />
+                                    Appairage… {pairingSecondsLeft}s — Annuler
+                                </>
+                            ) : (
+                                <>+ Ajouter un capteur</>
+                            )}
+                        </motion.button>
+                        <motion.button
+                            className="qr-btn glass"
+                            onClick={openQrScanner}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            title="Appairer via QR code (Zigbee 3.0)"
+                        >
+                            QR
+                        </motion.button>
+                    </div>
+                    {pairingError && (
+                        <div className="pairing-error">{pairingError}</div>
+                    )}
+                    {pairingActive && (
+                        <motion.div
+                            className={`pairing-banner glass ${unregistered.length > 0 ? 'pairing-banner-found' : ''}`}
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                        >
+                            <span className="pair-pulse-lg" />
+                            <div>
+                                {unregistered.length > 0 ? (
+                                    <>
+                                        <strong style={{ color: '#4ade80' }}>
+                                            ✓ Appareil détecté !
+                                        </strong>
+                                        <p>
+                                            Cliquez sur{' '}
+                                            <strong>+ Configurer</strong>{' '}
+                                            ci-dessous pour lui donner un nom.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <strong>Mode appairage actif</strong>
+                                        <p>
+                                            Maintenez le bouton de votre
+                                            capteur appuyé 5 secondes jusqu'au
+                                            clignotement, puis relâchez.
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                            <span className="pairing-countdown">
+                                {pairingSecondsLeft}s
+                            </span>
+                        </motion.div>
+                    )}
                     <div className="sensors-grid">
                         {sensors
                             .filter(
@@ -418,6 +806,35 @@ export const GoogleHome = () => {
                                                 {sensor.model}
                                             </span>
                                         </div>
+                                        {sensor.source === 'zigbee' && (
+                                            <div className="sensor-actions">
+                                                <button
+                                                    className="sensor-rename-btn"
+                                                    title="Modifier ce capteur"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openEdit(sensor);
+                                                    }}
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    className="sensor-delete-btn"
+                                                    title="Retirer ce capteur"
+                                                    disabled={
+                                                        deleting === sensor.did
+                                                    }
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(
+                                                            sensor.did,
+                                                        );
+                                                    }}
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="sensor-data">
@@ -475,9 +892,31 @@ export const GoogleHome = () => {
                                                 <span className="event-label">
                                                     Porte/Fenêtre
                                                 </span>
-                                                <span className="event-status ok">
-                                                    Fermé
-                                                </span>
+                                                {sensor.props.isOpen != null ? (
+                                                    <span
+                                                        className={`event-status ${sensor.props.isOpen ? '' : 'ok'}`}
+                                                        style={
+                                                            sensor.props.isOpen
+                                                                ? {
+                                                                      color: '#f97316',
+                                                                  }
+                                                                : undefined
+                                                        }
+                                                    >
+                                                        {sensor.props.isOpen
+                                                            ? 'Ouverte'
+                                                            : 'Fermée'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="event-status ok">
+                                                        {sensor.props.lastOpen
+                                                            ? formatTimeAgo(
+                                                                  sensor.props
+                                                                      .lastOpen,
+                                                              )
+                                                            : 'Fermée'}
+                                                    </span>
+                                                )}
                                             </div>
                                         )}
 
@@ -519,8 +958,155 @@ export const GoogleHome = () => {
                                 </motion.div>
                             ))}
                     </div>
+
+                    {/* Appareils Zigbee non enregistrés */}
+                    {unregistered.length > 0 && (
+                        <div className="unregistered-section">
+                            <h3 className="unregistered-title">
+                                Appareils non configurés
+                            </h3>
+                            <div className="unregistered-list">
+                                {unregistered.map((d) => (
+                                    <div
+                                        key={d.ieeeAddr}
+                                        className="unregistered-card glass"
+                                    >
+                                        <div className="unregistered-info">
+                                            <span className="unregistered-icon">
+                                                📡
+                                            </span>
+                                            <div>
+                                                <p className="unregistered-name">
+                                                    {d.vendor && d.model
+                                                        ? `${d.vendor} ${d.model}`
+                                                        : d.friendlyName}
+                                                </p>
+                                                <p className="unregistered-ieee">
+                                                    {d.ieeeAddr}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            className="unregistered-add-btn"
+                                            onClick={() => openRegister(d)}
+                                        >
+                                            + Configurer
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </motion.section>
             )}
+
+            {/* Modal édition / enregistrement capteur */}
+            <AnimatePresence>
+                {editTarget && (
+                    <motion.div
+                        className="history-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setEditTarget(null)}
+                    >
+                        <motion.div
+                            className="rename-modal glass"
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="history-modal-header">
+                                <div>
+                                    <h3>
+                                        {sensors.some(
+                                            (s) => s.did === editTarget.ieee,
+                                        )
+                                            ? 'Modifier le capteur'
+                                            : 'Configurer le capteur'}
+                                    </h3>
+                                    <p className="history-modal-subtitle">
+                                        {editTarget.model || editTarget.ieee}
+                                    </p>
+                                </div>
+                                <button
+                                    className="history-close-btn"
+                                    onClick={() => setEditTarget(null)}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <div className="rename-body">
+                                <label className="rename-label">Nom</label>
+                                <input
+                                    className="rename-input"
+                                    type="text"
+                                    value={editName}
+                                    onChange={(e) =>
+                                        setEditName(e.target.value)
+                                    }
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSaveEdit();
+                                        if (e.key === 'Escape')
+                                            setEditTarget(null);
+                                    }}
+                                    placeholder="Ex: Salon"
+                                    autoFocus
+                                    maxLength={60}
+                                />
+                                <label
+                                    className="rename-label"
+                                    style={{ marginTop: '12px' }}
+                                >
+                                    Type
+                                </label>
+                                <select
+                                    className="rename-input edit-type-select"
+                                    value={editType}
+                                    onChange={(e) =>
+                                        setEditType(e.target.value)
+                                    }
+                                >
+                                    {SENSOR_TYPE_OPTIONS.map((opt) => (
+                                        <option
+                                            key={opt.value}
+                                            value={opt.value}
+                                        >
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                {editError && (
+                                    <p className="rename-error">{editError}</p>
+                                )}
+                                <div className="rename-actions">
+                                    <button
+                                        className="rename-cancel-btn"
+                                        onClick={() => setEditTarget(null)}
+                                        disabled={editSaving}
+                                    >
+                                        Annuler
+                                    </button>
+                                    <motion.button
+                                        className="rename-save-btn"
+                                        onClick={handleSaveEdit}
+                                        disabled={
+                                            editSaving || !editName.trim()
+                                        }
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.97 }}
+                                    >
+                                        {editSaving
+                                            ? 'Enregistrement…'
+                                            : '✓ Enregistrer'}
+                                    </motion.button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Modal historique */}
             <AnimatePresence>
@@ -1055,6 +1641,116 @@ export const GoogleHome = () => {
                     )}
                 </div>
             </motion.section>
+
+            {/* QR code scanner modal (Zigbee 3.0 install code) */}
+            <AnimatePresence>
+                {qrOpen && (
+                    <motion.div
+                        className="history-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={closeQrScanner}
+                    >
+                        <motion.div
+                            className="qr-modal glass"
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="history-modal-header">
+                                <div>
+                                    <h3>Appairer via QR code</h3>
+                                    <p className="history-modal-subtitle">
+                                        Zigbee 3.0 — Install code
+                                    </p>
+                                </div>
+                                <button
+                                    className="history-close-btn"
+                                    onClick={closeQrScanner}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <div className="qr-body">
+                                {!qrDetected ? (
+                                    <div className="qr-video-container">
+                                        <video
+                                            ref={qrVideoRef}
+                                            className="qr-video"
+                                        />
+                                        <div className="qr-frame" />
+                                    </div>
+                                ) : (
+                                    <div className="qr-detected">
+                                        <span className="qr-check">✓</span>
+                                        <p className="qr-detected-label">
+                                            Code détecté
+                                        </p>
+                                        <code className="qr-code-value">
+                                            {qrDetected.length > 48
+                                                ? qrDetected.substring(0, 48) +
+                                                  '…'
+                                                : qrDetected}
+                                        </code>
+                                    </div>
+                                )}
+                                <div className="qr-manual-section">
+                                    <label className="rename-label">
+                                        Ou saisir le code manuellement
+                                    </label>
+                                    <input
+                                        className="rename-input"
+                                        type="text"
+                                        placeholder="Install code (ex: 83FED3407A939723…)"
+                                        value={qrManual}
+                                        onChange={(e) =>
+                                            setQrManual(e.target.value)
+                                        }
+                                    />
+                                </div>
+                                {qrResult === 'ok' && (
+                                    <div className="qr-result qr-result-ok">
+                                        ✓ Code envoyé — activez le mode
+                                        appairage sur le capteur.
+                                    </div>
+                                )}
+                                {qrResult === 'error' && (
+                                    <div className="qr-result qr-result-error">
+                                        Erreur lors de l'envoi. Vérifiez que le
+                                        service Zigbee est démarré.
+                                    </div>
+                                )}
+                                <div className="qr-actions">
+                                    <motion.button
+                                        className="auth-btn"
+                                        onClick={submitInstallCode}
+                                        disabled={
+                                            qrSubmitting ||
+                                            (!qrDetected && !qrManual.trim())
+                                        }
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.97 }}
+                                    >
+                                        {qrSubmitting
+                                            ? 'Envoi…'
+                                            : 'Envoyer le code'}
+                                    </motion.button>
+                                    <motion.button
+                                        className="pair-btn glass"
+                                        onClick={closeQrScanner}
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.97 }}
+                                    >
+                                        Annuler
+                                    </motion.button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

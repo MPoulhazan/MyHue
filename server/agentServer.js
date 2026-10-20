@@ -10,8 +10,42 @@ import * as xiaomiService from './xiaomiService.js';
 import * as rulesEngine from './rulesEngine.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
+import * as sensorRegistry from './sensorRegistry.js';
 
 const execFileAsync = promisify(execFile);
+
+// --- Capteurs Zigbee via registre manuel (server/data/sensors.json) ---
+export const getZigbeeSensors = async () => {
+    const devices = zigbeeService.getDevices();
+    const registry = sensorRegistry.getAll();
+    return registry.map((entry) => {
+        const device = devices.find((d) => d.ieeeAddr === entry.ieee) || null;
+        const state = device?.state || {};
+        return {
+            did: entry.ieee,
+            name: entry.name,
+            model: device?.model || 'Zigbee',
+            type: entry.type,
+            icon: entry.icon || '📡',
+            isOnline: device ? device.available !== false : false,
+            mac: entry.ieee,
+            zigbeeName: device?.friendlyName || entry.ieee,
+            props: {
+                temperature: state.temperature ?? null,
+                humidity: state.humidity ?? null,
+                pressure: state.pressure ?? null,
+                battery: state.battery ?? null,
+                isOpen: 'contact' in state ? !state.contact : null,
+                lastMotion: state.occupancy ? new Date().toISOString() : null,
+                lastOpen: null,
+            },
+            lastUpdated: device?.lastSeen
+                ? new Date(device.lastSeen).toISOString()
+                : null,
+            source: 'zigbee',
+        };
+    });
+};
 
 dotenv.config();
 
@@ -494,7 +528,7 @@ app.post('/api/agent', async (req, res) => {
 
         const context = await getHueContext();
         const castDevices = castService.getDevices();
-        const sensors = await xiaomiService.getSensorsWithData();
+        const sensors = await getZigbeeSensors();
         const activeRules = rulesEngine.getRules();
         const heatingState = broadlinkService.getState();
         const systemPrompt = buildSystemPrompt(
@@ -828,57 +862,11 @@ app.get('/api/xiaomi/devices', async (_req, res) => {
 
 app.get('/api/xiaomi/sensors', async (_req, res) => {
     try {
-        const sensors = await xiaomiService.getSensorsWithData();
-
-        // Replace mock temperature/humidity sensors with real Zigbee data.
-        // Include devices known to be temp sensors even if state hasn't arrived yet.
-        const TEMP_MODELS = ['WSDCGQ11LM', 'WSDCGQ12LM', 'lumi.weather'];
-        const zigbeeDevices = zigbeeService.getDevices();
-        const zigbeeTempDevices = zigbeeDevices.filter(
-            (d) =>
-                (d.state && 'temperature' in d.state) ||
-                TEMP_MODELS.some((m) => (d.model || '').includes(m)) ||
-                (d.description || '').toLowerCase().includes('temperature'),
-        );
-
-        let merged;
-        if (zigbeeTempDevices.length > 0) {
-            const nonTempSensors = sensors.filter(
-                (s) => s.type !== 'temperature_humidity',
-            );
-            const zigbeeMapped = zigbeeTempDevices.map((d) => ({
-                did: d.ieeeAddr,
-                name:
-                    d.friendlyName === d.ieeeAddr
-                        ? d.vendor
-                            ? `${d.vendor} ${d.model}`
-                            : d.description || 'Capteur Zigbee'
-                        : d.friendlyName,
-                model: d.model || 'WSDCGQ11LM',
-                type: 'temperature_humidity',
-                icon: '🌡️',
-                isOnline: d.available !== false,
-                mac: d.ieeeAddr,
-                props: {
-                    temperature: d.state?.temperature ?? null,
-                    humidity: d.state?.humidity ?? null,
-                    pressure: d.state?.pressure ?? null,
-                    battery: d.state?.battery ?? null,
-                },
-                lastUpdated: d.lastSeen
-                    ? new Date(d.lastSeen).toISOString()
-                    : null,
-                source: 'zigbee',
-            }));
-            merged = [...zigbeeMapped, ...nonTempSensors];
-        } else {
-            merged = sensors;
-        }
-
-        res.json({ sensors: merged });
+        const sensors = await getZigbeeSensors();
+        res.json({ sensors });
     } catch (error) {
         res.status(500).json({
-            error: error?.message || 'Failed to fetch Xiaomi sensors',
+            error: error?.message || 'Failed to fetch sensors',
         });
     }
 });
@@ -969,10 +957,42 @@ app.post('/zigbee/permit-join', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+app.post('/api/zigbee/permit-join', async (req, res) => {
+    try {
+        const seconds = req.body.seconds ?? 120;
+        await zigbeeService.permitJoin(seconds);
+        res.json({ ok: true, seconds });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 app.post('/zigbee/stop-join', async (_req, res) => {
     try {
         await zigbeeService.disallowJoin();
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+app.post('/api/zigbee/stop-join', async (_req, res) => {
+    try {
+        await zigbeeService.disallowJoin();
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/zigbee/rename', async (req, res) => {
+    try {
+        const { from: fromName, to: toName } = req.body || {};
+        if (!fromName || !toName) {
+            return res
+                .status(400)
+                .json({ error: '"from" et "to" sont requis' });
+        }
+        await zigbeeService.setFriendlyName(fromName, toName);
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -990,12 +1010,133 @@ app.get('/api/zigbee/history/:deviceId', (req, res) => {
     res.json({ deviceId: req.params.deviceId, points });
 });
 
+// Tous les appareils Zigbee bruts (peu importe s'ils sont dans le registre)
+app.get('/api/zigbee/devices', (_req, res) => {
+    res.json(zigbeeService.getDevices());
+});
+
+// Statut pairing temps réel (polling par l'UI pendant le mode appairage)
+app.get('/api/zigbee/pairing-status', (_req, res) => {
+    const registry = sensorRegistry.getAll();
+    const registeredIeee = new Set(registry.map((e) => e.ieee));
+    const unregistered = zigbeeService
+        .getDevices()
+        .filter((d) => !registeredIeee.has(d.ieeeAddr))
+        .map((d) => ({
+            ieeeAddr: d.ieeeAddr,
+            friendlyName: d.friendlyName,
+            model: d.model || null,
+            vendor: d.vendor || null,
+            description: d.description || null,
+        }));
+    res.json({
+        permitJoinActive: zigbeeService.isPermitJoinActive(),
+        lastJoin: zigbeeService.getLastJoinEvent(),
+        newDevices: unregistered,
+    });
+});
+
+// Appareils Zigbee non encore enregistrés dans le registre capteurs
+app.get('/api/zigbee/unregistered', (_req, res) => {
+    const registry = sensorRegistry.getAll();
+    const registeredIeee = new Set(registry.map((e) => e.ieee));
+    const unregistered = zigbeeService
+        .getDevices()
+        .filter(
+            (d) => d.type !== 'Coordinator' && !registeredIeee.has(d.ieeeAddr),
+        )
+        .map((d) => ({
+            ieeeAddr: d.ieeeAddr,
+            friendlyName: d.friendlyName,
+            model: d.model || null,
+            vendor: d.vendor || null,
+            description: d.description || null,
+            lastSeen: d.lastSeen ? new Date(d.lastSeen).toISOString() : null,
+        }));
+    res.json({ devices: unregistered });
+});
+
+// --- Registre capteurs (sensors.json) CRUD ---
+
+app.get('/api/sensors/registry', (_req, res) => {
+    res.json({ sensors: sensorRegistry.getAll() });
+});
+
+app.post('/api/sensors/registry', (req, res) => {
+    const { ieee, name, type } = req.body || {};
+    if (!ieee || !name || !type) {
+        return res
+            .status(400)
+            .json({ error: '"ieee", "name" et "type" sont requis' });
+    }
+    const entry = sensorRegistry.upsert({ ieee, name, type });
+    res.json(entry);
+});
+
+app.delete('/api/sensors/registry/:ieee', (req, res) => {
+    const ieee = decodeURIComponent(req.params.ieee);
+    const deleted = sensorRegistry.remove(ieee);
+    if (!deleted)
+        return res
+            .status(404)
+            .json({ error: 'Capteur introuvable dans le registre' });
+    res.json({ ok: true });
+});
+
+app.post('/api/zigbee/install-code', async (req, res) => {
+    const { code } = req.body;
+    if (!code?.trim())
+        return res.status(400).json({ error: 'code requis' });
+    try {
+        await zigbeeService.addInstallCode(code.trim());
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(503).json({ error: err.message });
+    }
+});
+
+// --- SSE: real-time sensor push ---
+
+const sseClients = new Set();
+
+app.get('/api/sensors/events', async (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    // Push current state immediately on connect
+    try {
+        const sensors = await getZigbeeSensors();
+        res.write(`data: ${JSON.stringify(sensors)}\n\n`);
+    } catch { /* ignore */ }
+
+    sseClients.add(res);
+    req.on('close', () => sseClients.delete(res));
+});
+
+let sseBroadcastTimer = null;
+zigbeeService.emitter.on('update', () => {
+    // Debounce: wait 200ms to batch rapid successive updates
+    if (sseBroadcastTimer) return;
+    sseBroadcastTimer = setTimeout(async () => {
+        sseBroadcastTimer = null;
+        if (sseClients.size === 0) return;
+        try {
+            const sensors = await getZigbeeSensors();
+            const data = `data: ${JSON.stringify(sensors)}\n\n`;
+            for (const res of sseClients) res.write(data);
+        } catch { /* ignore */ }
+    }, 200);
+});
+
 // --- Start server & rules engine ---
 
 app.listen(PORT, () => {
     console.log(`🤖 MyHue agent server running on http://localhost:${PORT}`);
     console.log(`Using Groq with model: ${GROQ_MODEL}`);
-    rulesEngine.startEngine(xiaomiService.getSensorsWithData);
+    rulesEngine.startEngine(getZigbeeSensors);
     broadlinkService
         .discover()
         .catch((err) => console.warn('⚠️  Broadlink:', err.message));

@@ -1,0 +1,14 @@
+[
+  {
+    "ieee": "0x00158d0002741953",
+    "name": "Salon",
+    "type": "temperature_humidity",
+    "icon": "🌡️"
+  },
+  {
+    "ieee": "0x00158d0007e90f07",
+    "name": "Porte balcon",
+    "type": "door",
+    "icon": "🚪"
+  }
+]
