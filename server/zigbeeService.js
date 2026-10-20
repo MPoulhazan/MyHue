@@ -3,6 +3,7 @@
  * Architecture: aedes (broker MQTT embarqué) + zigbee2mqtt (subprocess)
  */
 
+import 'dotenv/config';
 import { createServer } from 'net';
 import { spawn, execFile } from 'child_process';
 import { resolve, dirname } from 'path';
@@ -19,6 +20,12 @@ const MQTT_PORT = 1883;
 const Z2M_DATA = resolve(__dirname, 'data/z2m');
 const Z2M_BIN = resolve(__dirname, '../node_modules/zigbee2mqtt/index.js');
 const ZIGBEE_PORT = process.env.ZIGBEE_PORT || 'COM3';
+// Mode distant (Home Assistant) : Z2M tourne en add-on sur le Pi,
+// on se connecte simplement à son broker Mosquitto.
+// ex: ZIGBEE_MQTT_URL=mqtt://homeassistant.local:1883
+const REMOTE_MQTT_URL = process.env.ZIGBEE_MQTT_URL || null;
+const REMOTE_MQTT_USER = process.env.ZIGBEE_MQTT_USER || undefined;
+const REMOTE_MQTT_PASS = process.env.ZIGBEE_MQTT_PASS || undefined;
 const BOOTLOADER_EXIT_SCRIPT = resolve(
     __dirname,
     '../scripts/exit-bootloader.py',
@@ -105,6 +112,14 @@ async function exitBootloaderIfNeeded() {
 
 export async function start() {
     if (running) return;
+
+    if (REMOTE_MQTT_URL) {
+        console.log(`[Zigbee] Mode distant: ${REMOTE_MQTT_URL}`);
+        await subscribeToZ2m();
+        running = true;
+        console.log('[Zigbee] Service démarré (Home Assistant)');
+        return;
+    }
 
     console.log('[Zigbee] Démarrage broker MQTT + zigbee2mqtt...');
 
@@ -197,12 +212,23 @@ function startZ2mProcess() {
 
 function subscribeToZ2m() {
     return new Promise((resolve) => {
-        mqttClient = mqtt.connect(`mqtt://localhost:${MQTT_PORT}`);
+        mqttClient = REMOTE_MQTT_URL
+            ? mqtt.connect(REMOTE_MQTT_URL, {
+                  username: REMOTE_MQTT_USER,
+                  password: REMOTE_MQTT_PASS,
+                  reconnectPeriod: 5000,
+              })
+            : mqtt.connect(`mqtt://localhost:${MQTT_PORT}`);
 
         mqttClient.on('connect', () => {
             console.log('[Zigbee] Client MQTT connecté');
+            if (REMOTE_MQTT_URL) running = true;
             mqttClient.subscribe('zigbee2mqtt/#');
             resolve();
+        });
+
+        mqttClient.on('close', () => {
+            if (REMOTE_MQTT_URL) running = false;
         });
 
         mqttClient.on('message', (topic, payload) => {

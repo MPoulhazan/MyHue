@@ -11,6 +11,7 @@ import * as rulesEngine from './rulesEngine.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
+import * as haService from './haService.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -975,6 +976,23 @@ app.post('/zigbee/stop-join', async (_req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// --- Home Assistant ---
+
+app.get('/api/ha/status', async (_req, res) => {
+    res.json({
+        ...(await haService.getStatus()),
+        zigbeeMode: process.env.ZIGBEE_MQTT_URL ? 'remote' : 'local',
+    });
+});
+
+app.get('/api/ha/states', async (req, res) => {
+    try {
+        res.json(await haService.getStates(req.query.domain));
+    } catch (err) {
+        res.status(503).json({ error: err.message });
+    }
+});
+
 app.post('/api/zigbee/stop-join', async (_req, res) => {
     try {
         await zigbeeService.disallowJoin();
