@@ -15,7 +15,7 @@ interface Recognition {
     interimResults: boolean;
     maxAlternatives: number;
     onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
-    onerror: () => void;
+    onerror: (e: { error: string }) => void;
     onend: () => void;
     start: () => void;
 }
@@ -61,20 +61,37 @@ const speak = (text: string) =>
         synth.speak(utter);
     });
 
+// Codes d'erreur Web Speech → message affiché dans la barre
+const RECOGNITION_ERRORS: Record<string, string> = {
+    'not-allowed': 'Micro refusé : autorise-le dans le navigateur',
+    'service-not-allowed': 'Micro refusé : autorise-le dans le navigateur',
+    'audio-capture': 'Aucun micro détecté',
+    network: 'Service de reconnaissance injoignable (Chrome ou Edge requis)',
+    'no-speech': 'Je n’ai rien entendu',
+    'language-not-supported': 'Français non pris en charge par ce navigateur',
+};
+
 const recognize = () =>
-    new Promise<string | null>((resolve) => {
-        if (!SR) return resolve(null);
+    new Promise<{ text: string | null; error: string | null }>((resolve) => {
+        if (!SR) return resolve({ text: null, error: null });
         const rec = new SR();
         rec.lang = 'fr-FR';
         rec.interimResults = false;
         rec.maxAlternatives = 1;
         let text: string | null = null;
+        let error: string | null = null;
         rec.onresult = (e) => {
             text = e.results[0][0].transcript;
         };
-        rec.onerror = () => {};
-        rec.onend = () => resolve(text);
-        rec.start();
+        rec.onerror = (e) => {
+            if (e.error !== 'aborted') error = RECOGNITION_ERRORS[e.error] || `Erreur micro : ${e.error}`;
+        };
+        rec.onend = () => resolve({ text, error });
+        try {
+            rec.start();
+        } catch (e) {
+            resolve({ text: null, error: `Erreur micro : ${(e as Error).message}` });
+        }
     });
 
 export function useVoice(onCommand: (text: string) => Promise<string | undefined>) {
@@ -82,6 +99,7 @@ export function useVoice(onCommand: (text: string) => Promise<string | undefined
     const [wakeEnabled, setWakeEnabledState] = useState(readWakePref);
     const [wakeStatus, setWakeStatus] = useState<WakeStatus>('off');
     const [wakeError, setWakeError] = useState<string | null>(null);
+    const [voiceError, setVoiceError] = useState<string | null>(null);
     const listenerRef = useRef<WakeListener | null>(null);
     const busyRef = useRef(false);
     const onCommandRef = useRef(onCommand);
@@ -97,8 +115,10 @@ export function useVoice(onCommand: (text: string) => Promise<string | undefined
         const listener = listenerRef.current;
         listener?.stop();
         try {
+            setVoiceError(null);
             setState('listening');
-            const text = await recognize();
+            const { text, error } = await recognize();
+            if (error) setVoiceError(error);
             if (text) {
                 setState('thinking');
                 const reply = await onCommandRef.current(text);
@@ -180,5 +200,6 @@ export function useVoice(onCommand: (text: string) => Promise<string | undefined
         setWakeEnabled,
         wakeStatus,
         wakeError,
+        voiceError,
     };
 }

@@ -277,9 +277,11 @@ function AgentBar({ onAsk, chips }: { onAsk: (m: string) => Promise<string | und
     const noMic = !voice.secure
         ? 'Micro bloqué : la page doit être en HTTPS (ou origine autorisée dans Chrome)'
         : 'Reconnaissance vocale non disponible dans ce navigateur';
+    const wakeFailed = voice.wakeStatus === 'error' ? `Jarvis indisponible : ${voice.wakeError}` : null;
     const placeholder =
         voice.state === 'idle'
-            ? voice.wakeStatus === 'on' ? 'Dis « Hey Jarvis » ou écris ici' : 'Dis-moi ce que tu veux'
+            ? voice.voiceError || wakeFailed
+                || (voice.wakeStatus === 'on' ? 'Dis « Hey Jarvis » ou écris ici' : 'Dis-moi ce que tu veux')
             : VOICE_PLACEHOLDER[voice.state];
 
     return (
