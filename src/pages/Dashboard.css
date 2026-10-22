@@ -384,6 +384,14 @@
 }
 .chip:hover { background: var(--accent); color: var(--on-accent); }
 .chip:active { transform: scale(0.95); }
+.chip:disabled { opacity: 0.4; cursor: default; background: var(--panel); color: inherit; }
+.chip.wake::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--muted); vertical-align: 1px; }
+.chip.wake.on { border-color: var(--accent); color: var(--accent); }
+.chip.wake.on:hover { color: var(--on-accent); }
+.chip.wake.on::before { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.chip.wake.loading::before, .chip.wake.needs-tap::before { animation: dash-listen-dot 1s ease-in-out infinite; background: var(--accent); }
+.chip.wake.error::before { background: #FF3B5C; }
+@keyframes dash-listen-dot { 50% { opacity: 0.2; } }
 
 /* ── Mobile / portrait ────────────────────────────────────────── */
 

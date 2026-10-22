@@ -192,14 +192,18 @@ export function useHome() {
     }, [push]);
 
     // --- Agent ---
-    const askAgent = useCallback(async (message: string) => {
+    // Renvoie la réponse de l'agent (lue à voix haute quand la demande est vocale)
+    const askAgent = useCallback(async (message: string): Promise<string | undefined> => {
         push(`> ${message}`);
         try {
             const { data } = await axios.post('/api/agent', { message, history: [] });
-            push(data.message || data.reply || 'OK', '#C8F560', data.escalation?.url);
+            const reply: string = data.message || data.reply || 'OK';
+            push(reply, '#C8F560', data.escalation?.url);
             setTimeout(loadLights, 600);
+            return reply;
         } catch {
             push('Agent indisponible', '#FF3B5C');
+            return 'Agent indisponible.';
         }
     }, [push, loadLights]);
 
