@@ -17,7 +17,7 @@ import * as sensorRegistry from './sensorRegistry.js';
 import * as haService from './haService.js';
 import { parseIntent } from './intentParser.js';
 import { runGroqAgent, needsClaude, buildEscalation } from './groqAgent.js';
-import { installAuth, isValidToken } from './auth.js';
+import { installAuth, isValidToken, TOKEN, PUBLIC_PORT } from './auth.js';
 import { handleMcpRequest } from './mcpServer.js';
 
 const execFileAsync = promisify(execFile);
@@ -1149,3 +1149,10 @@ app.listen(PORT, () => {
         .start()
         .catch((err) => console.warn('⚠️  Zigbee:', err.message));
 });
+
+// Port réservé au proxy local (Tailscale) : loopback seulement, token exigé
+if (TOKEN) {
+    app.listen(PUBLIC_PORT, '127.0.0.1', () => {
+        console.log(`🔒 Accès distant (token requis) sur http://127.0.0.1:${PUBLIC_PORT}`);
+    });
+}

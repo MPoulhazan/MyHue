@@ -1,11 +1,12 @@
-// Auth par token pour l'accès distant (Cloudflare Tunnel).
+// Auth par token pour l'accès distant.
 // Le LAN reste libre : la tablette et le bot Telegram n'ont rien à configurer.
-// Une requête venue du tunnel porte toujours cf-connecting-ip (ajouté par
-// Cloudflare), même si cloudflared tourne sur la machine elle-même.
+// Un proxy local (Tailscale Serve/Funnel, cloudflared) relaie depuis 127.0.0.1 :
+// il doit viser PUBLIC_PORT, où le token est exigé quelle que soit l'origine.
 
 import { createHash, timingSafeEqual } from 'crypto';
 
 export const TOKEN = process.env.MYHUE_TOKEN || '';
+export const PUBLIC_PORT = Number(process.env.MYHUE_PUBLIC_PORT || 5175);
 const COOKIE = 'myhue_token';
 const ONE_YEAR_S = 365 * 24 * 3600;
 
@@ -13,6 +14,7 @@ const PRIVATE_IP =
     /^(::1$|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|f[cd][0-9a-f]{2}:|fe80:)/i;
 
 const isRemote = (req) => {
+    if (req.socket.localPort === PUBLIC_PORT) return true;
     if (req.headers['cf-connecting-ip']) return true;
     const ip = (req.socket.remoteAddress || '').replace(/^::ffff:/, '');
     return !PRIVATE_IP.test(ip);
@@ -65,6 +67,14 @@ const setSessionCookie = (req, res) => {
 
 // À monter avant toutes les routes protégées
 export const installAuth = (app, express) => {
+    // Le token peut figurer dans l'URL (/login?token, /mcp/<token>) : jamais de Referer
+    app.use((_req, res, next) => {
+        res.setHeader('Referrer-Policy', 'no-referrer');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        next();
+    });
+
     if (!TOKEN) {
         console.warn('⚠️  MYHUE_TOKEN absent : aucune auth, ne pas exposer MyHue hors du LAN');
         return;

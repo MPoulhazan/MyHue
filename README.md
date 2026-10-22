@@ -122,15 +122,21 @@ Open your browser and navigate to the URL shown in the terminal (usually `http:/
 
 ### 9. (Optional) Remote access and Claude connector
 
-The LAN stays open with no login. Anything that comes through the Cloudflare Tunnel (the request carries a `cf-connecting-ip` header) needs the token.
+The LAN (port 5174) stays open with no login. When `MYHUE_TOKEN` is set, MyHue also listens on `127.0.0.1:5175` (`MYHUE_PUBLIC_PORT`), where every request needs the token. Local proxies (Tailscale, cloudflared) must target that port, never 5174, because their requests come from 127.0.0.1 and would otherwise count as LAN.
 
 1. Generate a token and put it in `.env` as `MYHUE_TOKEN` (or the `myhue_token` add-on option):
    ```bash
    node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
    ```
-2. Expose port 5174 through a Cloudflare named tunnel, e.g. `myhue.example.com → http://localhost:5174`. On Home Assistant, use the Cloudflared add-on. A quick tunnel (`*.trycloudflare.com`) also works, but its URL changes on every restart.
-3. Phone/tablet: open `https://myhue.example.com/login?token=<MYHUE_TOKEN>` once. It sets a cookie that lasts a year.
-4. Claude app: Settings → Connectors → Add custom connector, with URL `https://myhue.example.com/mcp/<MYHUE_TOKEN>`. The `/mcp` endpoint also accepts `Authorization: Bearer <MYHUE_TOKEN>` for clients that can send headers (Claude Code).
+2. Install Tailscale on the server and on your phone/tablet. Then:
+   ```bash
+   # Full UI, private to your tailnet: https://<machine>.<tailnet>.ts.net
+   tailscale serve --bg http://127.0.0.1:5175
+   # Only /mcp is public (Claude connector), on port 8443
+   tailscale funnel --bg --https=8443 --set-path=/mcp http://127.0.0.1:5175/mcp
+   ```
+3. Phone/tablet: open `https://<machine>.<tailnet>.ts.net/login` once and paste the token. It sets a cookie that lasts a year.
+4. Claude app: Settings → Connectors → Add custom connector, with URL `https://<machine>.<tailnet>.ts.net:8443/mcp/<MYHUE_TOKEN>`. The `/mcp` endpoint also accepts `Authorization: Bearer <MYHUE_TOKEN>` for clients that can send headers (Claude Code).
 
 ## Usage
 
