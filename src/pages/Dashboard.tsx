@@ -245,6 +245,7 @@ function Journal({ log }: { log: LogEntry[] }) {
                         exit={{ opacity: 0 }} transition={{ duration: 0.35, ease }}>
                         <span className="muted">{e.t}</span>
                         <span style={{ color: e.color }}>{i === 0 ? <Typewriter text={e.msg} /> : e.msg}</span>
+                        {e.href && <a className="ask-claude-btn" href={e.href} target="_blank" rel="noreferrer">Demander à Claude ↗</a>}
                     </motion.li>
                 ))}
             </AnimatePresence>

@@ -257,8 +257,11 @@ bot.on('message', async (msg) => {
         }
         userHistories.set(chatId, history);
 
-        // Envoyer la réponse
-        bot.sendMessage(chatId, agentResponse.message);
+        // Envoyer la réponse (avec le lien Claude si l'agent a escaladé)
+        const reply = agentResponse.escalation
+            ? `${agentResponse.message}\n\n👉 ${agentResponse.escalation.url}`
+            : agentResponse.message;
+        bot.sendMessage(chatId, reply);
 
         // Si des actions ont été exécutées, envoyer un résumé
         if (agentResponse.actionResults && agentResponse.actionResults.length > 0) {

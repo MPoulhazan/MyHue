@@ -43,7 +43,7 @@ export const AgentWidget = () => {
             if (response.error) {
                 setError(response.error);
             } else {
-                setMessages(prev => [...prev, { role: 'assistant', content: response.message }]);
+                setMessages(prev => [...prev, { role: 'assistant', content: response.message, escalation: response.escalation }]);
             }
         } catch (err: any) {
             setError(err?.response?.data?.error || err?.message || 'Erreur inconnue');
@@ -99,6 +99,11 @@ export const AgentWidget = () => {
                             {messages.map((msg, i) => (
                                 <div key={i} className={`widget-bubble ${msg.role}`}>
                                     {msg.content}
+                                    {msg.escalation && (
+                                        <a className="ask-claude-btn" href={msg.escalation.url} target="_blank" rel="noreferrer">
+                                            Demander à Claude ↗
+                                        </a>
+                                    )}
                                 </div>
                             ))}
 

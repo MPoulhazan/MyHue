@@ -2,9 +2,16 @@ import axios from 'axios';
 
 export type AgentRole = 'user' | 'assistant';
 
+export interface AgentEscalation {
+    reason: string | null;
+    prompt: string;
+    url: string;
+}
+
 export interface AgentMessage {
     role: AgentRole;
     content: string;
+    escalation?: AgentEscalation;
 }
 
 export interface AgentActionResult {
@@ -18,6 +25,8 @@ export interface AgentResponse {
     actions: Record<string, unknown>[];
     actionResults: AgentActionResult[];
     model?: string;
+    tier?: 'local' | 'llm' | 'claude';
+    escalation?: AgentEscalation;
     error?: string;
 }
 

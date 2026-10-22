@@ -153,3 +153,21 @@ h1 {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Escalade de l'assistant vers Claude (agent, widget, journal) */
+.ask-claude-btn {
+  display: inline-block;
+  margin-top: 6px;
+  margin-left: 8px;
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.8em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ask-claude-btn:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}

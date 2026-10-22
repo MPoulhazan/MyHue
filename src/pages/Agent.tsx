@@ -34,8 +34,12 @@ export const Agent = () => {
         [input, loading],
     );
 
-    const pushMessage = (role: AgentMessage['role'], content: string) => {
-        setMessages((prev) => [...prev, { role, content }]);
+    const pushMessage = (
+        role: AgentMessage['role'],
+        content: string,
+        escalation?: AgentMessage['escalation'],
+    ) => {
+        setMessages((prev) => [...prev, { role, content, escalation }]);
     };
 
     const handleSend = async () => {
@@ -54,7 +58,7 @@ export const Agent = () => {
             if (response.error) {
                 setError(response.error);
             } else {
-                pushMessage('assistant', response.message);
+                pushMessage('assistant', response.message, response.escalation);
             }
         } catch (err: any) {
             setError(
@@ -137,6 +141,16 @@ export const Agent = () => {
                             transition={{ duration: 0.3 }}
                         >
                             <p>{message.content}</p>
+                            {message.escalation && (
+                                <a
+                                    className="ask-claude-btn"
+                                    href={message.escalation.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    Demander à Claude ↗
+                                </a>
+                            )}
                         </motion.div>
                     ))}
 

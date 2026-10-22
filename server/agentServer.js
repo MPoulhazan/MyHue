@@ -16,6 +16,7 @@ import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
 import * as haService from './haService.js';
 import { parseIntent } from './intentParser.js';
+import { runGroqAgent, needsClaude, buildEscalation } from './groqAgent.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -59,7 +60,7 @@ app.use(express.json({ limit: '1mb' }));
 
 const PORT = Number(process.env.AGENT_PORT || 5174);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-70b-versatile';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 const BRIDGE_IP = process.env.VITE_HUE_BRIDGE_IP;
 const USERNAME = process.env.VITE_HUE_USERNAME;
 
@@ -174,145 +175,6 @@ const getHueScenes = async () => {
     }
 };
 
-const buildSystemPrompt = (
-    castDevices,
-    sensors,
-    rules,
-    heatingState,
-) => `You are the MyHue assistant. You can control Philips Hue lights and Google Cast devices (Google Home, Chromecast, Nest).
-You also have access to Xiaomi/Aqara sensor data (temperature, humidity, door sensors, smoke detector, water leak sensor).
-You can also control the Mitsubishi heat pump (heating/cooling) via Broadlink IR.
-Return ONLY valid JSON. No markdown, no extra text.
-
-JSON schema:
-{
-  "message": string,
-  "actions": [
-    // Hue actions
-    {
-      "type": "toggle_light",
-      "id": string,
-      "on": boolean
-    },
-    {
-      "type": "toggle_all",
-      "on": boolean
-    },
-    {
-      "type": "set_brightness",
-      "id": string,
-      "bri": number
-    },
-    {
-      "type": "set_color",
-      "id": string,
-      "hue": number,
-      "sat": number
-    },
-    {
-      "type": "set_color_temperature",
-      "id": string,
-      "ct": number
-    },
-    {
-      "type": "set_rgb",
-      "id": string,
-      "r": number,
-      "g": number,
-      "b": number
-    },
-    {
-      "type": "set_group_state",
-      "id": string,
-      "state": object
-    },
-    // Google Cast actions
-    {
-      "type": "cast_media",
-      "deviceName": string,
-      "mediaUrl": string,
-      "contentType": string,
-      "metadata": object
-    },
-    {
-      "type": "cast_youtube",
-      "deviceName": string,
-      "videoId": string
-    },
-    {
-      "type": "cast_control",
-      "deviceName": string,
-      "command": "play" | "pause" | "stop"
-    },
-    {
-      "type": "cast_volume",
-      "deviceName": string,
-      "level": number
-    },
-    // Notification rule actions
-    {
-      "type": "create_rule",
-      "sensorDid": string,
-      "sensorName": string,
-      "property": string,
-      "operator": "gt" | "lt" | "gte" | "lte" | "eq" | "neq" | "is_true" | "is_false",
-      "value": number | null,
-      "message": string,
-      "name": string,
-      "cooldownMinutes": number
-    },
-    {
-      "type": "delete_rule",
-      "ruleId": string
-    },
-    // Heating / cooling (Mitsubishi heat pump via Broadlink IR)
-    {
-      "type": "set_heating",
-      "power": boolean,
-      "mode": "heat" | "cool" | "dry" | "fan" | "auto",
-      "temperature": number,
-      "fanSpeed": "auto" | "low" | "med" | "high" | "quiet",
-      "vaneVertical": "auto" | "1" | "2" | "3" | "4" | "5" | "swing"
-    }
-  ]
-}
-
-Rules:
-- Use only actions above.
-- Use light/group IDs from the Hue context.
-- For Cast actions, use deviceName to match against available Cast devices.
-- For cast_youtube, extract video ID from YouTube URLs (e.g., "dQw4w9WgXcQ" from "youtube.com/watch?v=dQw4w9WgXcQ").
-- For cast_volume, level is between 0 and 1 (0 = mute, 1 = max).
-- If no action is needed, return an empty actions array.
-- Keep numbers within valid Hue ranges: bri 0-254, hue 0-65535, sat 0-254, ct 153-500, rgb 0-255.
-- When the user asks about sensors (temperature, humidity, doors, smoke, water leak), read the sensor data from the context and answer in your message. No action is needed for sensor queries.
-- For door sensors: props.isOpen indicates if the door is currently open. props.lastOpen is the last time it was opened.
-- Keep the message in French.
-- When the user asks to be notified/alerted about a sensor condition, use create_rule with the sensor's did from context.
-- For boolean sensors (door isOpen, smokeDetected, leakDetected), use is_true or is_false operators. value should be null for these.
-- For numeric sensors (temperature, humidity), use gt/lt/gte/lte with a numeric value.
-- Default cooldownMinutes is 30 unless the user specifies otherwise.
-- When the user asks to see/list notification rules, read from the rules context and answer in your message. No action needed.
-- When the user asks to delete a rule, use delete_rule with the ruleId from context.
-- For heating/cooling control, use set_heating. Only include fields the user wants to change; other fields keep their current values.
-- Temperature range: 16-31°C. Modes: heat, cool, dry, fan, auto. Fan speeds: auto, quiet, low, med, high. Vane: auto, 1-5, swing.
-- Current heating state is provided in context. When the user asks about heating status, read from context and answer in your message.
-
-Available Cast devices: ${JSON.stringify(castDevices)}
-Available sensors: ${JSON.stringify(sensors)}
-Active notification rules: ${JSON.stringify(rules)}
-Current heating state: ${JSON.stringify(heatingState)}
-`;
-
-const extractJson = (text) => {
-    const first = text.indexOf('{');
-    const last = text.lastIndexOf('}');
-    if (first === -1 || last === -1 || last <= first) {
-        throw new Error('No JSON object found in model response.');
-    }
-    return JSON.parse(text.slice(first, last + 1));
-};
-
 const executeActions = async (actions) => {
     if (!Array.isArray(actions) || actions.length === 0) {
         return [];
@@ -395,6 +257,22 @@ const executeActions = async (actions) => {
                             ? `/groups/${action.id}/action`
                             : `/lights/${action.id}/state`;
                     await hueClient.put(path, state);
+                    results.push({ action, status: 'ok' });
+                    break;
+                }
+                case 'activate_scene': {
+                    ensureHueConfigured();
+                    const scene = (await getHueScenes()).find(
+                        (s) => s.id === action.sceneId,
+                    );
+                    if (!scene) {
+                        throw new Error(`Scène non trouvée: ${action.sceneId}`);
+                    }
+                    const groupId =
+                        scene.type === 'GroupScene' && scene.group ? scene.group : '0';
+                    await hueClient.put(`/groups/${groupId}/action`, {
+                        scene: scene.id,
+                    });
                     results.push({ action, status: 'ok' });
                     break;
                 }
@@ -577,20 +455,22 @@ app.post('/api/agent', async (req, res) => {
             });
         }
 
+        // Hors périmètre maison : direct vers Claude, sans appel Groq
+        if (needsClaude(message)) {
+            return res.json({
+                message: 'Ça, c’est pour Claude : je te prépare la demande.',
+                actions: [],
+                actionResults: [],
+                tier: 'claude',
+                escalation: buildEscalation('hors périmètre maison', message),
+            });
+        }
+
         if (!GROQ_API_KEY) {
             return res.status(503).json({
                 error: 'Groq API key not configured. Add GROQ_API_KEY to .env',
             });
         }
-
-        const castDevices = castService.getDevices();
-        const activeRules = rulesEngine.getRules();
-        const systemPrompt = buildSystemPrompt(
-            castDevices,
-            sensors,
-            activeRules,
-            heatingState,
-        );
 
         const historyMessages = Array.isArray(history)
             ? history.slice(-8).map((item) => ({
@@ -599,41 +479,41 @@ app.post('/api/agent', async (req, res) => {
               }))
             : [];
 
-        const fullContext = {
-            hue: context,
-            cast: castDevices,
-            sensors,
-            heating: heatingState,
-        };
-
-        const messages = [
-            { role: 'system', content: systemPrompt },
-            ...historyMessages,
-            {
-                role: 'user',
-                content: `Demande: ${message}\n\nContexte JSON: ${JSON.stringify(fullContext)}`,
-            },
-        ];
-
-        const response = await groqClient.post('/chat/completions', {
-            model: GROQ_MODEL,
-            messages,
-            temperature: 0.7,
-            max_tokens: 1000,
-        });
-
-        const modelText = response.data?.choices?.[0]?.message?.content ?? '';
-        const parsed = extractJson(modelText);
-
-        const actions = Array.isArray(parsed.actions) ? parsed.actions : [];
-        const actionResults = await executeActions(actions);
+        let result;
+        try {
+            result = await runGroqAgent({
+                client: groqClient,
+                model: GROQ_MODEL,
+                message,
+                history: historyMessages,
+                context: {
+                    hue: context,
+                    scenes: scenes.map(({ id, name, group }) => ({ id, name, group })),
+                    cast: castService.getDevices(),
+                    sensors,
+                    rules: rulesEngine.getRules(),
+                    heating: heatingState,
+                },
+                executeActions,
+            });
+        } catch (error) {
+            // Quota gratuit Groq épuisé : on propose Claude plutôt qu'une erreur
+            if (error?.response?.status === 429) {
+                return res.json({
+                    message: 'Quota Groq atteint pour le moment, je passe la main à Claude.',
+                    actions: [],
+                    actionResults: [],
+                    tier: 'claude',
+                    escalation: buildEscalation('quota Groq atteint', message),
+                });
+            }
+            throw error;
+        }
 
         res.json({
-            message: parsed.message || 'Ok.',
-            actions,
-            actionResults,
+            ...result,
             model: GROQ_MODEL,
-            tier: 'llm',
+            tier: result.escalation ? 'claude' : 'llm',
         });
     } catch (error) {
         const message =

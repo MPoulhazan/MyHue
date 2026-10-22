@@ -35,6 +35,7 @@ export interface LogEntry {
     t: string;
     msg: string;
     color?: string;
+    href?: string;
 }
 
 export interface Climate {
@@ -67,8 +68,8 @@ export function useHome() {
     const pending = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const roomOf = useRef<Record<string, string>>({});
 
-    const push = useCallback((msg: string, color?: string) => {
-        setLog((l) => [{ id: ++logSeq, t: now(), msg, color }, ...l].slice(0, 40));
+    const push = useCallback((msg: string, color?: string, href?: string) => {
+        setLog((l) => [{ id: ++logSeq, t: now(), msg, color, href }, ...l].slice(0, 40));
     }, []);
 
     // --- Hue ---
@@ -195,7 +196,7 @@ export function useHome() {
         push(`> ${message}`);
         try {
             const { data } = await axios.post('/api/agent', { message, history: [] });
-            push(data.message || data.reply || 'OK', '#C8F560');
+            push(data.message || data.reply || 'OK', '#C8F560', data.escalation?.url);
             setTimeout(loadLights, 600);
         } catch {
             push('Agent indisponible', '#FF3B5C');
