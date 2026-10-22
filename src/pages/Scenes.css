@@ -15,7 +15,7 @@
 /* Error Banner */
 .error-banner {
   padding: 1rem;
-  background: rgba(236, 72, 153, 0.1);
+  background: rgba(255, 181, 71, 0.1);
   border: 1px solid var(--secondary);
   border-radius: 12px;
   color: var(--secondary-light);
@@ -48,7 +48,7 @@
 
 .scene-card:hover {
   border-color: var(--primary-light);
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 8px 32px rgba(200, 245, 96, 0.3);
 }
 
 .scene-card.activating {
@@ -63,13 +63,13 @@
 /* Scene Icon */
 .scene-icon {
   font-size: 3rem;
-  filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+  filter: drop-shadow(0 0 10px rgba(200, 245, 96, 0.5));
   transition: all 0.3s ease;
 }
 
 .scene-card:hover .scene-icon {
   transform: scale(1.2);
-  filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.8));
+  filter: drop-shadow(0 0 20px rgba(200, 245, 96, 0.8));
 }
 
 /* Scene Info */

@@ -1,6 +1,6 @@
 .heating-container {
     min-height: 100vh;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    background: transparent;
     padding: 1.5rem;
     max-width: 800px;
     margin: 0 auto;

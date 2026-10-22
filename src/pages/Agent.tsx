@@ -26,7 +26,7 @@ export const Agent = () => {
     }, []);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, [messages, loading]);
 
     const canSend = useMemo(
@@ -175,7 +175,7 @@ export const Agent = () => {
 
             {error && (
                 <div className="agent-error">
-                    <span>⚠️</span>
+                    <span>⚠</span>
                     <p>{error}</p>
                 </div>
             )}

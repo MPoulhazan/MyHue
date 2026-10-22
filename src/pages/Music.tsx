@@ -337,9 +337,9 @@ export default function Music() {
                         </div>
                     </div>
                     <div className="playback-controls">
-                        <button onClick={() => controlPlayback('play')} title="Lecture">▶️</button>
-                        <button onClick={() => controlPlayback('pause')} title="Pause">⏸️</button>
-                        <button onClick={() => controlPlayback('stop')} title="Stop">⏹️</button>
+                        <button onClick={() => controlPlayback('play')} title="Lecture">▶</button>
+                        <button onClick={() => controlPlayback('pause')} title="Pause">⏸</button>
+                        <button onClick={() => controlPlayback('stop')} title="Stop">⏹</button>
                     </div>
                     <div className="volume-controls">
                         <span>🔉</span>

@@ -96,7 +96,7 @@
 .action-button:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: var(--primary-light);
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 20px rgba(200, 245, 96, 0.3);
 }
 
 .action-button span {
@@ -217,7 +217,7 @@
 }
 
 .retry-button:hover {
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 8px 24px rgba(200, 245, 96, 0.5);
 }
 
 /* Empty state */

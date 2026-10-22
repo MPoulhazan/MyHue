@@ -68,13 +68,13 @@ export const Scenes = () => {
   const getSceneIcon = (sceneName: string): string => {
     const name = sceneName.toLowerCase();
 
-    if (name.includes('relax') || name.includes('chill')) return '🛋️';
+    if (name.includes('relax') || name.includes('chill')) return '🛋';
     if (name.includes('read') || name.includes('concentrate')) return '📖';
     if (name.includes('energize') || name.includes('focus')) return '⚡';
-    if (name.includes('bright') || name.includes('daylight')) return '☀️';
+    if (name.includes('bright') || name.includes('daylight')) return '☀';
     if (name.includes('dimmed') || name.includes('night')) return '🌙';
     if (name.includes('sunset') || name.includes('orange')) return '🌅';
-    if (name.includes('arctic') || name.includes('cool')) return '❄️';
+    if (name.includes('arctic') || name.includes('cool')) return '❄';
     if (name.includes('spring') || name.includes('blossom')) return '🌸';
     if (name.includes('tropical') || name.includes('summer')) return '🌴';
     if (name.includes('savanna') || name.includes('sunset')) return '🦁';
@@ -104,8 +104,8 @@ export const Scenes = () => {
               />
               <defs>
                 <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#ec4899" />
+                  <stop offset="0%" stopColor="#c8f560" />
+                  <stop offset="100%" stopColor="#a6d13f" />
                 </linearGradient>
               </defs>
             </svg>

@@ -9,9 +9,9 @@ import { dataFile } from './dataDir.js';
 const REGISTRY_PATH = dataFile('sensors.json');
 
 export const ICON_MAP = {
-    temperature_humidity: '🌡️',
+    temperature_humidity: '🌡',
     door: '🚪',
-    motion: '👁️',
+    motion: '👁',
     smoke: '💨',
     water_leak: '💧',
     vibration: '📳',

@@ -35,7 +35,7 @@
 
 .stat-icon {
   font-size: 3rem;
-  filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+  filter: drop-shadow(0 0 10px rgba(200, 245, 96, 0.5));
 }
 
 .stat-content h3 {
@@ -51,7 +51,7 @@
   font-weight: 700;
   background: linear-gradient(135deg, var(--primary-light), var(--secondary-light));
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  -webkit-text-fill-color: var(--text-primary);
   background-clip: text;
   margin: 0;
 }
@@ -59,14 +59,14 @@
 .stat-value.cost {
   background: linear-gradient(135deg, var(--accent), var(--primary-light));
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  -webkit-text-fill-color: var(--text-primary);
   background-clip: text;
 }
 
 .stat-value.prediction {
   background: linear-gradient(135deg, var(--secondary), var(--accent));
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  -webkit-text-fill-color: var(--text-primary);
   background-clip: text;
 }
 

@@ -48,7 +48,7 @@ const PROPERTY_UNITS: Record<string, string> = {
 };
 
 const SENSOR_ICONS: Record<string, string> = {
-    temperature: '🌡️',
+    temperature: '🌡',
     humidity: '💧',
     isOpen: '🚪',
     smokeDetected: '🔥',
@@ -207,7 +207,7 @@ export const Rules = () => {
 
                         <div className="rule-footer">
                             <div className="rule-meta">
-                                <span className="rule-cooldown">⏱️ {rule.cooldownMinutes}min</span>
+                                <span className="rule-cooldown">⏱ {rule.cooldownMinutes}min</span>
                                 {rule.triggerCount > 0 && (
                                     <span className="rule-triggers">
                                         🔔 {rule.triggerCount}x
@@ -222,7 +222,7 @@ export const Rules = () => {
                                 onClick={() => deleteRule(rule.id)}
                                 title="Supprimer"
                             >
-                                🗑️
+                                🗑
                             </button>
                         </div>
                     </motion.div>

@@ -15,7 +15,7 @@
 /* Error Banner */
 .error-banner {
   padding: 1rem;
-  background: rgba(236, 72, 153, 0.1);
+  background: rgba(255, 181, 71, 0.1);
   border: 1px solid var(--secondary);
   border-radius: 12px;
   color: var(--secondary-light);
@@ -53,7 +53,7 @@
 
 .room-icon {
   font-size: 2.5rem;
-  filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+  filter: drop-shadow(0 0 10px rgba(200, 245, 96, 0.5));
 }
 
 .room-info {

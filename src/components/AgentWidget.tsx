@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { agentApi, type AgentMessage } from '../services/agentApi';
+import { Icon } from './Icon';
 import './AgentWidget.css';
 
 export const AgentWidget = () => {
@@ -142,7 +143,7 @@ export const AgentWidget = () => {
                 whileTap={{ scale: 0.9 }}
                 animate={open ? { rotate: 0 } : {}}
             >
-                {open ? '✕' : '🤖'}
+                {open ? '✕' : <Icon name="agent" size={24} />}
             </motion.button>
         </>
     );

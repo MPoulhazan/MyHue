@@ -1,8 +1,10 @@
 .agent-container {
-    height: 100vh;
+    height: calc(100dvh - 9rem);
+    border: 1px solid var(--line);
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: transparent;
     overflow: hidden;
     max-width: 1400px;
     margin: 0 auto;
@@ -175,8 +177,8 @@
 
 .chat-bubble.user {
     align-self: flex-end;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: var(--accent);
+    color: var(--bg-dark);
     border-bottom-right-radius: 4px;
 }
 
@@ -228,7 +230,7 @@
 
 .chat-input textarea:focus {
     background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(102, 126, 234, 0.5);
+    border-color: rgba(200, 245, 96, 0.5);
 }
 
 .chat-input textarea::placeholder {
@@ -239,9 +241,9 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--accent);
     border: none;
-    color: white;
+    color: var(--bg-dark);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -253,7 +255,7 @@
 
 .send-button:hover:not(:disabled) {
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 12px rgba(200, 245, 96, 0.4);
 }
 
 .send-button:active:not(:disabled) {

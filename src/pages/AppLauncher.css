@@ -1,232 +1,107 @@
 .app-launcher {
-    min-height: 100vh;
-    padding: 2rem 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 3rem;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 0 3rem;
 }
 
-.launcher-header {
-    text-align: center;
-    padding: 1rem 0;
+.launcher-header { margin-bottom: 1.75rem; }
+
+.launcher-kicker {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
 }
 
-.launcher-header h1 {
-    font-size: 2.5rem;
-    margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
+.launcher-header h1 { margin: 0.35rem 0 0.25rem; }
 
 .launcher-header p {
-    font-size: 1.1rem;
-    color: var(--color-text-secondary, #999);
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
 }
 
 .apps-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 2rem;
-    max-width: 900px;
-    margin: 0 auto;
-    width: 100%;
-    padding: 0 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
 }
 
 .app-card {
     position: relative;
     display: flex;
-    flex-direction: column;
     align-items: center;
     gap: 1rem;
+    min-height: 96px;
+    padding: 1rem 1.1rem;
+    background: color-mix(in srgb, var(--panel) 90%, transparent);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--text-primary);
     text-decoration: none;
-    padding: 1.5rem 1rem;
-    border-radius: 20px;
-    transition: all 0.3s ease;
-    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.25s, transform 0.2s, background 0.25s;
 }
 
-.app-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+.app-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 12%, transparent), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+    pointer-events: none;
 }
 
-.app-card:active {
-    transform: translateY(-4px);
-}
+.app-card:hover { border-color: var(--accent); background: var(--panel); }
+.app-card:hover::after { transform: translateX(100%); }
+.app-card:active { transform: scale(0.98); }
 
-.app-icon-container {
-    width: 100px;
-    height: 100px;
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
-}
-
-.app-card:hover .app-icon-container {
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
-    transform: scale(1.05);
+.app-index {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
 }
 
 .app-icon {
-    font-size: 3rem;
-    display: block;
-    line-height: 1;
+    width: 52px;
+    height: 52px;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    color: var(--accent);
+    background: var(--panel-2);
+    transition: box-shadow 0.25s, border-color 0.25s;
 }
 
+.app-card:hover .app-icon {
+    border-color: var(--accent);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.app-text { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+
 .app-name {
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #ffffff;
-    text-align: center;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.05rem;
 }
 
 .app-description {
-    margin: 0;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.95);
-    text-align: center;
-    line-height: 1.4;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
 }
 
-.launcher-footer {
-    text-align: center;
-    padding: 2rem 1rem;
-    color: var(--color-text-secondary, #999);
-    font-size: 0.9rem;
-    border-top: 1px solid var(--color-border, #e0e0e0);
-    margin-top: 2rem;
+.app-arrow {
+    margin-left: auto;
+    color: var(--text-secondary);
+    transition: transform 0.25s, color 0.25s;
 }
 
-.launcher-footer p {
-    margin: 0;
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-    .apps-grid {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .app-icon-container {
-        width: 80px;
-        height: 80px;
-    }
-
-    .app-icon {
-        font-size: 2.5rem;
-    }
-
-    .app-name {
-        font-size: 1rem;
-    }
-
-    .app-description {
-        font-size: 0.8rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .app-launcher {
-        padding: 1rem;
-        gap: 2rem;
-    }
-
-    .launcher-header h1 {
-        font-size: 2rem;
-    }
-
-    .launcher-header p {
-        font-size: 1rem;
-    }
-
-    .apps-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-        padding: 0;
-    }
-
-    .app-card {
-        padding: 1rem 0.5rem;
-        gap: 0.75rem;
-    }
-
-    .app-icon-container {
-        width: 70px;
-        height: 70px;
-    }
-
-    .app-icon {
-        font-size: 2rem;
-    }
-
-    .app-name {
-        font-size: 0.9rem;
-    }
-
-    .app-description {
-        font-size: 0.7rem;
-        display: none;
-    }
-}
-
-@media (max-width: 480px) {
-    .apps-grid {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1rem;
-    }
-
-    .app-card {
-        padding: 0.75rem;
-        gap: 0.5rem;
-    }
-
-    .app-icon-container {
-        width: 60px;
-        height: 60px;
-    }
-
-    .app-icon {
-        font-size: 1.75rem;
-    }
-
-    .app-name {
-        font-size: 0.8rem;
-    }
-
-    .launcher-footer {
-        font-size: 0.8rem;
-    }
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-    .app-launcher {
-        background: linear-gradient(
-            135deg,
-            rgba(17, 24, 39, 0.95) 0%,
-            rgba(30, 41, 59, 0.95) 100%
-        );
-    }
-
-    .app-card:hover {
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-    }
-
-    .app-icon-container {
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-    }
-
-    .app-card:hover .app-icon-container {
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-    }
-}
+.app-card:hover .app-arrow { transform: translateX(4px); color: var(--accent); }

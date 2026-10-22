@@ -55,14 +55,14 @@ export const DATA_LOCATIONS: Record<string, DataLocation> = {
     },
     SERVER_LOCAL: {
         name: 'Application Server (Local Network)',
-        icon: '🖥️',
+        icon: '🖥',
         description:
             'Stored in memory on your local app server (not persisted)',
         color: '#2196F3',
     },
     GOOGLE_CLOUD: {
         name: 'Google Cloud (External)',
-        icon: '☁️',
+        icon: '☁',
         description: 'Transmitted to Google services for processing',
         color: '#F44336',
     },
@@ -147,7 +147,7 @@ export const FEATURES: PrivacyFeature[] = [
     {
         id: 'xiaomi',
         name: 'Xiaomi Sensors (Aqara)',
-        icon: '🌡️',
+        icon: '🌡',
         description: 'Monitor temperature, humidity, motion & door sensors',
         dataLocations: [
             {
@@ -233,10 +233,10 @@ export const FEATURES: PrivacyFeature[] = [
         ],
         privacyScore: 55,
         risks: [
-            '⚠️ Google OAuth token allows access to YouTube account',
-            '⚠️ Watch history may be collected by Google',
-            '⚠️ Playlist data synchronized with Google servers',
-            '⚠️ Audio stream proxied through your server',
+            '⚠ Google OAuth token allows access to YouTube account',
+            '⚠ Watch history may be collected by Google',
+            '⚠ Playlist data synchronized with Google servers',
+            '⚠ Audio stream proxied through your server',
         ],
         positives: [
             '✅ Cast device audio is local network only',
@@ -314,10 +314,10 @@ export const FEATURES: PrivacyFeature[] = [
         dataTypes: ['Chat History', 'Home State Context', 'LLM Responses'],
         privacyScore: 62,
         risks: [
-            '⚠️ Chat messages transmitted to Groq cloud servers',
-            '⚠️ Home automation context (light states, sensors) sent with each request',
-            '⚠️ Groq may use data for model improvement (per their ToS)',
-            '⚠️ Conversations may be logged on Groq servers',
+            '⚠ Chat messages transmitted to Groq cloud servers',
+            '⚠ Home automation context (light states, sensors) sent with each request',
+            '⚠ Groq may use data for model improvement (per their ToS)',
+            '⚠ Conversations may be logged on Groq servers',
             'Chat history in browser storage may contain sensitive commands',
         ],
         positives: [
@@ -477,7 +477,7 @@ export function getPrivacyLevel(score: number): {
     } else if (score >= 70) {
         return { level: 'Good', color: '#8BC34A', icon: '👍' };
     } else if (score >= 50) {
-        return { level: 'Fair', color: '#FFC107', icon: '⚠️' };
+        return { level: 'Fair', color: '#FFC107', icon: '⚠' };
     } else {
         return { level: 'Poor', color: '#F44336', icon: '❌' };
     }

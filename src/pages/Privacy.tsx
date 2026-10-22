@@ -91,11 +91,11 @@ export function Privacy() {
                                 mDNS (local)
                             </li>
                             <li>
-                                ⚠️ Cloud AI: Agent uses Groq API for LLM
+                                ⚠ Cloud AI: Agent uses Groq API for LLM
                                 processing
                             </li>
                             <li>
-                                ⚠️ YouTube: OAuth and playlist data via Google
+                                ⚠ YouTube: OAuth and playlist data via Google
                                 Cloud
                             </li>
                         </ul>
@@ -263,7 +263,7 @@ export function Privacy() {
                                                     .storedCredentials && (
                                                     <p className="warning">
                                                         <strong>
-                                                            ⚠️ Credentials are
+                                                            ⚠ Credentials are
                                                             stored
                                                         </strong>{' '}
                                                         on server-side
@@ -316,7 +316,7 @@ export function Privacy() {
                                         {feature.risks.length > 0 && (
                                             <div className="content-section">
                                                 <h4>
-                                                    ⚠️ Privacy Considerations
+                                                    ⚠ Privacy Considerations
                                                 </h4>
                                                 <ul className="risks-list">
                                                     {feature.risks.map(
@@ -407,7 +407,7 @@ export function Privacy() {
                         </p>
                     </div>
                     <div className="faq-item">
-                        <h4>🗑️ How do I clear my data?</h4>
+                        <h4>🗑 How do I clear my data?</h4>
                         <p>
                             Browser data (localStorage) can be cleared in your
                             browser settings. Server logs are ephemeral and not
@@ -423,7 +423,7 @@ export function Privacy() {
                         </p>
                     </div>
                     <div className="faq-item">
-                        <h4>🛡️ What about HTTPS?</h4>
+                        <h4>🛡 What about HTTPS?</h4>
                         <p>
                             Local Hue Bridge communication uses HTTP (standard),
                             but your local network is assumed secure. HTTPS is

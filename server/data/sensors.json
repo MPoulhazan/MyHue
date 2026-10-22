@@ -3,7 +3,7 @@
     "ieee": "0x00158d0002741953",
     "name": "Salon",
     "type": "temperature_humidity",
-    "icon": "🌡️"
+    "icon": "🌡"
   },
   {
     "ieee": "0x00158d0007e90f07",

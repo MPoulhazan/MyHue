@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Icon, type IconName } from './Icon';
 import './Navigation.css';
 
 type MenuKey =
@@ -18,28 +19,28 @@ type MenuKey =
 interface MenuItem {
     key: MenuKey;
     path: string;
-    icon: string;
+    icon: IconName;
     label: string;
 }
 
 type MenuVisibility = Record<MenuKey, boolean>;
 
 const MENU_ITEMS: MenuItem[] = [
-    { key: 'lights', path: '/lights', icon: '💡', label: 'Lights' },
-    { key: 'rooms', path: '/rooms', icon: '🏠', label: 'Rooms' },
-    { key: 'scenes', path: '/scenes', icon: '🎬', label: 'Scenes' },
-    { key: 'stats', path: '/stats', icon: '📊', label: 'Stats' },
-    { key: 'agent', path: '/agent', icon: '🤖', label: 'Agent' },
-    { key: 'music', path: '/music', icon: '🎵', label: 'Music' },
+    { key: 'lights', path: '/lights', icon: 'lights', label: 'Lumières' },
+    { key: 'rooms', path: '/rooms', icon: 'rooms', label: 'Pièces' },
+    { key: 'scenes', path: '/scenes', icon: 'scenes', label: 'Scènes' },
+    { key: 'stats', path: '/stats', icon: 'stats', label: 'Stats' },
+    { key: 'agent', path: '/agent', icon: 'agent', label: 'Agent' },
+    { key: 'music', path: '/music', icon: 'music', label: 'Musique' },
     {
         key: 'google-home',
         path: '/google-home',
-        icon: '🏠',
-        label: 'Google Home',
+        icon: 'cast',
+        label: 'Cast & capteurs',
     },
-    { key: 'rules', path: '/rules', icon: '🔔', label: 'Rules' },
-    { key: 'heating', path: '/heating', icon: '🔥', label: 'Chauffage' },
-    { key: 'privacy', path: '/privacy', icon: '🔒', label: 'Privacy' },
+    { key: 'rules', path: '/rules', icon: 'rules', label: 'Règles' },
+    { key: 'heating', path: '/heating', icon: 'heating', label: 'Chauffage' },
+    { key: 'privacy', path: '/privacy', icon: 'privacy', label: 'Confidentialité' },
 ];
 
 const STORAGE_KEY = 'myhue.menu.visibility.v1';
@@ -290,11 +291,11 @@ export const Navigation = () => {
     }, [isScrolling, scrollStartX, scrollStartLeft]);
 
     return (
-        <nav className="main-nav glass">
+        <nav className="main-nav">
             <div className="nav-content">
                 <Link to="/" className="nav-logo">
-                    <span className="logo-icon">💡</span>
-                    <span className="logo-text">MyHue</span>
+                    <span className="logo-icon"><Icon name="home" size={18} /></span>
+                    <span className="logo-text">MYHUE<b>//</b>HOME</span>
                 </Link>
 
                 <div
@@ -307,7 +308,7 @@ export const Navigation = () => {
                             to={item.path}
                             className={`nav-link ${isActive(item.path) ? 'active' : ''}`}
                         >
-                            <span className="nav-icon">{item.icon}</span>
+                            <span className="nav-icon"><Icon name={item.icon} size={16} /></span>
                             <span>{item.label}</span>
                             {isActive(item.path) && (
                                 <motion.div
@@ -333,7 +334,7 @@ export const Navigation = () => {
                         aria-expanded={settingsOpen}
                         aria-controls="menu-display-settings"
                     >
-                        ⚙️
+                        <Icon name="settings" size={18} />
                     </button>
 
                     {settingsOpen && (
@@ -368,10 +369,10 @@ export const Navigation = () => {
                                     >
                                         <div className="settings-option-left">
                                             <span className="settings-drag-handle">
-                                                ⋮⋮
+                                                <Icon name="drag" size={16} />
                                             </span>
                                             <span className="settings-option-icon">
-                                                {item.icon}
+                                                <Icon name={item.icon} size={16} />
                                             </span>
                                             <span>{item.label}</span>
                                         </div>

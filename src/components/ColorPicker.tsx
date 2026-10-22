@@ -94,7 +94,7 @@ export const ColorPicker = ({
           {/* Temperature Control */}
           <div className="control-group">
             <label className="control-label">
-              <span>🌡️</span>
+              <span>🌡</span>
               <span>Temperature</span>
               <span className="control-value">
                 {temperature < 200 ? 'Warm' : temperature > 350 ? 'Cool' : 'Neutral'}
@@ -109,7 +109,7 @@ export const ColorPicker = ({
               className="slider temperature-slider"
             />
             <div className="temperature-labels">
-              <span>❄️ Cool</span>
+              <span>❄ Cool</span>
               <span>🔥 Warm</span>
             </div>
           </div>

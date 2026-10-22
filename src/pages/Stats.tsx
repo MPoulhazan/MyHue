@@ -103,7 +103,7 @@ export const Stats = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <div className="stat-icon">⏱️</div>
+          <div className="stat-icon">⏱</div>
           <div className="stat-content">
             <h3>Total Time On</h3>
             <p className="stat-value">{formatTime(totalStats.totalMinutes)}</p>
@@ -212,8 +212,8 @@ export const Stats = () => {
           <AreaChart data={hourlyData}>
             <defs>
               <linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                <stop offset="5%" stopColor="#c8f560" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#c8f560" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -242,7 +242,7 @@ export const Stats = () => {
             <Area
               type="monotone"
               dataKey="energy"
-              stroke="#6366f1"
+              stroke="#c8f560"
               fillOpacity={1}
               fill="url(#colorEnergy)"
             />
@@ -333,7 +333,7 @@ export const Stats = () => {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7 }}
       >
-        <h3>ℹ️ Calculation Details</h3>
+        <h3>ℹ Calculation Details</h3>
         <ul>
           <li>Power consumption detected automatically per lamp type</li>
           <li>Standard bulbs: 9W, Spots: 5-6W, Lightstrips: 20W, Ceiling lights: 30-40W</li>

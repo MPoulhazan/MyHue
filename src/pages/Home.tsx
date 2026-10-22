@@ -109,8 +109,8 @@ export const Home = () => {
               />
               <defs>
                 <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#ec4899" />
+                  <stop offset="0%" stopColor="#c8f560" />
+                  <stop offset="100%" stopColor="#a6d13f" />
                 </linearGradient>
               </defs>
             </svg>
@@ -130,7 +130,7 @@ export const Home = () => {
             animate={{ scale: 1 }}
             className="error-icon"
           >
-            ⚠️
+            ⚠
           </motion.div>
           <h2>Connection Error</h2>
           <p>{error}</p>

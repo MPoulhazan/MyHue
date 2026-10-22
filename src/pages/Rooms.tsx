@@ -71,8 +71,8 @@ export const Rooms = () => {
     const groupClass = group.class?.toLowerCase() || '';
 
     // Based on class
-    if (groupClass.includes('living')) return '🛋️';
-    if (groupClass.includes('bedroom')) return '🛏️';
+    if (groupClass.includes('living')) return '🛋';
+    if (groupClass.includes('bedroom')) return '🛏';
     if (groupClass.includes('kitchen')) return '🍳';
     if (groupClass.includes('bathroom')) return '🚿';
     if (groupClass.includes('office')) return '💼';
@@ -81,8 +81,8 @@ export const Rooms = () => {
     if (groupClass.includes('garden') || groupClass.includes('outdoor')) return '🌳';
 
     // Based on name
-    if (name.includes('salon') || name.includes('living')) return '🛋️';
-    if (name.includes('chambre') || name.includes('bedroom')) return '🛏️';
+    if (name.includes('salon') || name.includes('living')) return '🛋';
+    if (name.includes('chambre') || name.includes('bedroom')) return '🛏';
     if (name.includes('cuisine') || name.includes('kitchen')) return '🍳';
     if (name.includes('salle de bain') || name.includes('bathroom')) return '🚿';
     if (name.includes('bureau') || name.includes('office')) return '💼';
@@ -90,11 +90,11 @@ export const Rooms = () => {
     if (name.includes('garage')) return '🚗';
     if (name.includes('jardin') || name.includes('garden')) return '🌳';
     if (name.includes('terrace') || name.includes('terrasse')) return '🏡';
-    if (name.includes('dining') || name.includes('salle à manger')) return '🍽️';
+    if (name.includes('dining') || name.includes('salle à manger')) return '🍽';
 
     // Default by type
     if (group.type === 'Room') return '🏠';
-    if (group.type === 'Zone') return '🗺️';
+    if (group.type === 'Zone') return '🗺';
 
     return '💡';
   };
@@ -126,8 +126,8 @@ export const Rooms = () => {
               />
               <defs>
                 <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#ec4899" />
+                  <stop offset="0%" stopColor="#c8f560" />
+                  <stop offset="100%" stopColor="#a6d13f" />
                 </linearGradient>
               </defs>
             </svg>

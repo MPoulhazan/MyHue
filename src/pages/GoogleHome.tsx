@@ -103,7 +103,7 @@ const getDeviceIcon = (device: GoogleHomeDevice): string => {
         name.includes('hub') ||
         name.includes('nest hub')
     )
-        return '🖥️';
+        return '🖥';
     if (model.includes('mini') || name.includes('mini')) return '🔘';
     if (model.includes('max') || name.includes('max')) return '🔊';
     if (name.includes('nest') || name.includes('google home')) return '🏠';
@@ -515,8 +515,8 @@ export const GoogleHome = () => {
                                     x2="100%"
                                     y2="100%"
                                 >
-                                    <stop offset="0%" stopColor="#6366f1" />
-                                    <stop offset="100%" stopColor="#ec4899" />
+                                    <stop offset="0%" stopColor="#c8f560" />
+                                    <stop offset="100%" stopColor="#a6d13f" />
                                 </linearGradient>
                             </defs>
                         </svg>
@@ -816,7 +816,7 @@ export const GoogleHome = () => {
                                                         openEdit(sensor);
                                                     }}
                                                 >
-                                                    ✏️
+                                                    ✏
                                                 </button>
                                                 <button
                                                     className="sensor-delete-btn"
@@ -831,7 +831,7 @@ export const GoogleHome = () => {
                                                         );
                                                     }}
                                                 >
-                                                    🗑️
+                                                    🗑
                                                 </button>
                                             </div>
                                         )}

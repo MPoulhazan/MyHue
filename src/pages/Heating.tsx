@@ -24,7 +24,7 @@ interface SensorData {
 
 const MODES = [
     { value: 'heat', icon: '🔥', label: 'Chaud' },
-    { value: 'cool', icon: '❄️', label: 'Froid' },
+    { value: 'cool', icon: '❄', label: 'Froid' },
     { value: 'dry', icon: '💧', label: 'Sec' },
     { value: 'fan', icon: '🌀', label: 'Ventilo' },
     { value: 'auto', icon: '🔄', label: 'Auto' },
@@ -333,7 +333,7 @@ export const Heating = () => {
                     <div className="sensors-grid">
                         {sensors.map((sensor) => (
                             <div key={sensor.did} className="sensor-chip">
-                                <span className="sensor-chip-icon">🌡️</span>
+                                <span className="sensor-chip-icon">🌡</span>
                                 <div className="sensor-chip-info">
                                     <span className="sensor-chip-name">
                                         {sensor.name}

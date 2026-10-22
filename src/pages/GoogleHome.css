@@ -98,7 +98,7 @@
 /* Error Banner */
 .error-banner {
     padding: 1rem;
-    background: rgba(236, 72, 153, 0.1);
+    background: rgba(255, 181, 71, 0.1);
     border: 1px solid var(--secondary);
     border-radius: 12px;
     color: var(--secondary-light);
@@ -138,7 +138,7 @@
 
 .device-icon {
     font-size: 2.5rem;
-    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+    filter: drop-shadow(0 0 10px rgba(200, 245, 96, 0.5));
 }
 
 .device-main-info {
@@ -717,8 +717,8 @@
     gap: 0.5rem;
     padding: 0.5rem 1rem;
     border-radius: 10px;
-    border: 1px solid rgba(99, 102, 241, 0.4);
-    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(200, 245, 96, 0.4);
+    background: rgba(200, 245, 96, 0.12);
     color: var(--text-primary);
     font-size: 0.82rem;
     font-weight: 600;
@@ -727,8 +727,8 @@
     transition: all 0.25s ease;
 }
 .pair-btn:hover {
-    background: rgba(99, 102, 241, 0.25);
-    border-color: rgba(99, 102, 241, 0.7);
+    background: rgba(200, 245, 96, 0.25);
+    border-color: rgba(200, 245, 96, 0.7);
 }
 .pair-btn-active {
     border-color: rgba(34, 197, 94, 0.6);
@@ -825,9 +825,9 @@
 /* ── QR scanner button ───────────────────────────────────────────────────────── */
 .qr-btn {
     padding: 0.5rem 0.9rem;
-    border: 1px solid rgba(99, 102, 241, 0.5);
+    border: 1px solid rgba(200, 245, 96, 0.5);
     border-radius: 10px;
-    background: rgba(99, 102, 241, 0.12);
+    background: rgba(200, 245, 96, 0.12);
     color: #a5b4fc;
     font-size: 0.8rem;
     font-weight: 600;
@@ -837,8 +837,8 @@
     flex-shrink: 0;
 }
 .qr-btn:hover {
-    background: rgba(99, 102, 241, 0.25);
-    border-color: rgba(99, 102, 241, 0.8);
+    background: rgba(200, 245, 96, 0.25);
+    border-color: rgba(200, 245, 96, 0.8);
 }
 
 /* ── QR modal ────────────────────────────────────────────────────────────────── */
@@ -876,7 +876,7 @@
 .qr-frame {
     position: absolute;
     inset: 20%;
-    border: 2px solid rgba(99, 102, 241, 0.8);
+    border: 2px solid rgba(200, 245, 96, 0.8);
     border-radius: 8px;
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
     pointer-events: none;
@@ -1002,7 +1002,7 @@
     transition: border-color 0.25s;
 }
 .rename-input:focus {
-    border-color: rgba(99, 102, 241, 0.7);
+    border-color: rgba(200, 245, 96, 0.7);
 }
 
 .rename-error {
@@ -1035,8 +1035,8 @@
 .rename-save-btn {
     padding: 0.6rem 1.5rem;
     border-radius: 10px;
-    border: 1px solid rgba(99, 102, 241, 0.5);
-    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(200, 245, 96, 0.5);
+    background: rgba(200, 245, 96, 0.2);
     color: var(--text-primary);
     font-size: 0.875rem;
     font-weight: 600;
@@ -1044,7 +1044,7 @@
     transition: all 0.2s;
 }
 .rename-save-btn:hover:not(:disabled) {
-    background: rgba(99, 102, 241, 0.35);
+    background: rgba(200, 245, 96, 0.35);
 }
 .rename-save-btn:disabled {
     opacity: 0.4;
@@ -1156,8 +1156,8 @@
     flex-shrink: 0;
     padding: 0.4rem 0.9rem;
     border-radius: 10px;
-    border: 1px solid rgba(99, 102, 241, 0.5);
-    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(200, 245, 96, 0.5);
+    background: rgba(200, 245, 96, 0.15);
     color: var(--text-primary);
     font-size: 0.8rem;
     font-weight: 600;
@@ -1165,5 +1165,5 @@
     transition: background 0.2s;
 }
 .unregistered-add-btn:hover {
-    background: rgba(99, 102, 241, 0.3);
+    background: rgba(200, 245, 96, 0.3);
 }
