@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Icon, type IconName } from './Icon';
+import { ThemeSettings } from './ThemeSettings';
 import './Navigation.css';
 
 type MenuKey =
@@ -346,6 +347,7 @@ export const Navigation = () => {
                             exit={{ opacity: 0 }}
                         >
                             <div className="settings-title">Paramètres</div>
+                            <ThemeSettings />
                             <div className="settings-section-title">
                                 Affichage
                             </div>

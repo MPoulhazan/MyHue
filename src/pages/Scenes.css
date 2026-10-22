@@ -48,7 +48,7 @@
 
 .scene-card:hover {
   border-color: var(--primary-light);
-  box-shadow: 0 8px 32px rgba(200, 245, 96, 0.3);
+  box-shadow: 0 8px 32px rgba(var(--accent-rgb), 0.3);
 }
 
 .scene-card.activating {
@@ -63,13 +63,13 @@
 /* Scene Icon */
 .scene-icon {
   font-size: 3rem;
-  filter: drop-shadow(0 0 10px rgba(200, 245, 96, 0.5));
+  filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.5));
   transition: all 0.3s ease;
 }
 
 .scene-card:hover .scene-icon {
   transform: scale(1.2);
-  filter: drop-shadow(0 0 20px rgba(200, 245, 96, 0.8));
+  filter: drop-shadow(0 0 20px rgba(var(--accent-rgb), 0.8));
 }
 
 /* Scene Info */
@@ -117,7 +117,7 @@
   right: 0.75rem;
   padding: 0.25rem 0.75rem;
   background: var(--accent);
-  color: var(--bg-dark);
+  color: var(--on-accent);
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 600;

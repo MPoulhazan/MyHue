@@ -9,7 +9,7 @@
     text-align: center;
     margin-bottom: 3rem;
     padding-bottom: 2rem;
-    border-bottom: 2px solid var(--color-border, #e0e0e0);
+    border-bottom: 2px solid var(--line);
 }
 
 .privacy-header h1 {
@@ -23,7 +23,7 @@
 
 .privacy-header p {
     font-size: 1.1rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--text-secondary);
 }
 
 /* Privacy Index */
@@ -34,10 +34,10 @@
 .index-card {
     background: linear-gradient(
         135deg,
-        rgba(200, 245, 96, 0.1) 0%,
-        rgba(200, 245, 96, 0.1) 100%
+        rgba(var(--accent-rgb), 0.1) 0%,
+        rgba(var(--accent-rgb), 0.1) 100%
     );
-    border: 2px solid rgba(200, 245, 96, 0.2);
+    border: 2px solid rgba(var(--accent-rgb), 0.2);
     border-radius: 16px;
     padding: 2rem;
 }
@@ -57,19 +57,19 @@
 .index-score-badge {
     font-size: 2rem;
     font-weight: bold;
-    color: #c8f560;
+    color: var(--accent);
 }
 
 .index-max {
     font-size: 1rem;
-    color: var(--color-text-secondary, #999);
+    color: var(--text-secondary);
     margin-left: 0.25rem;
 }
 
 .index-gauge {
     width: 100%;
     height: 20px;
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, calc(0.1 * var(--shade)));
     border-radius: 10px;
     overflow: hidden;
     margin-bottom: 1rem;
@@ -96,7 +96,7 @@
 }
 
 .index-description {
-    color: var(--color-text-secondary, #666);
+    color: var(--text-secondary);
     line-height: 1.6;
 }
 
@@ -108,7 +108,7 @@
 .features-section h2 {
     font-size: 1.5rem;
     margin-bottom: 1.5rem;
-    color: var(--color-text-primary, #333);
+    color: var(--text-primary);
 }
 
 .features-grid {
@@ -119,7 +119,7 @@
 
 .feature-card {
     background: white;
-    border: 1px solid var(--color-border, #e0e0e0);
+    border: 1px solid var(--line);
     border-radius: 12px;
     overflow: hidden;
     transition: all 0.3s ease;
@@ -128,7 +128,7 @@
 
 .feature-card:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    border-color: #c8f560;
+    border-color: var(--accent);
 }
 
 .feature-card.expanded {
@@ -148,7 +148,7 @@
 }
 
 .feature-card-header:hover {
-    background: rgba(200, 245, 96, 0.05);
+    background: rgba(var(--accent-rgb), 0.05);
 }
 
 .feature-info {
@@ -166,13 +166,13 @@
 .feature-name h3 {
     margin: 0;
     font-size: 1.1rem;
-    color: var(--color-text-primary, #333);
+    color: var(--text-primary);
 }
 
 .feature-description {
     margin: 0.5rem 0 0;
     font-size: 0.9rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--text-secondary);
 }
 
 .feature-score {
@@ -191,7 +191,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(200, 245, 96, 0.05);
+    background: rgba(var(--accent-rgb), 0.05);
     font-weight: bold;
     font-size: 1.3rem;
 }
@@ -204,8 +204,8 @@
 /* Feature Content */
 .feature-content {
     padding: 2rem;
-    border-top: 1px solid var(--color-border, #e0e0e0);
-    background: rgba(200, 245, 96, 0.02);
+    border-top: 1px solid var(--line);
+    background: rgba(var(--accent-rgb), 0.02);
 }
 
 .content-section {
@@ -219,7 +219,7 @@
 .content-section h4 {
     margin: 0 0 1rem;
     font-size: 1rem;
-    color: var(--color-text-primary, #333);
+    color: var(--text-primary);
 }
 
 /* Data Locations */
@@ -251,14 +251,14 @@
 .location-desc {
     margin: 0;
     font-size: 0.9rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--text-secondary);
 }
 
 .location-details {
     margin: 0.5rem 0 0;
     padding-left: 2rem;
     list-style: '✓ ';
-    color: var(--color-text-secondary, #666);
+    color: var(--text-secondary);
 }
 
 .location-details li {
@@ -299,12 +299,12 @@
 .breakdown-label {
     font-size: 0.9rem;
     font-weight: 600;
-    color: var(--color-text-secondary, #666);
+    color: var(--text-secondary);
 }
 
 .breakdown-bar {
     height: 8px;
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, calc(0.1 * var(--shade)));
     border-radius: 4px;
     overflow: hidden;
 }
@@ -319,7 +319,7 @@
 .breakdown-value {
     text-align: right;
     font-weight: 600;
-    color: #c8f560;
+    color: var(--accent);
     font-size: 0.9rem;
 }
 
@@ -348,7 +348,7 @@
 
 .positives-list li {
     border-left-color: #4caf50;
-    color: var(--color-text-secondary, #666);
+    color: var(--text-secondary);
 }
 
 /* Data Locations Section */
@@ -370,14 +370,14 @@
     background: white;
     padding: 1.5rem;
     border-radius: 12px;
-    border: 1px solid var(--color-border, #e0e0e0);
+    border: 1px solid var(--line);
     text-align: center;
     transition: all 0.3s ease;
 }
 
 .location-card:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    border-color: #c8f560;
+    border-color: var(--accent);
 }
 
 .location-icon {
@@ -388,13 +388,13 @@
 .location-card h3 {
     margin: 0 0 0.75rem;
     font-size: 1.1rem;
-    color: var(--color-text-primary, #333);
+    color: var(--text-primary);
 }
 
 .location-card p {
     margin: 0;
     font-size: 0.9rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--text-secondary);
     line-height: 1.5;
 }
 
@@ -417,25 +417,25 @@
     background: white;
     padding: 1.5rem;
     border-radius: 12px;
-    border: 1px solid var(--color-border, #e0e0e0);
+    border: 1px solid var(--line);
     transition: all 0.3s ease;
 }
 
 .faq-item:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    border-color: #c8f560;
+    border-color: var(--accent);
 }
 
 .faq-item h4 {
     margin: 0 0 1rem;
     font-size: 1rem;
-    color: var(--color-text-primary, #333);
+    color: var(--text-primary);
 }
 
 .faq-item p {
     margin: 0;
     font-size: 0.95rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--text-secondary);
     line-height: 1.6;
 }
 
@@ -443,9 +443,9 @@
 .privacy-footer {
     text-align: center;
     padding-top: 2rem;
-    border-top: 1px solid var(--color-border, #e0e0e0);
+    border-top: 1px solid var(--line);
     margin-top: 3rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--text-secondary);
     font-size: 0.9rem;
 }
 
@@ -455,7 +455,7 @@
 
 .footer-note {
     font-size: 0.85rem;
-    color: #999;
+    color: var(--text-secondary);
     font-style: italic;
 }
 

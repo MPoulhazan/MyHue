@@ -47,7 +47,7 @@
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(var(--ink-rgb), 0.05);
 }
 
 .heatmap-cell:hover {
@@ -76,13 +76,13 @@
   border-radius: 6px;
   background: linear-gradient(
     to right,
-    rgba(200, 245, 96, 0.2),
-    rgba(200, 245, 96, 0.5),
-    rgba(200, 245, 96, 0.7),
+    rgba(var(--accent-rgb), 0.2),
+    rgba(var(--accent-rgb), 0.5),
+    rgba(var(--accent-rgb), 0.7),
     rgba(255, 181, 71, 0.8),
     rgba(20, 241, 149, 1)
   );
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
 }
 
 /* Responsive */

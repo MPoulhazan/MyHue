@@ -104,8 +104,8 @@ export const Scenes = () => {
               />
               <defs>
                 <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#c8f560" />
-                  <stop offset="100%" stopColor="#a6d13f" />
+                  <stop offset="0%" style={{ stopColor: 'var(--accent)' }} />
+                  <stop offset="100%" style={{ stopColor: 'var(--primary-dark)' }} />
                 </linearGradient>
               </defs>
             </svg>

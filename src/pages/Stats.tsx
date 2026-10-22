@@ -16,8 +16,10 @@ import { trackingService } from '../services/trackingService';
 import type { ConsumptionData } from '../types/tracking';
 import { Heatmap } from '../components/Heatmap';
 import './Stats.css';
+import { themeColor, useTheme } from '../theme/useTheme';
 
 export const Stats = () => {
+  useTheme(); // couleurs des graphiques recalculées au crépuscule
   const [hourlyData, setHourlyData] = useState<any[]>([]);
   const [consumptionData, setConsumptionData] = useState<ConsumptionData[]>([]);
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
@@ -212,27 +214,27 @@ export const Stats = () => {
           <AreaChart data={hourlyData}>
             <defs>
               <linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#c8f560" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#c8f560" stopOpacity={0} />
+                <stop offset="5%" style={{ stopColor: 'var(--accent)', stopOpacity: 0.8 }} />
+                <stop offset="95%" style={{ stopColor: 'var(--accent)', stopOpacity: 0 }} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+            <CartesianGrid strokeDasharray="3 3" stroke={themeColor('ink', 0.1)} />
             <XAxis
               dataKey="hour"
-              stroke="rgba(255,255,255,0.5)"
+              stroke={themeColor('ink', 0.5)}
               style={{ fontSize: '12px' }}
             />
             <YAxis
-              stroke="rgba(255,255,255,0.5)"
+              stroke={themeColor('ink', 0.5)}
               style={{ fontSize: '12px' }}
               label={{ value: 'kWh', angle: -90, position: 'insideLeft' }}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'rgba(10, 10, 15, 0.9)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                backgroundColor: 'rgba(var(--panel-rgb), 0.95)',
+                border: '1px solid var(--line)',
                 borderRadius: '8px',
-                color: '#fff',
+                color: 'var(--text-primary)',
               }}
               formatter={(value: number | undefined) => [
                 `${(value || 0).toFixed(4)} kWh`,
@@ -242,7 +244,7 @@ export const Stats = () => {
             <Area
               type="monotone"
               dataKey="energy"
-              stroke="#c8f560"
+              stroke={themeColor('accent')}
               fillOpacity={1}
               fill="url(#colorEnergy)"
             />
@@ -260,23 +262,23 @@ export const Stats = () => {
         <h2>Consumption by Light</h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={consumptionData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+            <CartesianGrid strokeDasharray="3 3" stroke={themeColor('ink', 0.1)} />
             <XAxis
               dataKey="lightName"
-              stroke="rgba(255,255,255,0.5)"
+              stroke={themeColor('ink', 0.5)}
               style={{ fontSize: '12px' }}
             />
             <YAxis
-              stroke="rgba(255,255,255,0.5)"
+              stroke={themeColor('ink', 0.5)}
               style={{ fontSize: '12px' }}
               label={{ value: 'kWh', angle: -90, position: 'insideLeft' }}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'rgba(10, 10, 15, 0.9)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                backgroundColor: 'rgba(var(--panel-rgb), 0.95)',
+                border: '1px solid var(--line)',
                 borderRadius: '8px',
-                color: '#fff',
+                color: 'var(--text-primary)',
               }}
               formatter={(value: number | undefined) => [`${(value || 0).toFixed(4)} kWh`, 'Energy']}
             />

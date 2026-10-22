@@ -13,6 +13,7 @@ import {
     Legend,
 } from 'recharts';
 import './GoogleHome.css';
+import { themeColor, useTheme } from '../theme/useTheme';
 
 interface EurekaInfo {
     name: string;
@@ -135,6 +136,7 @@ const formatTimeAgo = (isoDate: string | null): string => {
 };
 
 export const GoogleHome = () => {
+    useTheme(); // couleurs des graphiques recalculées au crépuscule
     const [devices, setDevices] = useState<GoogleHomeDevice[]>([]);
     const [sensors, setSensors] = useState<XiaomiSensor[]>([]);
     const [xiaomiLoggedIn, setXiaomiLoggedIn] = useState(false);
@@ -515,8 +517,8 @@ export const GoogleHome = () => {
                                     x2="100%"
                                     y2="100%"
                                 >
-                                    <stop offset="0%" stopColor="#c8f560" />
-                                    <stop offset="100%" stopColor="#a6d13f" />
+                                    <stop offset="0%" style={{ stopColor: 'var(--accent)' }} />
+                                    <stop offset="100%" style={{ stopColor: 'var(--primary-dark)' }} />
                                 </linearGradient>
                             </defs>
                         </svg>
@@ -1196,13 +1198,13 @@ export const GoogleHome = () => {
                                             >
                                                 <CartesianGrid
                                                     strokeDasharray="3 3"
-                                                    stroke="rgba(255,255,255,0.1)"
+                                                    stroke={themeColor('ink', 0.1)}
                                                 />
                                                 <XAxis
                                                     dataKey="time"
                                                     tick={{
                                                         fontSize: 11,
-                                                        fill: '#aaa',
+                                                        fill: themeColor('text-secondary'),
                                                     }}
                                                     interval="preserveStartEnd"
                                                 />
@@ -1219,12 +1221,12 @@ export const GoogleHome = () => {
                                                 <Tooltip
                                                     contentStyle={{
                                                         background:
-                                                            'rgba(20,20,40,0.95)',
-                                                        border: '1px solid rgba(255,255,255,0.15)',
+                                                            'rgba(var(--panel-rgb), 0.95)',
+                                                        border: '1px solid var(--line)',
                                                         borderRadius: 8,
                                                     }}
                                                     labelStyle={{
-                                                        color: '#ccc',
+                                                        color: 'var(--text-primary)',
                                                         fontSize: 12,
                                                     }}
                                                     formatter={(
@@ -1295,13 +1297,13 @@ export const GoogleHome = () => {
                                             >
                                                 <CartesianGrid
                                                     strokeDasharray="3 3"
-                                                    stroke="rgba(255,255,255,0.1)"
+                                                    stroke={themeColor('ink', 0.1)}
                                                 />
                                                 <XAxis
                                                     dataKey="time"
                                                     tick={{
                                                         fontSize: 11,
-                                                        fill: '#aaa',
+                                                        fill: themeColor('text-secondary'),
                                                     }}
                                                     interval="preserveStartEnd"
                                                 />
@@ -1317,12 +1319,12 @@ export const GoogleHome = () => {
                                                 <Tooltip
                                                     contentStyle={{
                                                         background:
-                                                            'rgba(20,20,40,0.95)',
-                                                        border: '1px solid rgba(255,255,255,0.15)',
+                                                            'rgba(var(--panel-rgb), 0.95)',
+                                                        border: '1px solid var(--line)',
                                                         borderRadius: 8,
                                                     }}
                                                     labelStyle={{
-                                                        color: '#ccc',
+                                                        color: 'var(--text-primary)',
                                                         fontSize: 12,
                                                     }}
                                                     formatter={(v: number) => [

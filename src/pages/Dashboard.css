@@ -1,15 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 .dash {
-    --bg: #0a0b0a;
-    --panel: #111311;
-    --panel-2: #0d0f0d;
-    --line: #232723;
-    --line-2: #2e332e;
-    --text: #e6eae3;
-    --muted: #8e948c;
-    --heat: #5a615a;
-    --accent: #c8f560;
+    --bg: var(--bg-dark);
+    --text: var(--text-primary);
+    --muted: var(--text-secondary);
 
     position: fixed;
     inset: 0;
@@ -69,11 +63,11 @@
 .dash .logo { font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0.08em; }
 .dash .status { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 0.14em; color: var(--muted); }
 .dash .status .dot { margin-left: 10px; }
-.dash .dot { width: 7px; height: 7px; border-radius: 50%; background: #5a615a; display: inline-block; }
-.dash .dot.ok { background: #c8f560; animation: dash-pulse 2.4s ease-in-out infinite; }
+.dash .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--heat); display: inline-block; }
+.dash .dot.ok { background: var(--accent); animation: dash-pulse 2.4s ease-in-out infinite; }
 @keyframes dash-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(200, 245, 96, 0.5); }
-    50% { box-shadow: 0 0 0 5px rgba(200, 245, 96, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.5); }
+    50% { box-shadow: 0 0 0 5px rgba(var(--accent-rgb), 0); }
 }
 .dash .clock { color: var(--text); margin-left: 14px; font-variant-numeric: tabular-nums; }
 .dash .apps-link {
@@ -125,7 +119,7 @@
     letter-spacing: 0.14em;
     color: var(--muted);
 }
-.panel-head .heat-on { color: #ffb547; }
+.panel-head .heat-on { color: var(--warn); }
 
 .btn {
     height: 48px;
@@ -150,33 +144,33 @@
 .thermo .spin { animation: dash-spin 60s linear infinite; transform-origin: 150px 150px; }
 .thermo .spin-rev { animation: dash-spin 90s linear infinite reverse; transform-origin: 150px 150px; }
 @keyframes dash-spin { to { transform: rotate(360deg); } }
-.thermo .ring-a { fill: none; stroke: #2a2f2a; stroke-width: 1; stroke-dasharray: 2 7; }
-.thermo .ring-b { fill: none; stroke: #1c201c; stroke-width: 7; stroke-dasharray: 1 22; }
+.thermo .ring-a { fill: none; stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 2 7; }
+.thermo .ring-b { fill: none; stroke: var(--line); stroke-width: 7; stroke-dasharray: 1 22; }
 .thermo .tick { stroke: var(--heat); stroke-width: 2; stroke-linecap: round; transition: stroke 0.4s; }
-.thermo .arc-bg { fill: none; stroke: #1a1d1a; stroke-width: 11; stroke-linecap: round; }
+.thermo .arc-bg { fill: none; stroke: var(--line); stroke-width: 11; stroke-linecap: round; }
 .thermo .arc { fill: none; stroke: var(--heat); stroke-width: 11; stroke-linecap: round; transition: stroke 0.4s; filter: drop-shadow(0 0 6px var(--heat)); }
-.thermo.on { --heat: #ffb547; }
+.thermo.on { --heat: var(--warn); }
 .thermo-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .thermo-temp { font-family: 'Chakra Petch', sans-serif; font-weight: 600; font-size: 58px; line-height: 1; font-variant-numeric: tabular-nums; }
 .thermo-temp small { font-size: 20px; color: var(--muted); }
 .thermo-center .muted { font-size: 11px; }
 .thermo-set { font-size: 12px; margin-top: 6px; color: var(--heat); transition: color 0.4s; }
 .heat-waves { display: flex; gap: 4px; margin-top: 6px; height: 14px; align-items: flex-end; }
-.heat-waves span { width: 3px; height: 100%; border-radius: 2px; background: #ffb547; animation: dash-heat 1.2s ease-in-out infinite; }
+.heat-waves span { width: 3px; height: 100%; border-radius: 2px; background: var(--warn); animation: dash-heat 1.2s ease-in-out infinite; }
 .heat-waves span:nth-child(2) { animation-delay: 0.2s; }
 .heat-waves span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes dash-heat { 0%, 100% { transform: scaleY(0.3); opacity: 0.4; } 50% { transform: scaleY(1); opacity: 1; } }
 .thermo-actions { display: flex; gap: 8px; align-self: stretch; }
 .thermo-actions .btn.heat { flex: 1; font-size: 11px; letter-spacing: 0.14em; }
-.thermo-actions .btn.heat.active { background: #ffb547; border-color: #ffb547; color: #0a0b0a; }
+.thermo-actions .btn.heat.active { background: var(--warn); border-color: var(--warn); color: var(--on-accent); }
 
 .door-panel { flex: 1; display: flex; justify-content: space-between; align-items: center; transition: border-color 0.4s; }
-.door-panel.open { border-color: #ffb547; animation: dash-flash 1s ease-out; }
+.door-panel.open { border-color: var(--warn); animation: dash-flash 1s ease-out; }
 @keyframes dash-flash { 0% { box-shadow: 0 0 0 0 rgba(255, 181, 71, 0.6); } 100% { box-shadow: 0 0 0 18px rgba(255, 181, 71, 0); } }
 .door-state { font-family: 'Chakra Petch', sans-serif; font-weight: 600; font-size: 26px; margin-top: 6px; }
-.door-panel.open .door-state { color: #ffb547; }
+.door-panel.open .door-state { color: var(--warn); }
 .door-icon .frame { fill: none; stroke: var(--line-2); stroke-width: 2; }
-.door-icon .leaf { fill: #1a1d1a; stroke: var(--line-2); }
+.door-icon .leaf { fill: var(--line); stroke: var(--line-2); }
 .door-icon .knob { fill: var(--accent); }
 
 /* ── Lumières ─────────────────────────────────────────────────── */
@@ -198,7 +192,7 @@
 }
 .tgt .tgt-label { position: relative; z-index: 1; transition: color 0.25s; }
 .tgt.active { border-color: var(--text); }
-.tgt.active .tgt-label { color: #0a0b0a; }
+.tgt.active .tgt-label { color: var(--on-accent); }
 .tgt-bg { position: absolute; inset: 0; background: var(--text); border-radius: 5px; }
 .lights-head .count { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
 .lights-head .count b { color: var(--text); font-weight: 500; }
@@ -274,7 +268,7 @@
 .lcol-shine {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.28) 50%, transparent 100%);
+    background: linear-gradient(180deg, transparent 0%, rgba(var(--ink-rgb), 0.28) 50%, transparent 100%);
     animation: dash-shine 3.5s ease-in-out infinite;
 }
 @keyframes dash-shine { from { transform: translateY(100%); } to { transform: translateY(-100%); } }
@@ -287,7 +281,7 @@
     height: 28px;
     border-radius: 6px;
     background: var(--text);
-    color: #0a0b0a;
+    color: var(--on-accent);
     font-size: 12px;
     font-weight: 500;
     display: flex;
@@ -308,7 +302,7 @@
 }
 .lcol.on .lcol-name { color: var(--text); }
 .lcol.offline .lcol-track {
-    background: repeating-linear-gradient(45deg, #111311 0 6px, #171a17 6px 12px);
+    background: repeating-linear-gradient(45deg, var(--panel) 0 6px, var(--panel-2) 6px 12px);
     cursor: not-allowed;
 }
 .lcol.offline .lcol-name { animation: dash-glitch 3s steps(1) infinite; }
@@ -329,7 +323,7 @@
     font-size: 11px;
     line-height: 1.5;
     padding: 6px 0;
-    border-bottom: 1px solid #161916;
+    border-bottom: 1px solid var(--line);
     overflow: hidden;
 }
 
@@ -366,7 +360,7 @@
     border-radius: 6px;
     border: 0;
     background: var(--accent);
-    color: #0a0b0a;
+    color: var(--on-accent);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -388,7 +382,7 @@
     white-space: nowrap;
     transition: background 0.2s, color 0.2s, transform 0.15s;
 }
-.chip:hover { background: var(--accent); color: #0a0b0a; }
+.chip:hover { background: var(--accent); color: var(--on-accent); }
 .chip:active { transform: scale(0.95); }
 
 /* ── Mobile / portrait ────────────────────────────────────────── */
@@ -419,7 +413,7 @@
         padding: 8px 10px;
         border-radius: 6px;
         background: var(--panel-2);
-        border: 1px solid #1a1d1a;
+        border: 1px solid var(--line);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;

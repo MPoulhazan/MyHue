@@ -35,7 +35,7 @@
 
 .stat-icon {
   font-size: 3rem;
-  filter: drop-shadow(0 0 10px rgba(200, 245, 96, 0.5));
+  filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.5));
 }
 
 .stat-content h3 {
@@ -135,7 +135,7 @@
   gap: 0.5rem;
   padding: 1rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--ink-rgb), 0.05);
   font-size: 2rem;
 }
 
@@ -180,8 +180,8 @@
   align-items: center;
   gap: 1rem;
   padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--ink-rgb), 0.03);
+  border: 2px solid rgba(var(--ink-rgb), 0.1);
   border-radius: 16px;
   transition: all 0.3s ease;
 }
@@ -281,7 +281,7 @@
 .consumption-table thead th {
   text-align: left;
   padding: 1rem;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 2px solid rgba(var(--ink-rgb), 0.1);
   color: var(--text-secondary);
   font-weight: 600;
   text-transform: uppercase;
@@ -291,12 +291,12 @@
 
 .consumption-table tbody td {
   padding: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.05);
   color: var(--text-primary);
 }
 
 .consumption-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--ink-rgb), 0.03);
 }
 
 .consumption-table .cost {

@@ -13,7 +13,7 @@ export const Heatmap = ({ data }: HeatmapProps) => {
   const maxEnergy = Math.max(...data.map(d => d.energy), 0.001);
 
   const getColor = (energy: number): string => {
-    if (energy === 0) return 'rgba(255, 255, 255, 0.03)';
+    if (energy === 0) return 'rgba(var(--ink-rgb), 0.03)';
 
     const intensity = Math.min(energy / maxEnergy, 1);
 

@@ -8,19 +8,19 @@
     border-radius: 50%;
     background: var(--accent);
     border: none;
-    color: var(--bg-dark);
+    color: var(--on-accent);
     font-size: 1.5rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 20px rgba(200, 245, 96, 0.5);
+    box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.5);
     z-index: 1000;
     transition: box-shadow 0.2s;
 }
 
 .agent-widget-fab:hover {
-    box-shadow: 0 6px 28px rgba(200, 245, 96, 0.7);
+    box-shadow: 0 6px 28px rgba(var(--accent-rgb), 0.7);
 }
 
 /* Popup */
@@ -30,8 +30,8 @@
     right: 24px;
     width: 380px;
     max-height: 520px;
-    background: #0d1117;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--panel-2);
+    border: 1px solid rgba(var(--ink-rgb), 0.1);
     border-radius: 16px;
     display: flex;
     flex-direction: column;
@@ -47,7 +47,7 @@
     justify-content: space-between;
     padding: 0.75rem 1rem;
     background: var(--accent);
-    color: var(--bg-dark);
+    color: var(--on-accent);
 }
 
 .widget-title {
@@ -66,7 +66,7 @@
     height: 28px;
     border-radius: 50%;
     border: none;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(var(--ink-rgb), 0.2);
     color: white;
     cursor: pointer;
     display: flex;
@@ -78,7 +78,7 @@
 
 .widget-expand-btn:hover,
 .widget-close-btn:hover {
-    background: rgba(255, 255, 255, 0.35);
+    background: rgba(var(--ink-rgb), 0.35);
 }
 
 /* Messages area */
@@ -98,7 +98,7 @@
 }
 
 .widget-messages::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(var(--ink-rgb), 0.15);
     border-radius: 2px;
 }
 
@@ -107,7 +107,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(var(--ink-rgb), 0.35);
     font-size: 0.875rem;
     text-align: center;
     padding: 2rem;
@@ -132,14 +132,14 @@
 .widget-bubble.user {
     align-self: flex-end;
     background: var(--accent);
-    color: var(--bg-dark);
+    color: var(--on-accent);
     border-bottom-right-radius: 4px;
 }
 
 .widget-bubble.assistant {
     align-self: flex-start;
-    background: rgba(255, 255, 255, 0.08);
-    color: #e6edf3;
+    background: rgba(var(--ink-rgb), 0.08);
+    color: var(--text-primary);
     border-bottom-left-radius: 4px;
 }
 
@@ -148,7 +148,7 @@
     display: flex;
     gap: 0.25rem;
     padding: 0.625rem 0.875rem;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(var(--ink-rgb), 0.08);
     border-radius: 14px;
     border-bottom-left-radius: 4px;
     align-self: flex-start;
@@ -159,7 +159,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(var(--ink-rgb), 0.5);
     animation: widgetBounce 1.4s ease-in-out infinite;
 }
 
@@ -185,16 +185,16 @@
     display: flex;
     gap: 0.5rem;
     padding: 0.625rem 0.75rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(13, 17, 23, 0.95);
+    border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+    background: rgba(var(--panel-rgb), 0.95);
     align-items: flex-end;
 }
 
 .widget-input textarea {
     flex: 1;
     padding: 0.5rem 0.75rem;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(var(--ink-rgb), 0.08);
+    border: 1px solid rgba(var(--ink-rgb), 0.1);
     border-radius: 16px;
     color: white;
     font-size: 0.8125rem;
@@ -206,12 +206,12 @@
 }
 
 .widget-input textarea:focus {
-    border-color: rgba(200, 245, 96, 0.5);
-    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(var(--accent-rgb), 0.5);
+    background: rgba(var(--ink-rgb), 0.12);
 }
 
 .widget-input textarea::placeholder {
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(var(--ink-rgb), 0.35);
 }
 
 .widget-send {
@@ -220,7 +220,7 @@
     border-radius: 50%;
     background: var(--accent);
     border: none;
-    color: var(--bg-dark);
+    color: var(--on-accent);
     cursor: pointer;
     display: flex;
     align-items: center;

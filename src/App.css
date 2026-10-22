@@ -40,9 +40,9 @@
   flex-direction: column;
   align-items: center;
   padding: 1rem 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--ink-rgb), 0.05);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
   min-width: 80px;
 }
 
@@ -81,8 +81,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--ink-rgb), 0.05);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
   border-radius: 12px;
   color: var(--text-primary);
   font-size: 1rem;
@@ -94,9 +94,9 @@
 }
 
 .action-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--ink-rgb), 0.1);
   border-color: var(--primary-light);
-  box-shadow: 0 4px 20px rgba(200, 245, 96, 0.3);
+  box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.3);
 }
 
 .action-button span {
@@ -166,9 +166,9 @@
 .error-help {
   text-align: left;
   padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--ink-rgb), 0.05);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
   margin-bottom: 2rem;
   width: 100%;
 }
@@ -197,7 +197,7 @@
 }
 
 .error-help code {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--ink-rgb), 0.1);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   font-family: 'Courier New', monospace;
@@ -217,7 +217,7 @@
 }
 
 .retry-button:hover {
-  box-shadow: 0 8px 24px rgba(200, 245, 96, 0.5);
+  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.5);
 }
 
 /* Empty state */

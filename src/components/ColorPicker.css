@@ -45,8 +45,8 @@
 .brightness-slider {
   background: linear-gradient(
     to right,
-    rgba(255, 255, 255, 0.1),
-    rgba(255, 255, 255, 1)
+    rgba(var(--ink-rgb), 0.1),
+    rgba(var(--ink-rgb), 1)
   );
 }
 
@@ -107,14 +107,14 @@
   width: 100%;
   aspect-ratio: 1;
   border-radius: 8px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(var(--ink-rgb), 0.2);
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .color-preset:hover {
-  border-color: rgba(255, 255, 255, 0.5);
+  border-color: rgba(var(--ink-rgb), 0.5);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 

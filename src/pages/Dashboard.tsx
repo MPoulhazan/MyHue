@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion, useSpring, useTransform, animate } from 'framer-motion';
 import { useHome, SWATCHES } from '../hooks/useHome';
 import type { DashLight, LogEntry } from '../hooks/useHome';
+import { themeColor, useTheme } from '../theme/useTheme';
 import './Dashboard.css';
 
-const FALLBACK_ACCENT = '#C8F560';
 const ease = [0.2, 0.8, 0.2, 1] as const;
 
 // ── Petits utilitaires ───────────────────────────────────────────────────────
@@ -88,6 +88,7 @@ function Backdrop({ accent }: { accent: string }) {
         const draw = (t: number) => {
             ctx.clearRect(0, 0, w, h);
             const a = accentRef.current;
+            const dotColor = themeColor('text-primary') || '#E6EAE3';
             const gap = 28;
             const ox = (t * 0.004) % gap;
             for (let x = -gap; x < w + gap; x += gap) {
@@ -95,7 +96,7 @@ function Backdrop({ accent }: { accent: string }) {
                     const px = x + ox;
                     const wave = Math.sin(px * 0.012 + y * 0.018 + t * 0.0012);
                     ctx.globalAlpha = 0.05 + Math.max(0, wave) * 0.12;
-                    ctx.fillStyle = wave > 0.85 ? a : '#E6EAE3';
+                    ctx.fillStyle = wave > 0.85 ? a : dotColor;
                     ctx.fillRect(px, y, 1.4, 1.4);
                 }
             }
@@ -300,10 +301,13 @@ export function Dashboard() {
     );
     const live = visible.filter((l) => l.reachable);
     const lit = live.filter((l) => l.level > 0);
+    // Sans lumière colorée allumée, l'accent suit le thème (lime en sombre, olive en clair)
+    const { darkness } = useTheme();
     const accent = useMemo(() => {
         const top = home.lights.filter((l) => l.reachable && l.level > 0 && l.colorable).sort((a, b) => b.level - a.level)[0];
-        return top?.color || FALLBACK_ACCENT;
-    }, [home.lights]);
+        return top?.color || themeColor('accent') || '#C8F560';
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- darkness relit le token --accent
+    }, [home.lights, darkness]);
     const master = live.length ? Math.round(live.reduce((a, l) => a + l.level, 0) / live.length) : 0;
     const ids = live.map((l) => l.id);
     const masterDrag = useDrag((v) => home.setLevel(ids, v), () => home.push(`${target} · intensité ${master} %`, accent), 'x');
@@ -361,7 +365,7 @@ export function Dashboard() {
                         temp={home.climate.temperature} humidity={home.climate.humidity} pressure={home.climate.pressure}
                         setpoint={h?.temperature ?? 22} power={!!h?.power}
                         onChange={(t) => { home.controlHeating({ temperature: t }); }}
-                        onToggle={() => { home.controlHeating({ power: !h?.power }); home.push(h?.power ? 'Clim · arrêt' : `Clim · chaud ${h?.temperature ?? 22}°`, '#FFB547'); }}
+                        onToggle={() => { home.controlHeating({ power: !h?.power }); home.push(h?.power ? 'Clim · arrêt' : `Clim · chaud ${h?.temperature ?? 22}°`, themeColor('warn')); }}
                     />
                 </Panel>
                 {home.door && (

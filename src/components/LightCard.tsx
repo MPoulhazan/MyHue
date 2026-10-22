@@ -60,7 +60,7 @@ export const LightCard = ({ light, onToggle }: LightCardProps) => {
 
   // Calculate light color based on state
   const getLightColor = () => {
-    if (!isOn) return 'rgba(255, 255, 255, 0.1)';
+    if (!isOn) return 'rgba(var(--ink-rgb), 0.1)';
 
     if (light.state.colormode === 'xy' && light.state.xy) {
       // Approximate RGB from XY
@@ -115,11 +115,13 @@ export const LightCard = ({ light, onToggle }: LightCardProps) => {
           >
             <path
               d="M12 2C8.13 2 5 5.13 5 9C5 11.38 6.19 13.47 8 14.74V17C8 17.55 8.45 18 9 18H15C15.55 18 16 17.55 16 17V14.74C17.81 13.47 19 11.38 19 9C19 5.13 15.87 2 12 2ZM14.85 13.1L14 13.7V16H10V13.7L9.15 13.1C7.8 12.16 7 10.63 7 9C7 6.24 9.24 4 12 4C14.76 4 17 6.24 17 9C17 10.63 16.2 12.16 14.85 13.1Z"
-              fill={isOn ? 'currentColor' : 'rgba(255, 255, 255, 0.3)'}
+              fill="currentColor"
+              fillOpacity={isOn ? 1 : 0.3}
             />
             <path
               d="M9 19H15V20H9V19ZM10 21H14V22H10V21Z"
-              fill={isOn ? 'currentColor' : 'rgba(255, 255, 255, 0.3)'}
+              fill="currentColor"
+              fillOpacity={isOn ? 1 : 0.3}
             />
           </svg>
         </motion.div>
