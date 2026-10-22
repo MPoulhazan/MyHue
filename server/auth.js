@@ -75,6 +75,16 @@ export const installAuth = (app, express) => {
         next();
     });
 
+    // Journal des accès distants, token masqué
+    app.use((req, res, next) => {
+        if (!isRemote(req)) return next();
+        res.on('finish', () => {
+            const path = req.originalUrl.replace(/\/mcp\/[^/?]+/, '/mcp/***').replace(/token=[^&]+/, 'token=***');
+            console.log(`[remote] ${req.method} ${path} → ${res.statusCode}`);
+        });
+        next();
+    });
+
     if (!TOKEN) {
         console.warn('⚠️  MYHUE_TOKEN absent : aucune auth, ne pas exposer MyHue hors du LAN');
         return;

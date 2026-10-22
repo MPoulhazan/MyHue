@@ -130,13 +130,13 @@ The LAN (port 5174) stays open with no login. When `MYHUE_TOKEN` is set, MyHue a
    ```
 2. Install Tailscale on the server and on your phone/tablet. Then:
    ```bash
-   # Full UI, private to your tailnet: https://<machine>.<tailnet>.ts.net
-   tailscale serve --bg http://127.0.0.1:5175
-   # Only /mcp is public (Claude connector), on port 8443
-   tailscale funnel --bg --https=8443 --set-path=/mcp http://127.0.0.1:5175/mcp
+   # Full UI, private to your tailnet: https://<machine>.<tailnet>.ts.net:8443
+   tailscale serve --bg --https=8443 http://127.0.0.1:5175
+   # Only /mcp is public (Claude connector), on port 443: claude.ai does not reach 8443
+   tailscale funnel --bg --https=443 --set-path=/mcp http://127.0.0.1:5175/mcp
    ```
-3. Phone/tablet: open `https://<machine>.<tailnet>.ts.net/login` once and paste the token. It sets a cookie that lasts a year.
-4. Claude app: Settings → Connectors → Add custom connector, with URL `https://<machine>.<tailnet>.ts.net:8443/mcp/<MYHUE_TOKEN>`. The `/mcp` endpoint also accepts `Authorization: Bearer <MYHUE_TOKEN>` for clients that can send headers (Claude Code).
+3. Phone/tablet: open `https://<machine>.<tailnet>.ts.net:8443/login` once and paste the token. It sets a cookie that lasts a year.
+4. Claude app: Settings → Connectors → Add custom connector, with URL `https://<machine>.<tailnet>.ts.net/mcp/<MYHUE_TOKEN>`. The `/mcp` endpoint also accepts `Authorization: Bearer <MYHUE_TOKEN>` for clients that can send headers (Claude Code).
 
 ## Usage
 
