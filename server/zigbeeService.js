@@ -19,6 +19,7 @@ export const emitter = new EventEmitter();
 const MQTT_PORT = 1883;
 const Z2M_DATA = resolve(__dirname, 'data/z2m');
 const Z2M_BIN = resolve(__dirname, '../node_modules/zigbee2mqtt/index.js');
+const Z2M_NO_GIT = resolve(__dirname, '.no-git');
 const ZIGBEE_PORT = process.env.ZIGBEE_PORT || 'COM3';
 // Mode distant (Home Assistant) : Z2M tourne en add-on sur le Pi,
 // on se connecte simplement à son broker Mosquitto.
@@ -157,6 +158,9 @@ function startZ2mProcess() {
         const env = {
             ...process.env,
             ZIGBEE2MQTT_DATA: Z2M_DATA,
+            // z2m compare `git rev-parse HEAD` à dist/.hash et tente un rebuild
+            // (pnpm) si ça diffère : sans ça, chaque commit MyHue le casse.
+            GIT_DIR: Z2M_NO_GIT,
         };
 
         z2mProcess = spawn('node', [Z2M_BIN], {
