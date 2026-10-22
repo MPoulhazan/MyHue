@@ -17,6 +17,9 @@ interface Recognition {
     onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
     onerror: (e: { error: string }) => void;
     onend: () => void;
+    onstart: () => void;
+    onaudiostart: () => void;
+    onspeechstart: () => void;
     start: () => void;
 }
 type SpeechWindow = { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
@@ -71,7 +74,7 @@ const RECOGNITION_ERRORS: Record<string, string> = {
     'language-not-supported': 'Français non pris en charge par ce navigateur',
 };
 
-const recognize = () =>
+const recognize = (trace: (step: string) => void) =>
     new Promise<{ text: string | null; error: string | null }>((resolve) => {
         if (!SR) return resolve({ text: null, error: null });
         const rec = new SR();
@@ -80,13 +83,21 @@ const recognize = () =>
         rec.maxAlternatives = 1;
         let text: string | null = null;
         let error: string | null = null;
+        rec.onstart = () => trace('start');
+        rec.onaudiostart = () => trace('micro');
+        rec.onspeechstart = () => trace('parole');
         rec.onresult = (e) => {
             text = e.results[0][0].transcript;
+            trace(`« ${text} »`);
         };
         rec.onerror = (e) => {
+            trace(`erreur ${e.error}`);
             if (e.error !== 'aborted') error = RECOGNITION_ERRORS[e.error] || `Erreur micro : ${e.error}`;
         };
-        rec.onend = () => resolve({ text, error });
+        rec.onend = () => {
+            trace('fin');
+            resolve({ text, error });
+        };
         try {
             rec.start();
         } catch (e) {
@@ -100,6 +111,7 @@ export function useVoice(onCommand: (text: string) => Promise<string | undefined
     const [wakeStatus, setWakeStatus] = useState<WakeStatus>('off');
     const [wakeError, setWakeError] = useState<string | null>(null);
     const [voiceError, setVoiceError] = useState<string | null>(null);
+    const [trace, setTrace] = useState<string[]>([]);
     const listenerRef = useRef<WakeListener | null>(null);
     const busyRef = useRef(false);
     const onCommandRef = useRef(onCommand);
@@ -117,7 +129,8 @@ export function useVoice(onCommand: (text: string) => Promise<string | undefined
         try {
             setVoiceError(null);
             setState('listening');
-            const { text, error } = await recognize();
+            setTrace([]);
+            const { text, error } = await recognize((step) => setTrace((t) => [...t, step]));
             if (error) setVoiceError(error);
             if (text) {
                 setState('thinking');
@@ -201,5 +214,7 @@ export function useVoice(onCommand: (text: string) => Promise<string | undefined
         wakeStatus,
         wakeError,
         voiceError,
+        trace,
+        listenerRef,
     };
 }

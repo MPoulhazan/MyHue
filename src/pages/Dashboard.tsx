@@ -270,6 +270,25 @@ const WAKE_TITLE = {
     error: 'Mot d’activation indisponible',
 } as const;
 
+// ?voicedebug dans l'URL : état du micro, du mot d'activation et de la reconnaissance
+const VOICE_DEBUG = new URLSearchParams(window.location.search).has('voicedebug');
+
+function VoiceDebug({ voice }: { voice: ReturnType<typeof useVoice> }) {
+    const [, tick] = useState(0);
+    useEffect(() => {
+        const t = setInterval(() => tick((n) => n + 1), 250);
+        return () => clearInterval(t);
+    }, []);
+    const s = voice.listenerRef.current?.stats;
+    return (
+        <pre style={{ width: '100%', margin: 0, fontSize: 12, opacity: 0.8 }}>
+            {`jarvis=${voice.wakeStatus}${voice.wakeError ? ` (${voice.wakeError})` : ''} blocs=${s?.chunks ?? '-'} niveau=${s ? s.level.toFixed(3) : '-'} score=${s ? s.score.toFixed(2) : '-'} micro=${s?.mic || '-'}
+`}
+            {`reco=${voice.supported ? 'ok' : 'indispo'} état=${voice.state} étapes: ${voice.trace.join(' → ') || '-'}`}
+        </pre>
+    );
+}
+
 function AgentBar({ onAsk, chips }: { onAsk: (m: string) => Promise<string | undefined>; chips: string[] }) {
     const [text, setText] = useState('');
     const voice = useVoice(onAsk);
@@ -305,6 +324,7 @@ function AgentBar({ onAsk, chips }: { onAsk: (m: string) => Promise<string | und
                 Jarvis
             </button>
             {chips.map((c) => <button key={c} className="chip" onClick={() => onAsk(c)}>{c}</button>)}
+            {VOICE_DEBUG && <VoiceDebug voice={voice} />}
         </div>
     );
 }

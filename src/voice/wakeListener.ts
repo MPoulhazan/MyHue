@@ -7,14 +7,25 @@ const THRESHOLD = 0.5;
 const COOLDOWN_MS = 2000;
 const MAX_QUEUE = 6; // au-delà, l'inférence est trop lente : on repart à zéro
 
-// Découpe le flux micro en blocs de CHUNK échantillons
+// Ramène le flux micro à SAMPLE_RATE (moyenne par fenêtre) et le découpe en
+// blocs de CHUNK échantillons. Le contexte reste à la fréquence native : un
+// AudioContext à 16 kHz donne un flux muet avec certains micros sous Windows.
 const WORKLET = `
 class ChunkProcessor extends AudioWorkletProcessor {
-    constructor() { super(); this.buf = new Float32Array(${CHUNK}); this.n = 0; }
+    constructor() {
+        super();
+        this.ratio = sampleRate / ${SAMPLE_RATE};
+        this.buf = new Float32Array(${CHUNK});
+        this.n = 0; this.acc = 0; this.cnt = 0; this.pos = 0;
+    }
     process(inputs) {
         const ch = inputs[0][0];
         if (ch) for (let i = 0; i < ch.length; i++) {
-            this.buf[this.n++] = ch[i];
+            this.acc += ch[i]; this.cnt++;
+            if (++this.pos < this.ratio) continue;
+            this.pos -= this.ratio;
+            this.buf[this.n++] = this.acc / this.cnt;
+            this.acc = 0; this.cnt = 0;
             if (this.n === ${CHUNK}) { this.port.postMessage(this.buf.slice()); this.n = 0; }
         }
         return true;
@@ -43,6 +54,8 @@ export class WakeListener {
     private queue: Float32Array[] = [];
     private draining = false;
     private lastHit = 0;
+    // Diagnostic (?voicedebug) : blocs reçus, niveau micro et meilleur score récent
+    stats = { chunks: 0, level: 0, score: 0, mic: '' };
 
     constructor(onWake: () => void) {
         this.onWake = onWake;
@@ -55,13 +68,18 @@ export class WakeListener {
         this.stream = await navigator.mediaDevices.getUserMedia({
             audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
         });
-        this.ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
+        this.stats.mic = this.stream.getAudioTracks()[0]?.label || '?';
+        this.ctx = new AudioContext();
         const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
         await this.ctx.audioWorklet.addModule(url);
         URL.revokeObjectURL(url);
 
         const node = new AudioWorkletNode(this.ctx, 'chunk-processor');
         node.port.onmessage = (e: MessageEvent<Float32Array>) => {
+            let sum = 0;
+            for (const v of e.data) sum += v * v;
+            this.stats.chunks++;
+            this.stats.level = Math.sqrt(sum / e.data.length);
             this.queue.push(e.data);
             this.drain(model);
         };
@@ -103,6 +121,7 @@ export class WakeListener {
                     break;
                 }
                 const score = await model.process(this.queue.shift()!);
+                this.stats.score = Math.max(score, this.stats.score * 0.98);
                 if (score >= THRESHOLD && Date.now() - this.lastHit > COOLDOWN_MS) {
                     this.lastHit = Date.now();
                     model.reset();
