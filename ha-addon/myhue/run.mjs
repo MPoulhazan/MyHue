@@ -14,6 +14,7 @@ const env = {
     HA_TOKEN: token,
     GROQ_API_KEY: opts.groq_api_key,
     GROQ_MODEL: opts.groq_model,
+    MYHUE_TOKEN: opts.myhue_token,
     VITE_HUE_BRIDGE_IP: opts.hue_bridge_ip,
     VITE_HUE_USERNAME: opts.hue_username,
     TELEGRAM_BOT_TOKEN: opts.telegram_bot_token,

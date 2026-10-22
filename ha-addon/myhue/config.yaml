@@ -23,7 +23,8 @@ services:
   - mqtt:want
 options:
   groq_api_key: ""
-  groq_model: "llama-3.3-70b-versatile"
+  groq_model: "openai/gpt-oss-120b"
+  myhue_token: ""
   hue_bridge_ip: ""
   hue_username: ""
   telegram_bot_token: ""
@@ -37,6 +38,7 @@ options:
 schema:
   groq_api_key: password
   groq_model: str
+  myhue_token: password
   hue_bridge_ip: str
   hue_username: password
   telegram_bot_token: password

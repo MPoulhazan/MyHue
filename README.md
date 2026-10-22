@@ -120,6 +120,18 @@ npm run dev
 
 Open your browser and navigate to the URL shown in the terminal (usually `http://localhost:5173`).
 
+### 9. (Optional) Remote access and Claude connector
+
+The LAN stays open with no login. Anything that comes through the Cloudflare Tunnel (the request carries a `cf-connecting-ip` header) needs the token.
+
+1. Generate a token and put it in `.env` as `MYHUE_TOKEN` (or the `myhue_token` add-on option):
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+   ```
+2. Expose port 5174 through a Cloudflare named tunnel, e.g. `myhue.example.com → http://localhost:5174`. On Home Assistant, use the Cloudflared add-on. A quick tunnel (`*.trycloudflare.com`) also works, but its URL changes on every restart.
+3. Phone/tablet: open `https://myhue.example.com/login?token=<MYHUE_TOKEN>` once. It sets a cookie that lasts a year.
+4. Claude app: Settings → Connectors → Add custom connector, with URL `https://myhue.example.com/mcp/<MYHUE_TOKEN>`. The `/mcp` endpoint also accepts `Authorization: Bearer <MYHUE_TOKEN>` for clients that can send headers (Claude Code).
+
 ## Usage
 
 ### Main Interface

@@ -17,6 +17,8 @@ import * as sensorRegistry from './sensorRegistry.js';
 import * as haService from './haService.js';
 import { parseIntent } from './intentParser.js';
 import { runGroqAgent, needsClaude, buildEscalation } from './groqAgent.js';
+import { installAuth, isValidToken } from './auth.js';
+import { handleMcpRequest } from './mcpServer.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -57,6 +59,7 @@ dotenv.config();
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
+installAuth(app, express);
 
 const PORT = Number(process.env.AGENT_PORT || 5174);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -523,6 +526,32 @@ app.post('/api/agent', async (req, res) => {
         res.status(500).json({ error: message });
     }
 });
+
+// --- Serveur MCP (connecteur Claude) ---
+
+// Même contexte que Groq ; une panne Hue ne doit pas masquer le reste
+const getHomeState = async () => {
+    const [hue, scenes, sensors] = await Promise.all([
+        getHueContext().catch((error) => ({ error: error.message })),
+        getHueScenes(),
+        getZigbeeSensors(),
+    ]);
+    return {
+        hue,
+        scenes: scenes.map(({ id, name, group }) => ({ id, name, group })),
+        cast: castService.getDevices(),
+        sensors,
+        rules: rulesEngine.getRules(),
+        heating: broadlinkService.getState(),
+    };
+};
+
+const mcpHandler = handleMcpRequest({ getContext: getHomeState, executeActions });
+// /mcp : LAN ou Bearer ; /mcp/<token> : claude.ai, qui n'envoie pas d'en-tête
+app.all('/mcp', mcpHandler);
+app.all('/mcp/:token', (req, res, next) =>
+    isValidToken(req.params.token) ? mcpHandler(req, res, next) : res.status(404).end(),
+);
 
 // --- Direct Cast API endpoints (no AI needed) ---
 
