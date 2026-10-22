@@ -1,0 +1,49 @@
+name: MyHue
+version: "1.0.0"
+slug: myhue
+description: Interface MyHue (lumières, capteurs Zigbee, chauffage, Cast, agent Groq)
+url: https://github.com/MPoulhazan/MyHue
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+# Réseau de l'hôte : découverte Cast (mDNS) et Broadlink
+host_network: true
+webui: "http://[HOST]:[PORT:5174]"
+# Relance automatique si MyHue plante
+watchdog: "tcp://[HOST]:[PORT:5174]"
+ports:
+  5174/tcp: 5174
+# Accès à l'API Home Assistant sans token longue durée
+homeassistant_api: true
+# Identifiants MQTT (Mosquitto) fournis automatiquement
+services:
+  - mqtt:want
+options:
+  groq_api_key: ""
+  groq_model: "llama-3.3-70b-versatile"
+  hue_bridge_ip: ""
+  hue_username: ""
+  telegram_bot_token: ""
+  telegram_allowed_user_ids: ""
+  broadlink_ip: ""
+  cast_devices: ""
+  youtube_api_key: ""
+  youtube_client_id: ""
+  youtube_client_secret: ""
+  youtube_default_playlists: ""
+schema:
+  groq_api_key: password
+  groq_model: str
+  hue_bridge_ip: str
+  hue_username: password
+  telegram_bot_token: password
+  telegram_allowed_user_ids: str
+  broadlink_ip: str
+  cast_devices: str
+  youtube_api_key: password
+  youtube_client_id: str
+  youtube_client_secret: password
+  youtube_default_playlists: str

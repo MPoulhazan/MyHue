@@ -3,6 +3,9 @@ import axios from 'axios';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import dotenv from 'dotenv';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 import * as castService from './castService.js';
 import * as youtubeService from './youtubeService.js';
 import * as googleHomeService from './googleHomeService.js';
@@ -1148,6 +1151,30 @@ zigbeeService.emitter.on('update', () => {
         } catch { /* ignore */ }
     }, 200);
 });
+
+// --- Hue bridge proxy (le front ne connaît plus l'IP ni le username) ---
+
+app.use('/api/hue', async (req, res) => {
+    try {
+        const response = await axios({
+            method: req.method,
+            url: `http://${BRIDGE_IP}/api/${USERNAME}${req.url}`,
+            data: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,
+            timeout: 5000,
+        });
+        res.status(response.status).json(response.data);
+    } catch (err) {
+        res.status(err.response?.status || 502).json({ error: err.message });
+    }
+});
+
+// --- Front buildé (add-on / prod) ---
+
+const DIST_DIR = join(dirname(fileURLToPath(import.meta.url)), '../dist');
+if (existsSync(DIST_DIR)) {
+    app.use(express.static(DIST_DIR));
+    app.get(/^(?!\/api\/).*/, (_req, res) => res.sendFile(join(DIST_DIR, 'index.html')));
+}
 
 // --- Start server & rules engine ---
 

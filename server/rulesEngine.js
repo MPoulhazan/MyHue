@@ -3,10 +3,11 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { dataFile } from './dataDir.js';
 
 dotenv.config();
 
-const RULES_FILE = path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')), 'data', 'rules.json');
+const RULES_FILE = dataFile('rules.json');
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED_USER_IDS = process.env.TELEGRAM_ALLOWED_USER_IDS
     ? process.env.TELEGRAM_ALLOWED_USER_IDS.split(',').map(id => parseInt(id.trim()))

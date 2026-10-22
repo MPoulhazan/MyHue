@@ -1,16 +1,8 @@
 import axios from 'axios';
 import type { HueLightsResponse, LightWithId } from '../types/hue';
 
-const BRIDGE_IP = import.meta.env.VITE_HUE_BRIDGE_IP;
-const USERNAME = import.meta.env.VITE_HUE_USERNAME;
-
-if (!BRIDGE_IP || !USERNAME) {
-  console.warn('⚠️ Hue Bridge IP or Username not configured');
-  console.warn('Please check your .env file');
-}
-
-// Use HTTP for local bridge communication (HTTPS has CORS/cert issues in browser)
-const baseURL = `http://${BRIDGE_IP}/api/${USERNAME}`;
+// Proxy via agentServer (/api/hue -> bridge) : IP et username restent côté serveur
+const baseURL = '/api/hue';
 
 // Create axios instance
 const api = axios.create({

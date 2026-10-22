@@ -4,11 +4,9 @@
  * Le fichier `data/sensors.json` est la source de vérité.
  */
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { dataFile } from './dataDir.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REGISTRY_PATH = join(__dirname, 'data', 'sensors.json');
+const REGISTRY_PATH = dataFile('sensors.json');
 
 export const ICON_MAP = {
     temperature_humidity: '🌡️',

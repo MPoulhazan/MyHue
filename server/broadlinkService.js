@@ -1,10 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { dataFile } from './dataDir.js';
 
 dotenv.config();
 
-const STATE_FILE = path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')), 'data', 'heating-state.json');
+const STATE_FILE = dataFile('heating-state.json');
 
 let device = null;
 let broadlink = null;
