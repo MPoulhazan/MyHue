@@ -15,6 +15,7 @@ import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
 import * as haService from './haService.js';
+import { parseIntent } from './intentParser.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -149,6 +150,28 @@ const getHueContext = async () => {
         }));
 
     return { lights, groups };
+};
+
+// Scènes Hue, en cache 5 min (elles changent rarement)
+let scenesCache = { at: 0, scenes: [] };
+const getHueScenes = async () => {
+    if (!hueBaseUrl) return [];
+    if (Date.now() - scenesCache.at < 5 * 60 * 1000) return scenesCache.scenes;
+    try {
+        const { data } = await hueClient.get('/scenes');
+        const scenes = Object.entries(data)
+            .filter(([_, scene]) => !scene.name?.startsWith('HIDDEN'))
+            .map(([id, scene]) => ({
+                id,
+                name: scene.name,
+                type: scene.type,
+                group: scene.group,
+            }));
+        scenesCache = { at: Date.now(), scenes };
+        return scenes;
+    } catch {
+        return scenesCache.scenes;
+    }
 };
 
 const buildSystemPrompt = (
@@ -360,12 +383,18 @@ const executeActions = async (actions) => {
                     });
                     break;
                 }
-                case 'set_group_state': {
+                case 'set_group_state':
+                case 'set_light_state': {
                     ensureHueConfigured();
-                    await hueClient.put(
-                        `/groups/${action.id}/action`,
-                        action.state || {},
-                    );
+                    const state = { ...(action.state || {}) };
+                    if (Array.isArray(action.rgb)) {
+                        state.xy = rgbToXy(...action.rgb);
+                    }
+                    const path =
+                        action.type === 'set_group_state'
+                            ? `/groups/${action.id}/action`
+                            : `/lights/${action.id}/state`;
+                    await hueClient.put(path, state);
                     results.push({ action, status: 'ok' });
                     break;
                 }
@@ -524,17 +553,38 @@ app.post('/api/agent', async (req, res) => {
             return res.status(400).json({ error: 'Message is required.' });
         }
 
+        const context = await getHueContext();
+        const sensors = await getZigbeeSensors();
+        const heatingState = broadlinkService.getState();
+
+        // Niveau 0 : commande simple comprise sans LLM
+        const scenes = await getHueScenes();
+        const intent = parseIntent(message, {
+            ...context,
+            scenes,
+            sensors,
+            heating: heatingState,
+        });
+        if (intent) {
+            const actionResults = await executeActions(intent.actions);
+            const failed = actionResults.find((r) => r.status === 'error');
+            return res.json({
+                message: failed ? `Échec : ${failed.error}` : intent.message,
+                actions: intent.actions,
+                actionResults,
+                tier: 'local',
+                intent: intent.intent,
+            });
+        }
+
         if (!GROQ_API_KEY) {
             return res.status(503).json({
                 error: 'Groq API key not configured. Add GROQ_API_KEY to .env',
             });
         }
 
-        const context = await getHueContext();
         const castDevices = castService.getDevices();
-        const sensors = await getZigbeeSensors();
         const activeRules = rulesEngine.getRules();
-        const heatingState = broadlinkService.getState();
         const systemPrompt = buildSystemPrompt(
             castDevices,
             sensors,
@@ -583,6 +633,7 @@ app.post('/api/agent', async (req, res) => {
             actions,
             actionResults,
             model: GROQ_MODEL,
+            tier: 'llm',
         });
     } catch (error) {
         const message =
