@@ -12,15 +12,27 @@ import { GoogleHome } from './pages/GoogleHome';
 import { Rules } from './pages/Rules';
 import { Heating } from './pages/Heating';
 import { Privacy } from './pages/Privacy';
+import { Dashboard } from './pages/Dashboard';
 import './App.css';
 
 function App() {
     return (
         <Router>
-            <div className="app">
+            <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="*" element={<Classic />} />
+            </Routes>
+        </Router>
+    );
+}
+
+/** Anciennes pages, avec la navigation et le widget agent. */
+function Classic() {
+    return (
+        <div className="app">
                 <Navigation />
                 <Routes>
-                    <Route path="/" element={<AppLauncher />} />
+                    <Route path="/apps" element={<AppLauncher />} />
                     <Route path="/lights" element={<Home />} />
                     <Route path="/rooms" element={<Rooms />} />
                     <Route path="/scenes" element={<Scenes />} />
@@ -33,8 +45,7 @@ function App() {
                     <Route path="/privacy" element={<Privacy />} />
                 </Routes>
                 <AgentWidget />
-            </div>
-        </Router>
+        </div>
     );
 }
 
