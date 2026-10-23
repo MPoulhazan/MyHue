@@ -53,7 +53,7 @@ const resample = async (pcm: Float32Array, rate: number) => {
     const length = Math.ceil((pcm.length * SAMPLE_RATE) / rate);
     const offline = new OfflineAudioContext(1, length, SAMPLE_RATE);
     const buffer = offline.createBuffer(1, pcm.length, rate);
-    buffer.copyToChannel(pcm, 0);
+    buffer.getChannelData(0).set(pcm);
     const source = offline.createBufferSource();
     source.buffer = buffer;
     source.connect(offline.destination);
