@@ -282,7 +282,7 @@ function VoiceDebug({ voice }: { voice: ReturnType<typeof useVoice> }) {
     const s = voice.listenerRef.current?.stats;
     return (
         <pre style={{ width: '100%', margin: 0, fontSize: 12, opacity: 0.8 }}>
-            {`jarvis=${voice.wakeStatus}${voice.wakeError ? ` (${voice.wakeError})` : ''} blocs=${s?.chunks ?? '-'} niveau=${s ? s.level.toFixed(3) : '-'} score=${s ? s.score.toFixed(2) : '-'} micro=${s?.mic || '-'}
+            {`jarvis=${voice.wakeStatus}${voice.wakeError ? ` (${voice.wakeError})` : ''} blocs=${s?.chunks ?? '-'} niveau=${s ? s.level.toFixed(3) : '-'} score=${s ? s.score.toFixed(2) : '-'} perdus=${s?.dropped ?? '-'} micro=${s?.mic || '-'}
 `}
             {`reco=${voice.supported ? 'ok' : 'indispo'} état=${voice.state} étapes: ${voice.trace.join(' → ') || '-'}`}
         </pre>

@@ -3,9 +3,10 @@
 import * as ort from 'onnxruntime-web/wasm';
 import { WakeWordModel, SAMPLE_RATE, CHUNK } from './wakeWord';
 
-const THRESHOLD = 0.5;
+// 0.5 (défaut openWakeWord) ratait trop de « Hey Jarvis » dits à distance
+const THRESHOLD = 0.3;
 const COOLDOWN_MS = 2000;
-const MAX_QUEUE = 6; // au-delà, l'inférence est trop lente : on repart à zéro
+const MAX_QUEUE = 6; // au-delà, l'inférence est trop lente : on jette les plus anciens
 
 // Ramène le flux micro à SAMPLE_RATE (moyenne par fenêtre) et le découpe en
 // blocs de CHUNK échantillons. Le contexte reste à la fréquence native : un
@@ -55,7 +56,7 @@ export class WakeListener {
     private draining = false;
     private lastHit = 0;
     // Diagnostic (?voicedebug) : blocs reçus, niveau micro et meilleur score récent
-    stats = { chunks: 0, level: 0, score: 0, mic: '' };
+    stats = { chunks: 0, level: 0, score: 0, mic: '', dropped: 0 };
 
     constructor(onWake: () => void) {
         this.onWake = onWake;
@@ -66,7 +67,8 @@ export class WakeListener {
         const model = await loadModel();
         model.reset();
         this.stream = await navigator.mediaDevices.getUserMedia({
-            audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+            // Le débruitage du navigateur déforme la voix : le modèle est entraîné sur de l'audio brut
+            audio: { channelCount: 1, echoCancellation: true, noiseSuppression: false, autoGainControl: true },
         });
         this.stats.mic = this.stream.getAudioTracks()[0]?.label || '?';
         this.ctx = new AudioContext();
@@ -115,10 +117,10 @@ export class WakeListener {
         this.draining = true;
         try {
             while (this.queue.length && this.ctx) {
+                // Sans reset : vider les tampons rendrait le modèle sourd ~2 s
                 if (this.queue.length > MAX_QUEUE) {
-                    this.queue = [];
-                    model.reset();
-                    break;
+                    this.stats.dropped += this.queue.length - 2;
+                    this.queue = this.queue.slice(-2);
                 }
                 const score = await model.process(this.queue.shift()!);
                 this.stats.score = Math.max(score, this.stats.score * 0.98);
