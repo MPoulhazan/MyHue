@@ -19,6 +19,7 @@ import { parseIntent } from './intentParser.js';
 import { runGroqAgent, needsClaude, buildEscalation } from './groqAgent.js';
 import { installAuth, isValidToken, TOKEN, PUBLIC_PORT } from './auth.js';
 import { handleMcpRequest } from './mcpServer.js';
+import { installWakewordRoutes } from './wakewordSamples.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -60,6 +61,7 @@ dotenv.config();
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 installAuth(app, express);
+installWakewordRoutes(app, express);
 
 const PORT = Number(process.env.AGENT_PORT || 5174);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;

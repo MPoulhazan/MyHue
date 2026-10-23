@@ -13,6 +13,7 @@ import { Rules } from './pages/Rules';
 import { Heating } from './pages/Heating';
 import { Privacy } from './pages/Privacy';
 import { Dashboard } from './pages/Dashboard';
+import { WakewordRecorder } from './pages/WakewordRecorder';
 import './App.css';
 
 function App() {
@@ -43,6 +44,7 @@ function Classic() {
                     <Route path="/rules" element={<Rules />} />
                     <Route path="/heating" element={<Heating />} />
                     <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/wakeword" element={<WakewordRecorder />} />
                 </Routes>
                 <AgentWidget />
         </div>

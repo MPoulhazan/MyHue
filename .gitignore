@@ -28,3 +28,6 @@ dist-ssr
 
 # Temp debug files
 *-player-script.js
+
+# Enregistrements vocaux du mot d activation (donnees perso)
+server/data/wakeword/
