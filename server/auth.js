@@ -58,7 +58,9 @@ ${error ? '<p>Token invalide.</p>' : ''}
 </form></body></html>`;
 
 const setSessionCookie = (req, res) => {
-    const secure = req.headers['x-forwarded-proto'] === 'https' || isRemote(req);
+    // Secure seulement en HTTPS : sur http://homeassistant:5174 (Tailscale), le navigateur
+    // jetterait le cookie et renverrait sans fin vers /login
+    const secure = req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.setHeader(
         'Set-Cookie',
         `${COOKIE}=${encodeURIComponent(TOKEN)}; Path=/; Max-Age=${ONE_YEAR_S}; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`,
