@@ -3,6 +3,14 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { dataFile } from './dataDir.js';
 import * as journal from './journal.js';
+import {
+    buildPacket,
+    broadlinkToPulses,
+    pulsesToFrames,
+    decodeState,
+    encodeState,
+    toHex,
+} from './mitsubishiIr.js';
 
 dotenv.config();
 
@@ -45,158 +53,6 @@ const saveState = (state) => {
 
 let currentState = loadState();
 
-// --- Mitsubishi Electric IR Protocol Encoder ---
-// Based on reverse engineering docs: https://www.analysir.com/blog/2015/01/06/reverse-engineering-mitsubishi-ac-infrared-protocol/
-// and IRremoteESP8266 ir_Mitsubishi.cpp
-
-const MODE_MAP = {
-    heat: 0x08,
-    dry: 0x10,
-    cool: 0x18,
-    fan: 0x38,
-    auto: 0x20,
-};
-
-const FAN_MAP = {
-    auto: 0x00,
-    quiet: 0x01,
-    low: 0x02,
-    med: 0x03,
-    high: 0x05,
-};
-
-const VANE_MAP = {
-    auto: 0x00,
-    '1': 0x01,
-    '2': 0x02,
-    '3': 0x03,
-    '4': 0x04,
-    '5': 0x05,
-    swing: 0x07,
-};
-
-const buildMitsubishiPayload = (state) => {
-    const bytes = new Uint8Array(18);
-
-    // Header (fixed for Mitsubishi Electric)
-    bytes[0] = 0x23;
-    bytes[1] = 0xCB;
-    bytes[2] = 0x26;
-    bytes[3] = 0x01;
-    bytes[4] = 0x00;
-
-    // Byte 5: Power + Mode
-    const power = state.power ? 0x20 : 0x00;
-    bytes[5] = power | (MODE_MAP[state.mode] || MODE_MAP.heat);
-
-    // Byte 6: not used in basic commands
-    bytes[6] = 0x00;
-
-    // Byte 7: Temperature (16-31°C mapped to 0x00-0x0F)
-    const temp = Math.max(16, Math.min(31, state.temperature));
-    bytes[7] = temp - 16;
-
-    // Byte 8: Mode setting (same as byte 5 mode bits for some models)
-    bytes[8] = MODE_MAP[state.mode] || MODE_MAP.heat;
-
-    // Byte 9: Fan speed
-    bytes[9] = (FAN_MAP[state.fanSpeed] || FAN_MAP.auto) << 3;
-
-    // Byte 10: Vane vertical
-    bytes[10] = VANE_MAP[state.vaneVertical] || VANE_MAP.auto;
-
-    // Bytes 11-16: Not used (timers, etc.)
-    bytes[11] = 0x00;
-    bytes[12] = 0x00;
-    bytes[13] = 0x00;
-    bytes[14] = 0x00;
-    bytes[15] = 0x00;
-    bytes[16] = 0x00;
-
-    // Byte 17: Checksum (sum of bytes 0-16 mod 256)
-    let checksum = 0;
-    for (let i = 0; i < 17; i++) {
-        checksum += bytes[i];
-    }
-    bytes[17] = checksum & 0xFF;
-
-    return bytes;
-};
-
-// --- Broadlink IR encoding ---
-// Convert Mitsubishi IR data to Broadlink's proprietary format
-// Broadlink uses timing pairs (mark, space) in units of 269µs (1/38kHz * 269)
-
-const TICK = 269; // µs per Broadlink tick (roughly 1/38kHz period)
-
-// Mitsubishi Electric AC timing (µs)
-const HEADER_MARK = 3400;
-const HEADER_SPACE = 1750;
-const BIT_MARK = 450;
-const ONE_SPACE = 1300;
-const ZERO_SPACE = 420;
-const GAP = 17500; // Gap between the two identical frames
-
-const usToTicks = (us) => Math.round(us / TICK);
-
-const encodeForBroadlink = (irBytes) => {
-    // Broadlink packet format:
-    // [0x26, 0x00, length_lo, length_hi, ...timing_data, 0x0D, 0x05]
-    // Timing data: each value is in ticks of ~269µs (38kHz carrier period)
-    // Values > 255 are encoded as: 0x00, hi_byte, lo_byte
-
-    const timings = [];
-
-    // We send the frame twice (as per Mitsubishi protocol)
-    for (let frame = 0; frame < 2; frame++) {
-        // Header
-        timings.push(usToTicks(HEADER_MARK));
-        timings.push(usToTicks(HEADER_SPACE));
-
-        // Data bits (LSB first for each byte)
-        for (let byteIdx = 0; byteIdx < irBytes.length; byteIdx++) {
-            for (let bitIdx = 0; bitIdx < 8; bitIdx++) {
-                const bit = (irBytes[byteIdx] >> bitIdx) & 1;
-                timings.push(usToTicks(BIT_MARK));
-                timings.push(usToTicks(bit ? ONE_SPACE : ZERO_SPACE));
-            }
-        }
-
-        // Footer mark
-        timings.push(usToTicks(BIT_MARK));
-
-        // Gap between frames (only after first frame)
-        if (frame === 0) {
-            timings.push(usToTicks(GAP));
-        }
-    }
-
-    // Encode timings into Broadlink byte array
-    const encoded = [];
-    for (const t of timings) {
-        if (t > 255) {
-            encoded.push(0x00);
-            encoded.push((t >> 8) & 0xFF);
-            encoded.push(t & 0xFF);
-        } else {
-            encoded.push(t);
-        }
-    }
-
-    // Build final packet
-    const len = encoded.length;
-    const packet = Buffer.alloc(6 + len);
-    packet[0] = 0x26; // IR type
-    packet[1] = 0x00; // Repeat: 0
-    packet[2] = len & 0xFF;
-    packet[3] = (len >> 8) & 0xFF;
-    Buffer.from(encoded).copy(packet, 4);
-    packet[4 + len] = 0x0D;
-    packet[4 + len + 1] = 0x05;
-
-    return packet;
-};
-
 // --- Broadlink device communication ---
 
 export const discover = async () => {
@@ -210,14 +66,13 @@ export const discover = async () => {
             }, 10000);
 
             broadlink.on('deviceReady', (dev) => {
-                clearTimeout(timeout);
-                device = dev;
-
                 const ip = process.env.BROADLINK_IP;
                 // If IP is specified, only accept that device
                 if (ip && dev.host?.address !== ip) {
                     return; // Skip, wait for the right one
                 }
+                clearTimeout(timeout);
+                device = dev;
 
                 console.log(`🔌 Broadlink RM4 Mini discovered at ${dev.host?.address}`);
                 resolve(dev);
@@ -246,30 +101,81 @@ export const sendCommand = async (newState) => {
         throw new Error('Broadlink device not connected. Run discovery first.');
     }
 
-    // Build IR payload
-    const irBytes = buildMitsubishiPayload(newState);
-    const broadlinkPacket = encodeForBroadlink(irBytes);
+    // La télécommande transmet aussi son heure : on envoie l'heure locale
+    const packet = buildPacket(newState, localClockMinutes());
+    // sendData renvoie une promesse (pas de callback : l'ancien code restait bloqué)
+    await device.sendData(packet);
 
-    // Send via Broadlink
-    return new Promise((resolve, reject) => {
-        device.sendData(broadlinkPacket, false, (err) => {
-            if (err) {
-                console.error('❌ Failed to send IR command:', err.message);
-                reject(err);
-                return;
-            }
+    // L'infrarouge ne renvoie rien : c'est l'état de la dernière commande envoyée
+    currentState = {
+        ...newState,
+        lastUpdated: new Date().toISOString(),
+    };
+    saveState(currentState);
 
-            // Update persisted state
-            currentState = {
-                ...newState,
-                lastUpdated: new Date().toISOString(),
-            };
-            saveState(currentState);
+    console.log(`🔥 Heating command sent: power=${newState.power}, mode=${newState.mode}, temp=${newState.temperature}°C, fan=${newState.fanSpeed}`);
+    return currentState;
+};
 
-            console.log(`🔥 Heating command sent: power=${newState.power}, mode=${newState.mode}, temp=${newState.temperature}°C, fan=${newState.fanSpeed}`);
-            resolve(currentState);
-        });
+const TZ = process.env.TZ || 'America/Toronto';
+const localClockMinutes = () => {
+    const [h, m] = new Date()
+        .toLocaleTimeString('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })
+        .split(':');
+    return Number(h) * 60 + Number(m);
+};
+
+/**
+ * Mode apprentissage : on vise le Broadlink avec la vraie télécommande et on appuie.
+ * Renvoie la trame captée, décodée, et la comparaison avec ce que MyHue enverrait.
+ * Chaque capture est gardée dans data/ir-learned.json pour analyse.
+ */
+export const learn = async (timeoutMs = 20000) => {
+    if (!device) throw new Error('Broadlink non connecté');
+    const raw = await new Promise((resolve, reject) => {
+        const onData = (data) => {
+            cleanup();
+            resolve(Buffer.from(data));
+        };
+        const poll = setInterval(() => device.checkData(), 1000);
+        const timer = setTimeout(() => {
+            cleanup();
+            device.cancelLearn?.();
+            reject(new Error('Aucun signal reçu (20 s). Vise le Broadlink de près et réessaie.'));
+        }, timeoutMs);
+        const cleanup = () => {
+            clearInterval(poll);
+            clearTimeout(timer);
+            device.removeListener('rawData', onData);
+        };
+        device.on('rawData', onData);
+        device.enterLearning();
     });
+
+    const frames = pulsesToFrames(broadlinkToPulses(raw));
+    const decoded = frames[0] ? decodeState(frames[0]) : null;
+    const ours = decoded ? encodeState(decoded, decoded.clockMinutes) : null;
+    // Octets où notre encodeur diffère de la vraie télécommande
+    const diff = ours && frames[0]
+        ? [...ours].map((b, i) => (b !== frames[0][i] ? i : -1)).filter((i) => i >= 0)
+        : null;
+    const capture = {
+        at: new Date().toISOString(),
+        raw: raw.toString('hex'),
+        frames: frames.map(toHex),
+        decoded,
+        ours: ours ? toHex(ours) : null,
+        diff,
+    };
+
+    const file = dataFile('ir-learned.json');
+    let all = [];
+    try {
+        if (fs.existsSync(file)) all = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    } catch { /* fichier abîmé : on repart à zéro */ }
+    all.push(capture);
+    fs.writeFileSync(file, JSON.stringify(all.slice(-50), null, 2), 'utf-8');
+    return capture;
 };
 
 const MODE_LABELS = { heat: 'chauffage', cool: 'clim', dry: 'déshumidification', fan: 'ventilation', auto: 'auto' };

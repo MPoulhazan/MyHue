@@ -127,6 +127,32 @@ export const Heating = () => {
         }
     };
 
+    // Calibrage : capter une trame de la vraie télécommande et la comparer à la nôtre
+    const [learning, setLearning] = useState(false);
+    const [learnResult, setLearnResult] = useState<string | null>(null);
+    const learnFromRemote = async () => {
+        setLearning(true);
+        setLearnResult(null);
+        try {
+            const { data } = await axios.post('/api/heating/learn', {}, { timeout: 30000 });
+            if (!data.decoded) {
+                setLearnResult(`Signal reçu mais pas reconnu comme Mitsubishi (${data.frames.length} trame(s)). Il est enregistré pour analyse.`);
+            } else {
+                const d = data.decoded;
+                const what = `${d.power ? 'marche' : 'arrêt'}, ${d.mode}, ${d.temperature}°, ventilation ${d.fanSpeed}`;
+                setLearnResult(
+                    data.diff.length === 0
+                        ? `✅ Télécommande captée (${what}) : MyHue envoie exactement la même trame.`
+                        : `⚠️ Télécommande captée (${what}) : écart sur les octets ${data.diff.join(', ')}. Capture enregistrée pour corriger l'encodeur.`,
+                );
+            }
+        } catch (err) {
+            setLearnResult(axios.isAxiosError(err) ? err.response?.data?.error || err.message : 'Échec');
+        } finally {
+            setLearning(false);
+        }
+    };
+
     const togglePower = () => sendControl({ power: !state.power });
     const setMode = (mode: HeatingState['mode']) => sendControl({ mode });
     const setTemp = (delta: number) => {
@@ -181,6 +207,14 @@ export const Heating = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Calibrage infrarouge */}
+            <div className="heating-calibrate">
+                <button onClick={learnFromRemote} disabled={learning || !connected}>
+                    {learning ? '📡 Vise le Broadlink et appuie sur la télécommande…' : '📡 Capter la télécommande'}
+                </button>
+                {learnResult && <p>{learnResult}</p>}
+            </div>
 
             {/* Thermostat */}
             <motion.div

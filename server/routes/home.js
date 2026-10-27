@@ -28,6 +28,15 @@ router.post('/api/heating/control', async (req, res) => {
     }
 });
 
+// Capte une trame de la vraie télécommande (pointer le Broadlink et appuyer dans les 20 s)
+router.post('/api/heating/learn', async (_req, res) => {
+    try {
+        res.json(await broadlinkService.learn());
+    } catch (error) {
+        res.status(500).json({ error: error?.message || 'Apprentissage impossible' });
+    }
+});
+
 router.post('/api/heating/discover', async (_req, res) => {
     try {
         await broadlinkService.discover();
