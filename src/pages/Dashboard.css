@@ -19,6 +19,9 @@
     --h-cool-text: #a9c9ff;
     --h-warn: #ffb547;
 
+    /* Au-dessus de la trame et du halo de body::before/::after (thème des anciennes pages) */
+    position: relative;
+    z-index: 1;
     min-height: 100vh;
     min-height: 100dvh;
     box-sizing: border-box;

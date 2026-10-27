@@ -12,6 +12,7 @@ import * as haService from '../haService.js';
 import * as journal from '../journal.js';
 import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
 import * as moments from '../moments.js';
+import * as presence from '../presence.js';
 
 export const router = express.Router();
 
@@ -286,6 +287,12 @@ router.get('/api/journal/stream', (req, res) => {
 `);
     journal.emitter.on('entry', send);
     req.on('close', () => journal.emitter.off('entry', send));
+});
+
+// --- Présence (HA Companion) ---
+
+router.get('/api/presence', (_req, res) => {
+    res.json({ anyoneHome: presence.anyoneHome(), people: presence.getPeople() });
 });
 
 // --- Moments (Cinéma, Dodo, Je pars...) ---

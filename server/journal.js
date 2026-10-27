@@ -36,7 +36,7 @@ const scheduleSave = () => {
 /**
  * Ajoute une entrée.
  * @param {object} e
- * @param {'door'|'heating'|'automation'|'companion'|'agent'|'sensor'|'system'} e.kind
+ * @param {'door'|'heating'|'automation'|'companion'|'agent'|'sensor'|'presence'|'system'} e.kind
  * @param {string} e.title  phrase courte affichée telle quelle
  * @param {object} [e.data] détails structurés (capteur, valeurs...)
  */
