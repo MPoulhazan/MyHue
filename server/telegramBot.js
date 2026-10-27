@@ -138,17 +138,16 @@ bot.onText(/\/rules/, async (msg) => {
         const rules = response.data;
 
         if (rules.length === 0) {
-            bot.sendMessage(chatId, '📋 Aucune règle de notification active.\n\nDis-moi par exemple : "Préviens-moi si la température dépasse 25°C"');
+            bot.sendMessage(chatId, '📋 Aucun automatisme.\n\nDis-moi par exemple : "Préviens-moi si la porte du balcon reste ouverte 10 minutes"');
             return;
         }
 
-        let text = `📋 Règles de notification (${rules.length})\n\n`;
+        let text = `📋 Automatismes (${rules.length})\n\n`;
         rules.forEach((rule, i) => {
             const status = rule.enabled ? '✅' : '⏸️';
             const triggers = rule.triggerCount > 0 ? ` (${rule.triggerCount}x)` : '';
             text += `${status} ${i + 1}. ${rule.name}${triggers}\n`;
-            text += `   ${rule.sensorName} — ${rule.condition.property} ${rule.condition.operator} ${rule.condition.value ?? ''}\n`;
-            text += `   ${rule.message}\n\n`;
+            text += `   ${rule.summary}\n\n`;
         });
         text += `Pour supprimer : /delrule <numéro>`;
 
@@ -193,6 +192,31 @@ bot.onText(/\/delrule\s+(.+)/, async (msg, match) => {
         bot.sendMessage(chatId, '✅ Règle supprimée !');
     } catch (error) {
         bot.sendMessage(chatId, '❌ Erreur lors de la suppression.');
+    }
+});
+
+// Boutons des notifications (couper la clim, ignorer...) : exécutés par le serveur
+bot.on('callback_query', async (query) => {
+    const userId = query.from?.id;
+    if (!checkAccess(userId, query.from?.username || query.from?.first_name || 'Unknown')) {
+        bot.answerCallbackQuery(query.id, { text: '🚫 Accès refusé.' });
+        return;
+    }
+    let result;
+    try {
+        const response = await axios.post(`${AGENT_API_URL}/api/notify/callback`, { data: query.data });
+        result = response.data;
+    } catch {
+        result = { ok: false, text: 'Serveur MyHue injoignable.' };
+    }
+    bot.answerCallbackQuery(query.id, { text: result.text });
+    // Retire les boutons et garde une trace du choix sous le message
+    if (query.message) {
+        const note = result.ok ? `\n\n✅ ${result.label} : ${result.text}` : `\n\n⚠️ ${result.text}`;
+        bot.editMessageText(query.message.text + note, {
+            chat_id: query.message.chat.id,
+            message_id: query.message.message_id,
+        }).catch(() => {});
     }
 });
 

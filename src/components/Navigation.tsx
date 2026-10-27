@@ -36,7 +36,7 @@ const MENU_ITEMS: MenuItem[] = [
         icon: 'cast',
         label: 'Cast & capteurs',
     },
-    { key: 'rules', path: '/rules', icon: 'rules', label: 'Règles' },
+    { key: 'rules', path: '/rules', icon: 'rules', label: 'Automatismes' },
     { key: 'heating', path: '/heating', icon: 'heating', label: 'Chauffage' },
 ];
 

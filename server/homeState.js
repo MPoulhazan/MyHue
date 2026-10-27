@@ -3,7 +3,7 @@
  * Une panne Hue ne doit pas masquer le reste.
  */
 import * as castService from './castService.js';
-import * as rulesEngine from './rulesEngine.js';
+import * as automations from './automations.js';
 import * as broadlinkService from './broadlinkService.js';
 import { getHueContext, getHueScenes } from './hue.js';
 import * as journal from './journal.js';
@@ -30,7 +30,7 @@ export const getHomeState = async () => {
         scenes: scenes.map(({ id, name, group }) => ({ id, name, group })),
         cast: castService.getDevices(),
         sensors,
-        rules: rulesEngine.getRules(),
+        rules: automations.getForAgent(),
         heating: broadlinkService.getState(),
         outdoor,
         recentEvents: recentEvents(),

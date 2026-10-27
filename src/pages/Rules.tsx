@@ -3,141 +3,129 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import './Rules.css';
 
-interface RuleCondition {
-    property: string;
-    operator: string;
-    value: number | null;
-}
-
-interface Rule {
+interface Automation {
     id: string;
     name: string;
-    sensorDid: string;
-    sensorName: string;
-    condition: RuleCondition;
-    message: string;
-    cooldownMinutes: number;
+    template: string | null;
     enabled: boolean;
-    createdAt: string;
+    summary: string;
+    trigger: { prop: string; did: string };
     lastTriggeredAt: string | null;
     triggerCount: number;
 }
 
-const OPERATOR_LABELS: Record<string, string> = {
-    gt: '>',
-    lt: '<',
-    gte: '>=',
-    lte: '<=',
-    eq: '=',
-    neq: '!=',
-    is_true: 'est vrai',
-    is_false: 'est faux',
-};
+interface Template {
+    id: string;
+    label: string;
+    description: string;
+    sensorType: string | null;
+}
 
-const PROPERTY_LABELS: Record<string, string> = {
-    temperature: 'Température',
-    humidity: 'Humidité',
-    isOpen: 'Ouverture',
-    smokeDetected: 'Fumée',
-    leakDetected: 'Fuite',
-};
+interface Sensor {
+    did: string;
+    name: string;
+    type: string;
+}
 
-const PROPERTY_UNITS: Record<string, string> = {
-    temperature: '°C',
-    humidity: '%',
-};
-
-const SENSOR_ICONS: Record<string, string> = {
+const ICONS: Record<string, string> = {
+    isOpen: '🚪',
     temperature: '🌡',
     humidity: '💧',
-    isOpen: '🚪',
-    smokeDetected: '🔥',
-    leakDetected: '💧',
-};
-
-const formatCondition = (condition: RuleCondition) => {
-    const label = PROPERTY_LABELS[condition.property] || condition.property;
-    const op = OPERATOR_LABELS[condition.operator] || condition.operator;
-    const unit = PROPERTY_UNITS[condition.property] || '';
-
-    if (condition.operator === 'is_true' || condition.operator === 'is_false') {
-        return `${label} ${op}`;
-    }
-    return `${label} ${op} ${condition.value}${unit}`;
+    battery: '🔋',
+    silentHours: '📡',
 };
 
 const formatTimeAgo = (isoDate: string) => {
-    const diff = Date.now() - new Date(isoDate).getTime();
-    const minutes = Math.floor(diff / 60000);
+    const minutes = Math.floor((Date.now() - new Date(isoDate).getTime()) / 60000);
     if (minutes < 1) return "à l'instant";
-    if (minutes < 60) return `il y a ${minutes}min`;
+    if (minutes < 60) return `il y a ${minutes} min`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `il y a ${hours}h`;
-    const days = Math.floor(hours / 24);
-    return `il y a ${days}j`;
+    if (hours < 24) return `il y a ${hours} h`;
+    return `il y a ${Math.floor(hours / 24)} j`;
 };
 
 export const Rules = () => {
-    const [rules, setRules] = useState<Rule[]>([]);
+    const [automations, setAutomations] = useState<Automation[]>([]);
+    const [templates, setTemplates] = useState<Template[]>([]);
+    const [doors, setDoors] = useState<Sensor[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadRules();
-    }, []);
-
-    const loadRules = async () => {
+    const load = async () => {
         try {
             setError(null);
-            const { data } = await axios.get('/api/rules');
-            setRules(data);
+            const [a, t, s] = await Promise.all([
+                axios.get('/api/automations'),
+                axios.get('/api/automations/templates'),
+                axios.get('/api/sensors'),
+            ]);
+            setAutomations(a.data.automations);
+            setTemplates(t.data.templates);
+            setDoors((s.data.sensors as Sensor[]).filter((x) => x.type === 'door'));
         } catch {
-            setError('Erreur lors du chargement des règles');
+            setError('Erreur lors du chargement des automatismes');
         } finally {
             setLoading(false);
         }
     };
 
-    const toggleRule = async (id: string) => {
+    useEffect(() => {
+        load();
+    }, []);
+
+    const toggle = async (id: string) => {
         try {
-            const { data } = await axios.patch(`/api/rules/${id}/toggle`);
-            setRules(prev => prev.map(r => r.id === id ? data : r));
+            const { data } = await axios.patch(`/api/automations/${id}/toggle`);
+            setAutomations((prev) => prev.map((a) => (a.id === id ? data : a)));
         } catch {
             setError('Erreur lors de la modification');
         }
     };
 
-    const deleteRule = async (id: string) => {
+    const remove = async (id: string) => {
         try {
-            await axios.delete(`/api/rules/${id}`);
-            setRules(prev => prev.filter(r => r.id !== id));
+            await axios.delete(`/api/automations/${id}`);
+            setAutomations((prev) => prev.filter((a) => a.id !== id));
         } catch {
             setError('Erreur lors de la suppression');
         }
     };
 
+    const add = async (template: string, did?: string) => {
+        try {
+            await axios.post('/api/automations', { template, params: did ? { did } : {} });
+            load();
+        } catch {
+            setError("Impossible d'ajouter cet automatisme");
+        }
+    };
+
+    // Modèles pas encore utilisés ; ceux liés aux portes se proposent porte par porte
+    const suggestions = templates.flatMap((t): { t: Template; did?: string; label: string }[] => {
+        const used = automations.filter((a) => a.template === t.id);
+        if (t.sensorType !== 'door') return used.length ? [] : [{ t, did: undefined, label: t.label }];
+        return doors
+            .filter((d) => !used.some((a) => a.trigger.did === d.did || a.trigger.did === '*'))
+            .map((d) => ({ t, did: d.did, label: `${t.label} · ${d.name}` }));
+    });
+
     return (
         <div className="rules-container">
             <div className="rules-header">
                 <div>
-                    <h1>Règles de notification</h1>
+                    <h1>Automatismes</h1>
                     <p className="subtitle">
-                        {rules.length > 0
-                            ? `${rules.filter(r => r.enabled).length} règle(s) active(s) sur ${rules.length}`
-                            : 'Aucune règle configurée'}
+                        {automations.length > 0
+                            ? `${automations.filter((a) => a.enabled).length} actif(s) sur ${automations.length}`
+                            : 'Aucun automatisme'}
                     </p>
                 </div>
-                <button className="rules-refresh" onClick={loadRules}>↻</button>
+                <button className="rules-refresh" onClick={load}>↻</button>
             </div>
 
             <AnimatePresence mode="wait">
                 {error && (
-                    <motion.div
-                        className="rules-error"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                    >
+                    <motion.div className="rules-error" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                         {error}
                     </motion.div>
                 )}
@@ -146,88 +134,71 @@ export const Rules = () => {
             {loading && (
                 <div className="rules-loading">
                     <div className="spinner" />
-                    <p>Chargement des règles...</p>
+                    <p>Chargement…</p>
                 </div>
             )}
 
-            {!loading && rules.length === 0 && (
-                <motion.div
-                    className="rules-empty"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                >
-                    <div className="rules-empty-icon">🔔</div>
-                    <h2>Aucune règle de notification</h2>
-                    <p>Demande à l'assistant IA de créer des alertes :</p>
-                    <ul>
-                        <li>"Préviens-moi si la température dépasse 26°C"</li>
-                        <li>"Alerte-moi quand la porte d'entrée s'ouvre"</li>
-                        <li>"Notifie-moi si de la fumée est détectée"</li>
-                        <li>"Préviens-moi en cas de fuite d'eau"</li>
-                    </ul>
-                </motion.div>
-            )}
-
             <div className="rules-grid">
-                {rules.map((rule, index) => (
+                {automations.map((a, index) => (
                     <motion.div
-                        key={rule.id}
-                        className={`rule-card ${rule.enabled ? '' : 'disabled'}`}
+                        key={a.id}
+                        className={`rule-card ${a.enabled ? '' : 'disabled'}`}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ delay: index * 0.05 }}
-                        whileHover={{ scale: 1.02 }}
+                        transition={{ delay: index * 0.04 }}
                     >
                         <div className="rule-card-header">
-                            <span className="rule-icon">
-                                {SENSOR_ICONS[rule.condition.property] || '📋'}
-                            </span>
+                            <span className="rule-icon">{ICONS[a.trigger.prop] || '⚙️'}</span>
                             <div className="rule-title-area">
-                                <h3>{rule.name}</h3>
-                                <span className="rule-sensor">{rule.sensorName}</span>
+                                <h3>{a.name}</h3>
                             </div>
                             <label className="rule-toggle">
-                                <input
-                                    type="checkbox"
-                                    checked={rule.enabled}
-                                    onChange={() => toggleRule(rule.id)}
-                                />
+                                <input type="checkbox" checked={a.enabled} onChange={() => toggle(a.id)} />
                                 <span className="toggle-slider" />
                             </label>
                         </div>
-
-                        <div className="rule-condition">
-                            {formatCondition(rule.condition)}
-                        </div>
-
-                        <div className="rule-message">
-                            💬 {rule.message}
-                        </div>
-
+                        <div className="rule-condition">{a.summary}</div>
                         <div className="rule-footer">
                             <div className="rule-meta">
-                                <span className="rule-cooldown">⏱ {rule.cooldownMinutes}min</span>
-                                {rule.triggerCount > 0 && (
-                                    <span className="rule-triggers">
-                                        🔔 {rule.triggerCount}x
-                                        {rule.lastTriggeredAt && (
-                                            <> · {formatTimeAgo(rule.lastTriggeredAt)}</>
-                                        )}
-                                    </span>
+                                {a.triggerCount > 0 && a.lastTriggeredAt ? (
+                                    <span>🔔 {a.triggerCount}× · {formatTimeAgo(a.lastTriggeredAt)}</span>
+                                ) : (
+                                    <span>Jamais déclenché</span>
                                 )}
                             </div>
-                            <button
-                                className="rule-delete"
-                                onClick={() => deleteRule(rule.id)}
-                                title="Supprimer"
-                            >
-                                🗑
-                            </button>
+                            <button className="rule-delete" onClick={() => remove(a.id)} title="Supprimer">🗑</button>
                         </div>
                     </motion.div>
                 ))}
             </div>
+
+            {suggestions.length > 0 && (
+                <>
+                    <h2 className="rules-suggest-title">Suggestions</h2>
+                    <div className="rules-grid">
+                        {suggestions.map(({ t, did, label }) => (
+                            <div key={`${t.id}-${did ?? ''}`} className="rule-card disabled">
+                                <div className="rule-card-header">
+                                    <div className="rule-title-area">
+                                        <h3>{label}</h3>
+                                    </div>
+                                </div>
+                                <div className="rule-message">{t.description}</div>
+                                <div className="rule-footer">
+                                    <span />
+                                    <button className="rules-refresh" onClick={() => add(t.id, did)}>+ Activer</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {!loading && (
+                <p className="subtitle" style={{ marginTop: 24 }}>
+                    Tu peux aussi demander à l’agent : « Préviens-moi si la température du salon passe sous 18° ».
+                </p>
+            )}
         </div>
     );
 };

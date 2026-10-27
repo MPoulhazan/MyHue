@@ -4,7 +4,7 @@
 import express from 'express';
 import axios from 'axios';
 import * as castService from '../castService.js';
-import * as rulesEngine from '../rulesEngine.js';
+import * as automations from '../automations.js';
 import * as broadlinkService from '../broadlinkService.js';
 import { parseIntent } from '../intentParser.js';
 import { runGroqAgent, needsClaude, buildEscalation } from '../groqAgent.js';
@@ -118,7 +118,7 @@ router.post('/api/agent', async (req, res) => {
                     scenes: scenes.map(({ id, name, group }) => ({ id, name, group })),
                     cast: castService.getDevices(),
                     sensors,
-                    rules: rulesEngine.getRules(),
+                    rules: automations.getForAgent(),
                     heating: heatingState,
                     outdoor: await getOutdoorWeather(),
                     recentEvents: recentEvents(),

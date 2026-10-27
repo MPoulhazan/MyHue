@@ -3,7 +3,7 @@
  * Point d'entrée commun : parser local, agent Groq, MCP, automatismes.
  */
 import * as castService from './castService.js';
-import * as rulesEngine from './rulesEngine.js';
+import * as automations from './automations.js';
 import * as broadlinkService from './broadlinkService.js';
 import { hueClient, ensureHueConfigured, clamp, rgbToXy, getHueScenes } from './hue.js';
 import { getYtDlpAudioUrl } from './ytdlp.js';
@@ -102,9 +102,9 @@ const runAction = async (action, source) => {
             return { action: { ...action, level }, result };
         }
 
-        // Règles de notification
+        // Automatismes (« règles » côté agent)
         case 'create_rule': {
-            const rule = rulesEngine.addRule({
+            const rule = automations.addRule({
                 name: action.name,
                 sensorDid: action.sensorDid,
                 sensorName: action.sensorName,
@@ -113,11 +113,12 @@ const runAction = async (action, source) => {
                 value: action.value,
                 message: action.message,
                 cooldownMinutes: action.cooldownMinutes || 30,
+                forMinutes: action.forMinutes || 0,
             });
             return { action, result: { ruleId: rule.id, name: rule.name } };
         }
         case 'delete_rule':
-            if (!rulesEngine.deleteRule(action.ruleId)) {
+            if (!automations.remove(action.ruleId)) {
                 throw new Error(`Règle non trouvée: ${action.ruleId}`);
             }
             return { action };

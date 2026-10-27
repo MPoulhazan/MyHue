@@ -108,6 +108,7 @@ export const TOOLS = [
             message: { type: 'string' },
             name: { type: 'string' },
             cooldown_minutes: { type: 'number' },
+            for_minutes: { type: 'number', description: 'Durée minimale de la condition avant d’alerter (ex. porte ouverte depuis 10 min)' },
         },
         ['sensor_did', 'property', 'operator', 'message', 'name'],
     ),
@@ -196,6 +197,7 @@ export const toolCallToActions = (name, args) => {
                     message: args.message,
                     name: args.name,
                     cooldownMinutes: args.cooldown_minutes || 30,
+                    forMinutes: args.for_minutes || 0,
                 },
             ];
         case 'delete_notification_rule':

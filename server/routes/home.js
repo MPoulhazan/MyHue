@@ -2,7 +2,8 @@
  * Maison : chauffage, capteurs Zigbee (registre, appairage, flux SSE), règles, Home Assistant.
  */
 import express from 'express';
-import * as rulesEngine from '../rulesEngine.js';
+import * as automations from '../automations.js';
+import * as notifier from '../notifier.js';
 import * as broadlinkService from '../broadlinkService.js';
 import * as zigbeeService from '../zigbeeService.js';
 import * as sensorRegistry from '../sensorRegistry.js';
@@ -35,23 +36,54 @@ router.post('/api/heating/discover', async (_req, res) => {
     }
 });
 
-// --- Règles ---
+// --- Automatismes (ex « règles ») ---
 
-router.get('/api/rules', (_req, res) => {
-    res.json(rulesEngine.getRules());
+router.get('/api/automations', (_req, res) => {
+    res.json({ automations: automations.getAll() });
 });
 
-router.delete('/api/rules/:id', (req, res) => {
-    if (!rulesEngine.deleteRule(req.params.id)) {
-        return res.status(404).json({ error: 'Rule not found' });
+router.get('/api/automations/templates', (_req, res) => {
+    res.json({
+        templates: Object.entries(automations.TEMPLATES).map(([id, t]) => ({
+            id,
+            label: t.label,
+            description: t.description,
+            sensorType: t.sensorType || null,
+        })),
+    });
+});
+
+// { template, params: { did, minutes... } }
+router.post('/api/automations', (req, res) => {
+    try {
+        const { template, params } = req.body || {};
+        res.json(automations.createFromTemplate(template, params || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
     }
+});
+
+router.delete('/api/automations/:id', (req, res) => {
+    if (!automations.remove(req.params.id)) return res.status(404).json({ error: 'Automatisme introuvable' });
     res.json({ ok: true });
 });
 
-router.patch('/api/rules/:id/toggle', (req, res) => {
-    const rule = rulesEngine.toggleRule(req.params.id);
-    if (!rule) return res.status(404).json({ error: 'Rule not found' });
-    res.json(rule);
+router.patch('/api/automations/:id/toggle', (req, res) => {
+    const a = automations.toggle(req.params.id);
+    if (!a) return res.status(404).json({ error: 'Automatisme introuvable' });
+    res.json(a);
+});
+
+// Ancien nom, encore utilisé par le bot Telegram
+router.get('/api/rules', (_req, res) => res.json(automations.getAll()));
+router.delete('/api/rules/:id', (req, res) => {
+    if (!automations.remove(req.params.id)) return res.status(404).json({ error: 'Rule not found' });
+    res.json({ ok: true });
+});
+
+// Clic sur un bouton d'une notification Telegram (relayé par telegramBot.js)
+router.post('/api/notify/callback', async (req, res) => {
+    res.json(await notifier.handleCallback(req.body?.data));
 });
 
 // --- Capteurs ---

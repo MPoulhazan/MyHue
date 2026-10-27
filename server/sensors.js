@@ -128,7 +128,9 @@ export const getSensorHistory = async (nameOrIeee, hours = 24) => {
             if (last && last.ts === ev.ts) Object.assign(last, current);
             else points.push({ ts: ev.ts, ...current });
         }
-        return { source: 'ha', points };
+        // Nombre de points bruts par entité : diagnostic quand la fusion revient vide
+        const raw = { keys: Object.keys(series), ...Object.fromEntries(ids.map((id) => [id, series[id]?.length ?? 0])) };
+        return points.length ? { source: 'ha', points } : { source: 'ha', points, raw };
     } catch (err) {
         const detail = err.response ? `HTTP ${err.response.status}` : err.message;
         console.warn('[Sensors] Historique HA indisponible:', detail);
