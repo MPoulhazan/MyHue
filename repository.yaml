@@ -1,0 +1,4 @@
+# Dépôt d'add-ons Home Assistant : HA → Modules complémentaires → Boutique → ⋮ → Dépôts
+name: MyHue
+url: https://github.com/MPoulhazan/MyHue
+maintainer: Mickael POULHAZAN
