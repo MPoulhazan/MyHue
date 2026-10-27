@@ -4,6 +4,7 @@
 import express from 'express';
 import * as automations from '../automations.js';
 import * as notifier from '../notifier.js';
+import * as companion from '../companion.js';
 import * as broadlinkService from '../broadlinkService.js';
 import * as zigbeeService from '../zigbeeService.js';
 import * as sensorRegistry from '../sensorRegistry.js';
@@ -79,6 +80,15 @@ router.get('/api/rules', (_req, res) => res.json(automations.getAll()));
 router.delete('/api/rules/:id', (req, res) => {
     if (!automations.remove(req.params.id)) return res.status(404).json({ error: 'Rule not found' });
     res.json({ ok: true });
+});
+
+// Ce que le compagnon remarque en ce moment (sans rien envoyer) et sa sensibilité apprise
+router.get('/api/companion', async (_req, res) => {
+    try {
+        res.json(await companion.inspect());
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Clic sur un bouton d'une notification Telegram (relayé par telegramBot.js)

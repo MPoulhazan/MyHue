@@ -28,8 +28,9 @@ export const isConfigured = () => Boolean(TOKEN && USER_IDS.length);
  * @param {object} n
  * @param {string} n.text  message en texte brut
  * @param {{ label: string, run: () => Promise<string> }[]} [n.buttons]
+ * @param {boolean} [n.silent]  sans son ni vibration (information, pas une alerte)
  */
-export const notify = async ({ text, buttons = [] }) => {
+export const notify = async ({ text, buttons = [], silent = false }) => {
     if (!isConfigured()) {
         console.warn('⚠️  Notification non envoyée (Telegram non configuré):', text);
         return false;
@@ -50,6 +51,7 @@ export const notify = async ({ text, buttons = [] }) => {
                 chat_id,
                 text,
                 reply_markup,
+                disable_notification: silent,
             });
             sent = true;
         } catch (err) {

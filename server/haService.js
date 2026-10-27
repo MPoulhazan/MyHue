@@ -56,28 +56,61 @@ export async function callService(domain, service, serviceData = {}) {
     return data;
 }
 
+/**
+ * Une commande WebSocket HA (connexion courte). L'historique revient vide via le proxy
+ * REST du Supervisor dans l'add-on ; la WebSocket, elle, marche partout.
+ */
+export function wsCommand(message, timeoutMs = 15000) {
+    ensureConfigured();
+    // Add-on : http://supervisor/core → ws://supervisor/core/websocket ; sinon /api/websocket
+    const base = HA_URL.replace(/^http/, 'ws');
+    const url = /\/core$/.test(HA_URL) ? `${base}/websocket` : `${base}/api/websocket`;
+    return new Promise((resolve, reject) => {
+        const ws = new WebSocket(url);
+        const timer = setTimeout(() => {
+            ws.close();
+            reject(new Error('WebSocket HA : délai dépassé'));
+        }, timeoutMs);
+        const done = (fn, value) => {
+            clearTimeout(timer);
+            ws.close();
+            fn(value);
+        };
+        ws.onmessage = (ev) => {
+            const m = JSON.parse(ev.data);
+            if (m.type === 'auth_required') ws.send(JSON.stringify({ type: 'auth', access_token: HA_TOKEN }));
+            else if (m.type === 'auth_ok') ws.send(JSON.stringify({ id: 1, ...message }));
+            else if (m.type === 'auth_invalid') done(reject, new Error('WebSocket HA : jeton refusé'));
+            else if (m.id === 1) {
+                if (m.success) done(resolve, m.result);
+                else done(reject, new Error(m.error?.message || 'commande HA refusée'));
+            }
+        };
+        ws.onerror = () => done(reject, new Error('WebSocket HA injoignable'));
+    });
+}
+
 /** Historique de plusieurs entités en un appel : { entity_id: [{ ts, value }] }. */
 export async function getHistoryMulti(entityIds, hours = 24) {
-    ensureConfigured();
     if (entityIds.length === 0) return {};
-    const start = new Date(Date.now() - hours * 3600 * 1000).toISOString();
-    const { data } = await client.get(`/history/period/${start}`, {
-        params: {
-            filter_entity_id: entityIds.join(','),
-            minimal_response: true,
-            no_attributes: true,
-        },
+    const result = await wsCommand({
+        type: 'history/history_during_period',
+        start_time: new Date(Date.now() - hours * 3600 * 1000).toISOString(),
+        entity_ids: entityIds,
+        minimal_response: true,
+        no_attributes: true,
+        significant_changes_only: false,
     });
-    const result = {};
-    for (const series of data) {
-        if (!series.length) continue;
-        // minimal_response : seul le premier point porte entity_id
-        result[series[0].entity_id] = series.map((p) => ({
-            ts: new Date(p.last_changed).getTime(),
-            value: isNaN(Number(p.state)) ? p.state : Number(p.state),
-        }));
-    }
-    return result;
+    // Format compact : { entity_id: [{ s: état, lu: secondes epoch }] }
+    return Object.fromEntries(
+        Object.entries(result).map(([id, points]) => [
+            id,
+            points.map((p) => ({
+                ts: Math.round((p.lu ?? p.lc) * 1000),
+                value: isNaN(Number(p.s)) ? p.s : Number(p.s),
+            })),
+        ]),
+    );
 }
 
 /** Météo extérieure (intégration météo par défaut de HA). */

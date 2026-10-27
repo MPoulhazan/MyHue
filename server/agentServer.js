@@ -7,6 +7,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import * as automations from './automations.js';
+import * as companion from './companion.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
 import { installAuth, TOKEN, PUBLIC_PORT } from './auth.js';
@@ -44,6 +45,7 @@ app.listen(PORT, () => {
     console.log(`🤖 MyHue agent server running on http://localhost:${PORT}`);
     console.log(`Using Groq with model: ${GROQ_MODEL}`);
     automations.start(getSensors);
+    companion.start(getSensors);
     broadlinkService.discover().catch((err) => console.warn('⚠️  Broadlink:', err.message));
     zigbeeService.start().catch((err) => console.warn('⚠️  Zigbee:', err.message));
 });

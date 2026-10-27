@@ -2,7 +2,6 @@
  * Agent conversationnel (/api/agent) et serveur MCP (/mcp).
  */
 import express from 'express';
-import axios from 'axios';
 import * as castService from '../castService.js';
 import * as automations from '../automations.js';
 import * as broadlinkService from '../broadlinkService.js';
@@ -15,18 +14,9 @@ import * as journal from '../journal.js';
 import { getSensors, getOutdoorWeather } from '../sensors.js';
 import { getHomeState, recentEvents } from '../homeState.js';
 import { executeActions } from '../actions.js';
+import { groqClient, GROQ_API_KEY, GROQ_MODEL } from '../llm.js';
 
-export const GROQ_API_KEY = process.env.GROQ_API_KEY;
-export const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
-
-const groqClient = axios.create({
-    baseURL: 'https://api.groq.com/openai/v1',
-    headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-    },
-    timeout: 30000,
-});
+export { GROQ_MODEL };
 
 export const router = express.Router();
 
