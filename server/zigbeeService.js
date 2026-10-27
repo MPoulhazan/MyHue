@@ -1,47 +1,19 @@
 /**
- * Zigbee Service - Sonoff USB Dongle (COM3)
- * Architecture: aedes (broker MQTT embarqué) + zigbee2mqtt (subprocess)
+ * Zigbee Service : client MQTT de zigbee2mqtt (add-on Home Assistant, broker Mosquitto).
+ * Config : ZIGBEE_MQTT_URL=mqtt://127.0.0.1:1883, ZIGBEE_MQTT_USER, ZIGBEE_MQTT_PASS
  */
 
 import 'dotenv/config';
-import { createServer } from 'net';
-import { spawn, execFile } from 'child_process';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { existsSync } from 'fs';
 import { EventEmitter } from 'events';
 import mqtt from 'mqtt';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
 export const emitter = new EventEmitter();
 
-const MQTT_PORT = 1883;
-const Z2M_DATA = resolve(__dirname, 'data/z2m');
-const Z2M_BIN = resolve(__dirname, '../node_modules/zigbee2mqtt/index.js');
-const Z2M_NO_GIT = resolve(__dirname, '.no-git');
-const ZIGBEE_PORT = process.env.ZIGBEE_PORT || 'COM3';
-// Mode distant (Home Assistant) : Z2M tourne en add-on sur le Pi,
-// on se connecte simplement à son broker Mosquitto.
-// ex: ZIGBEE_MQTT_URL=mqtt://homeassistant.local:1883
-const REMOTE_MQTT_URL = process.env.ZIGBEE_MQTT_URL || null;
-const REMOTE_MQTT_USER = process.env.ZIGBEE_MQTT_USER || undefined;
-const REMOTE_MQTT_PASS = process.env.ZIGBEE_MQTT_PASS || undefined;
-const BOOTLOADER_EXIT_SCRIPT = resolve(
-    __dirname,
-    '../scripts/exit-bootloader.py',
-);
+const MQTT_URL = process.env.ZIGBEE_MQTT_URL || null;
+const MQTT_USER = process.env.ZIGBEE_MQTT_USER || undefined;
+const MQTT_PASS = process.env.ZIGBEE_MQTT_PASS || undefined;
 
-// Python executable paths to try (Windows + Linux/Mac)
-const PYTHON_CANDIDATES = [
-    'C:\\Users\\mp041\\AppData\\Local\\Programs\\Python\\Python311\\python.exe',
-    'python3',
-    'python',
-];
-
-let mqttServer = null; // net.Server
-let z2mProcess = null; // child process
-let mqttClient = null; // mqtt subscriber client
+let mqttClient = null;
 let running = false;
 
 // devices[friendlyName] = { friendlyName, ieeeAddr, model, state, lastSeen }
@@ -56,183 +28,33 @@ const history = {};
 const MAX_HISTORY_POINTS = 500; // ~24h at 5min intervals
 const HISTORY_TTL_MS = 24 * 60 * 60 * 1000; // 24 heures
 
-/** Try to exit the Gecko bootloader before z2m connects to the NCP. */
-async function exitBootloaderIfNeeded() {
-    return new Promise((res) => {
-        // Find a working Python binary
-        let pythonBin = null;
-        for (const candidate of PYTHON_CANDIDATES) {
-            // For absolute paths, check existence; for shell commands, just try
-            if (candidate.includes('\\') || candidate.includes('/')) {
-                if (existsSync(candidate)) {
-                    pythonBin = candidate;
-                    break;
-                }
-            } else {
-                pythonBin = candidate;
-                break;
-            }
-        }
-        if (!pythonBin) {
-            console.warn(
-                '[Zigbee] Python not found, skipping bootloader check',
-            );
-            return res();
-        }
-
-        console.log(
-            `[Zigbee] Checking NCP bootloader state on ${ZIGBEE_PORT}...`,
-        );
-        const proc = execFile(
-            pythonBin,
-            [BOOTLOADER_EXIT_SCRIPT, ZIGBEE_PORT],
-            {
-                timeout: 8000,
-            },
-            (err, stdout, stderr) => {
-                if (stdout) process.stdout.write(stdout);
-                if (stderr) process.stderr.write(stderr);
-                if (err && err.code !== 0) {
-                    console.warn(
-                        '[Zigbee] Bootloader exit returned non-zero, continuing anyway...',
-                    );
-                }
-                // Give the NCP a moment to stabilise after bootloader exit
-                setTimeout(res, 800);
-            },
-        );
-        proc.on('error', (e) => {
-            console.warn(
-                '[Zigbee] Could not run bootloader script:',
-                e.message,
-            );
-            res();
-        });
-    });
-}
-
 export async function start() {
-    if (running) return;
-
-    if (REMOTE_MQTT_URL) {
-        console.log(`[Zigbee] Mode distant: ${REMOTE_MQTT_URL}`);
-        await subscribeToZ2m();
-        running = true;
-        console.log('[Zigbee] Service démarré (Home Assistant)');
+    if (mqttClient) return;
+    if (!MQTT_URL) {
+        console.warn('[Zigbee] ZIGBEE_MQTT_URL absent : capteurs désactivés');
         return;
     }
-
-    console.log('[Zigbee] Démarrage broker MQTT + zigbee2mqtt...');
-
-    // 0. Exit NCP bootloader if it got stuck (common with Sonoff dongle on Windows)
-    await exitBootloaderIfNeeded();
-
-    // 1. Démarrer le broker MQTT (aedes)
-    await startMqttBroker();
-
-    // 2. Lancer zigbee2mqtt comme subprocess
-    await startZ2mProcess();
-
-    // 3. S'abonner aux topics zigbee2mqtt
+    console.log(`[Zigbee] Connexion à ${MQTT_URL}`);
     await subscribeToZ2m();
-
-    running = true;
-    console.log('[Zigbee] Service démarré');
-}
-
-async function startMqttBroker() {
-    const { Aedes } = await import('aedes');
-    const aedes = await Aedes.createBroker();
-    return new Promise((res, rej) => {
-        mqttServer = createServer(aedes.handle);
-        mqttServer.listen(MQTT_PORT, '127.0.0.1', () => {
-            console.log(`[Zigbee] Broker MQTT sur port ${MQTT_PORT}`);
-            res();
-        });
-        mqttServer.on('error', rej);
-    });
-}
-
-function startZ2mProcess() {
-    return new Promise((resolve, reject) => {
-        const env = {
-            ...process.env,
-            ZIGBEE2MQTT_DATA: Z2M_DATA,
-            // z2m compare `git rev-parse HEAD` à dist/.hash et tente un rebuild
-            // (pnpm) si ça diffère : sans ça, chaque commit MyHue le casse.
-            GIT_DIR: Z2M_NO_GIT,
-        };
-
-        z2mProcess = spawn('node', [Z2M_BIN], {
-            env,
-            stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        let resolved = false;
-
-        z2mProcess.stdout.on('data', (data) => {
-            const msg = data.toString().trim();
-            if (
-                msg.includes('Zigbee2MQTT started') ||
-                msg.includes('Started')
-            ) {
-                console.log('[Zigbee] zigbee2mqtt démarré');
-                if (!resolved) {
-                    resolved = true;
-                    resolve();
-                }
-            }
-            if (msg.length > 0 && process.env.ZIGBEE_DEBUG) {
-                console.log('[z2m]', msg);
-            }
-        });
-
-        z2mProcess.stderr.on('data', (data) => {
-            const msg = data.toString().trim();
-            if (msg.length > 0) console.error('[z2m error]', msg);
-        });
-
-        z2mProcess.on('exit', (code) => {
-            running = false;
-            console.warn(`[Zigbee] zigbee2mqtt s'est arrêté (code: ${code})`);
-        });
-
-        z2mProcess.on('error', (err) => {
-            if (!resolved) {
-                resolved = true;
-                reject(err);
-            }
-        });
-
-        // Résoudre après 12s même si le message "started" n'arrive pas
-        setTimeout(() => {
-            if (!resolved) {
-                resolved = true;
-                resolve();
-            }
-        }, 12000);
-    });
 }
 
 function subscribeToZ2m() {
     return new Promise((resolve) => {
-        mqttClient = REMOTE_MQTT_URL
-            ? mqtt.connect(REMOTE_MQTT_URL, {
-                  username: REMOTE_MQTT_USER,
-                  password: REMOTE_MQTT_PASS,
-                  reconnectPeriod: 5000,
-              })
-            : mqtt.connect(`mqtt://localhost:${MQTT_PORT}`);
+        mqttClient = mqtt.connect(MQTT_URL, {
+            username: MQTT_USER,
+            password: MQTT_PASS,
+            reconnectPeriod: 5000,
+        });
 
         mqttClient.on('connect', () => {
             console.log('[Zigbee] Client MQTT connecté');
-            if (REMOTE_MQTT_URL) running = true;
+            running = true;
             mqttClient.subscribe('zigbee2mqtt/#');
             resolve();
         });
 
         mqttClient.on('close', () => {
-            if (REMOTE_MQTT_URL) running = false;
+            running = false;
         });
 
         mqttClient.on('message', (topic, payload) => {
@@ -364,14 +186,6 @@ export async function stop() {
     if (mqttClient) {
         mqttClient.end();
         mqttClient = null;
-    }
-    if (z2mProcess) {
-        z2mProcess.kill();
-        z2mProcess = null;
-    }
-    if (mqttServer) {
-        mqttServer.close();
-        mqttServer = null;
     }
     running = false;
     console.log('[Zigbee] Service arrêté');

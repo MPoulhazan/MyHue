@@ -271,6 +271,21 @@ export const sendCommand = async (newState) => {
     });
 };
 
+/** Applique un changement partiel (power, mode, temperature...) et l'envoie. */
+export const applyPatch = async (patch = {}) => {
+    const cur = getState();
+    const newState = {
+        power: patch.power !== undefined ? Boolean(patch.power) : cur.power,
+        mode: patch.mode || cur.mode,
+        temperature: patch.temperature
+            ? Math.max(16, Math.min(31, Number(patch.temperature)))
+            : cur.temperature,
+        fanSpeed: patch.fanSpeed || cur.fanSpeed,
+        vaneVertical: patch.vaneVertical || cur.vaneVertical,
+    };
+    return isConnected() ? sendCommand(newState) : sendCommandDryRun(newState);
+};
+
 // For testing without a Broadlink device
 export const sendCommandDryRun = (newState) => {
     currentState = {

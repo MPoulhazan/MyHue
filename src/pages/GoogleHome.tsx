@@ -139,9 +139,6 @@ export const GoogleHome = () => {
     useTheme(); // couleurs des graphiques recalculées au crépuscule
     const [devices, setDevices] = useState<GoogleHomeDevice[]>([]);
     const [sensors, setSensors] = useState<XiaomiSensor[]>([]);
-    const [xiaomiLoggedIn, setXiaomiLoggedIn] = useState(false);
-    const [xiaomiLogging, setXiaomiLogging] = useState(false);
-    const [xiaomiError, setXiaomiError] = useState<string | null>(null);
     const [sensorsLoading, setSensorsLoading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -434,45 +431,12 @@ export const GoogleHome = () => {
     const loadXiaomi = async () => {
         try {
             setSensorsLoading(true);
-            const [statusRes, sensorsRes] = await Promise.all([
-                axios.get(`/api/xiaomi/status`),
-                axios.get(`/api/xiaomi/sensors`),
-            ]);
-            setXiaomiLoggedIn(statusRes.data.loggedIn);
-            setSensors(sensorsRes.data.sensors || []);
+            const { data } = await axios.get('/api/sensors');
+            setSensors(data.sensors || []);
         } catch (err) {
             console.error('Failed to fetch Xiaomi sensors:', err);
         } finally {
             setSensorsLoading(false);
-        }
-    };
-
-    const handleXiaomiLogin = async () => {
-        setXiaomiLogging(true);
-        setXiaomiError(null);
-        try {
-            // Opens Chrome for Xiaomi login — waits until user completes auth
-            const res = await axios.post(
-                `/api/xiaomi/login`,
-                {},
-                { timeout: 360000 },
-            );
-            if (res.data.status === 'ok') {
-                setXiaomiLoggedIn(true);
-                loadXiaomi();
-            } else {
-                setXiaomiError(res.data.message || 'Connexion échouée');
-            }
-        } catch (err: unknown) {
-            const msg =
-                err instanceof Error ? err.message : 'Erreur de connexion';
-            setXiaomiError(
-                axios.isAxiosError(err)
-                    ? err.response?.data?.error || msg
-                    : msg,
-            );
-        } finally {
-            setXiaomiLogging(false);
         }
     };
 
@@ -605,106 +569,7 @@ export const GoogleHome = () => {
                 </motion.div>
             )}
 
-            {/* Xiaomi Section */}
-            {!xiaomiLoggedIn && sensors.length === 0 && (
-                <motion.section
-                    className="xiaomi-section"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                >
-                    <div className="section-title-row">
-                        <h2 className="section-title">Capteurs</h2>
-                        <motion.button
-                            className={`pair-btn glass ${pairingActive ? 'pair-btn-active' : ''}`}
-                            onClick={pairingActive ? stopPairing : startPairing}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            {pairingActive ? (
-                                <>
-                                    <span className="pair-pulse" />
-                                    Appairage… {pairingSecondsLeft}s — Annuler
-                                </>
-                            ) : (
-                                <>+ Ajouter un capteur</>
-                            )}
-                        </motion.button>
-                        <motion.button
-                            className="qr-btn glass"
-                            onClick={openQrScanner}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            title="Appairer via QR code (Zigbee 3.0)"
-                        >
-                            QR
-                        </motion.button>
-                    </div>
-                    {pairingError && (
-                        <div className="pairing-error">{pairingError}</div>
-                    )}
-                    {pairingActive && (
-                        <motion.div
-                            className={`pairing-banner glass ${unregistered.length > 0 ? 'pairing-banner-found' : ''}`}
-                            initial={{ opacity: 0, y: -8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                        >
-                            <span className="pair-pulse-lg" />
-                            <div>
-                                {unregistered.length > 0 ? (
-                                    <>
-                                        <strong style={{ color: '#4ade80' }}>
-                                            ✓ Appareil détecté !
-                                        </strong>
-                                        <p>
-                                            Cliquez sur{' '}
-                                            <strong>+ Configurer</strong>{' '}
-                                            ci-dessous pour lui donner un nom.
-                                        </p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <strong>Mode appairage actif</strong>
-                                        <p>
-                                            Maintenez le bouton de votre
-                                            capteur appuyé 5 secondes jusqu'au
-                                            clignotement, puis relâchez.
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                            <span className="pairing-countdown">
-                                {pairingSecondsLeft}s
-                            </span>
-                        </motion.div>
-                    )}
-                    <div className="xiaomi-auth glass">
-                        <div className="auth-prompt">
-                            <p>
-                                {xiaomiLogging
-                                    ? "Chrome s'est ouvert. Connectez-vous à Xiaomi dans le navigateur, puis revenez ici."
-                                    : 'Connectez-vous à votre compte Xiaomi pour voir vos capteurs.'}
-                            </p>
-                            <motion.button
-                                className="auth-btn"
-                                onClick={handleXiaomiLogin}
-                                disabled={xiaomiLogging}
-                                whileHover={{ scale: 1.03 }}
-                                whileTap={{ scale: 0.97 }}
-                            >
-                                {xiaomiLogging
-                                    ? 'En attente de connexion dans Chrome...'
-                                    : 'Se connecter à Xiaomi'}
-                            </motion.button>
-                        </div>
-                        {xiaomiError && (
-                            <p className="xiaomi-error">{xiaomiError}</p>
-                        )}
-                    </div>
-                </motion.section>
-            )}
-
-            {sensors.length > 0 && (
+            {(
                 <motion.section
                     className="xiaomi-section"
                     initial={{ opacity: 0, y: 20 }}
@@ -1230,8 +1095,8 @@ export const GoogleHome = () => {
                                                         fontSize: 12,
                                                     }}
                                                     formatter={(
-                                                        v: number,
-                                                        name: string,
+                                                        v: number | undefined,
+                                                        name: string | undefined,
                                                     ) =>
                                                         name === 'temp'
                                                             ? [
@@ -1327,7 +1192,7 @@ export const GoogleHome = () => {
                                                         color: 'var(--text-primary)',
                                                         fontSize: 12,
                                                     }}
-                                                    formatter={(v: number) => [
+                                                    formatter={(v: number | undefined) => [
                                                         `${v}%`,
                                                         'Humidité',
                                                     ]}

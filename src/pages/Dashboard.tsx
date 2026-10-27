@@ -383,7 +383,7 @@ export function Dashboard() {
                     <span className={`dot ${home.online.hue ? 'ok' : ''}`} /><span className="st">HUE {home.lights.length - offline}/{home.lights.length}</span>
                     <span className={`dot ${h?.connected ? 'ok' : ''}`} /><span className="st">CLIM</span>
                     <span className="clock">{clock.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' }).toUpperCase()} · {clock.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                    <Link to="/apps" className="apps-link" aria-label="Toutes les apps">
+                    <Link to="/lights" className="apps-link" aria-label="Toutes les pages">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="4" y="4" width="6" height="6" /><rect x="14" y="4" width="6" height="6" /><rect x="4" y="14" width="6" height="6" /><rect x="14" y="14" width="6" height="6" /></svg>
                     </Link>
                 </span>

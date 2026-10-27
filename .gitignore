@@ -31,3 +31,6 @@ dist-ssr
 
 # Enregistrements vocaux du mot d activation (donnees perso)
 server/data/wakeword/
+
+# Ancien réseau Zigbee local (clé réseau) : jamais dans le repo
+server/data/z2m/

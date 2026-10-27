@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LightCard } from '../components/LightCard';
 import { hueApi } from '../services/hueApi';
-import { useTracking } from '../hooks/useTracking';
 import type { LightWithId } from '../types/hue';
 import './Home.css';
 
@@ -11,9 +10,6 @@ export const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Auto-tracking hook
-  useTracking(lights);
 
   const fetchLights = async () => {
     try {

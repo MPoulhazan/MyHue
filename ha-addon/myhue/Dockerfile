@@ -20,6 +20,13 @@ RUN npm ci \
 
 FROM node:22-bookworm-slim
 ENV NODE_ENV=production
+
+# yt-dlp (flux audio YouTube vers les enceintes Cast) : dernière version, YouTube casse souvent les anciennes
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL -o /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
+    && chmod +x /usr/local/bin/yt-dlp
 WORKDIR /app
 COPY --from=build /app /app
 COPY run.mjs /run.mjs

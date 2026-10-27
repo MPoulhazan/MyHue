@@ -9,13 +9,11 @@ type MenuKey =
     | 'lights'
     | 'rooms'
     | 'scenes'
-    | 'stats'
     | 'agent'
     | 'music'
     | 'google-home'
     | 'rules'
-    | 'heating'
-    | 'privacy';
+    | 'heating';
 
 interface MenuItem {
     key: MenuKey;
@@ -30,7 +28,6 @@ const MENU_ITEMS: MenuItem[] = [
     { key: 'lights', path: '/lights', icon: 'lights', label: 'Lumières' },
     { key: 'rooms', path: '/rooms', icon: 'rooms', label: 'Pièces' },
     { key: 'scenes', path: '/scenes', icon: 'scenes', label: 'Scènes' },
-    { key: 'stats', path: '/stats', icon: 'stats', label: 'Stats' },
     { key: 'agent', path: '/agent', icon: 'agent', label: 'Agent' },
     { key: 'music', path: '/music', icon: 'music', label: 'Musique' },
     {
@@ -41,7 +38,6 @@ const MENU_ITEMS: MenuItem[] = [
     },
     { key: 'rules', path: '/rules', icon: 'rules', label: 'Règles' },
     { key: 'heating', path: '/heating', icon: 'heating', label: 'Chauffage' },
-    { key: 'privacy', path: '/privacy', icon: 'privacy', label: 'Confidentialité' },
 ];
 
 const STORAGE_KEY = 'myhue.menu.visibility.v1';
@@ -51,13 +47,11 @@ const menuItemMap: Record<MenuKey, MenuItem> = {
     lights: MENU_ITEMS[0],
     rooms: MENU_ITEMS[1],
     scenes: MENU_ITEMS[2],
-    stats: MENU_ITEMS[3],
-    agent: MENU_ITEMS[4],
-    music: MENU_ITEMS[5],
-    'google-home': MENU_ITEMS[6],
-    rules: MENU_ITEMS[7],
-    heating: MENU_ITEMS[8],
-    privacy: MENU_ITEMS[9],
+    agent: MENU_ITEMS[3],
+    music: MENU_ITEMS[4],
+    'google-home': MENU_ITEMS[5],
+    rules: MENU_ITEMS[6],
+    heating: MENU_ITEMS[7],
 };
 
 const getDefaultOrder = (): MenuKey[] => [
@@ -65,12 +59,10 @@ const getDefaultOrder = (): MenuKey[] => [
     'lights',
     'rooms',
     'scenes',
-    'stats',
     'music',
     'google-home',
     'rules',
     'heating',
-    'privacy',
 ];
 
 const normalizeOrder = (rawOrder: unknown): MenuKey[] => {
@@ -101,13 +93,11 @@ const getDefaultVisibility = (): MenuVisibility => ({
     lights: true,
     rooms: true,
     scenes: true,
-    stats: true,
     agent: true,
     music: true,
     'google-home': true,
     rules: true,
     heating: true,
-    privacy: true,
 });
 
 const loadVisibility = (): MenuVisibility => {
@@ -123,13 +113,11 @@ const loadVisibility = (): MenuVisibility => {
             lights: parsed.lights ?? defaults.lights,
             rooms: parsed.rooms ?? defaults.rooms,
             scenes: parsed.scenes ?? defaults.scenes,
-            stats: parsed.stats ?? defaults.stats,
             agent: parsed.agent ?? defaults.agent,
             music: parsed.music ?? defaults.music,
             'google-home': parsed['google-home'] ?? defaults['google-home'],
             rules: parsed.rules ?? defaults.rules,
             heating: parsed.heating ?? defaults.heating,
-            privacy: parsed.privacy ?? defaults.privacy,
         };
     } catch {
         return defaults;

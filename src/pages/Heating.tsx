@@ -93,7 +93,7 @@ export const Heating = () => {
 
     const loadSensors = useCallback(async () => {
         try {
-            const { data } = await axios.get('/api/xiaomi/sensors');
+            const { data } = await axios.get('/api/sensors');
             const tempSensors = (data.sensors || []).filter(
                 (s: SensorData) => s.props?.temperature !== undefined,
             );
