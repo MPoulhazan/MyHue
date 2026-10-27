@@ -79,6 +79,7 @@ function subscribeToZ2m() {
                     console.log(
                         `[Zigbee] ${Object.keys(devices).length} appareil(s) connu(s)`,
                     );
+                    emitter.emit('devices');
                     return;
                 }
 
@@ -120,9 +121,23 @@ function subscribeToZ2m() {
                     const name = parts[1];
                     if (!devices[name])
                         devices[name] = { friendlyName: name, state: {} };
-                    devices[name].state = { ...devices[name].state, ...msg };
+                    const prev = devices[name].state;
+                    devices[name].state = { ...prev, ...msg };
                     devices[name].lastSeen = Date.now();
                     emitter.emit('update', name);
+
+                    // Une valeur qui change (porte, température...) : 'change' par propriété
+                    for (const [key, value] of Object.entries(msg)) {
+                        if (prev[key] !== undefined && prev[key] !== value) {
+                            emitter.emit('change', {
+                                ieee: devices[name].ieeeAddr,
+                                friendlyName: name,
+                                key,
+                                value,
+                                prev: prev[key],
+                            });
+                        }
+                    }
 
                     // Historique : on enregistre si données de mesure présentes
                     const HAS_MEASURE = [
@@ -268,6 +283,18 @@ export async function addInstallCode(code) {
         JSON.stringify({ value: code }),
     );
     console.log(`[Zigbee] Install code soumis: ${code.substring(0, 20)}...`);
+}
+
+/**
+ * Pré-remplit l'état d'un appareil (ex. depuis Home Assistant au démarrage),
+ * sans écraser ce que zigbee2mqtt a déjà envoyé et sans émettre de 'change'.
+ */
+export function seedState(name, state, lastSeen) {
+    const device = devices[name];
+    if (!device) return;
+    device.state = { ...state, ...device.state };
+    if (!device.lastSeen && lastSeen) device.lastSeen = lastSeen;
+    emitter.emit('update', name);
 }
 
 export function isRunning() {

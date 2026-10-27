@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import { dataFile } from './dataDir.js';
+import * as journal from './journal.js';
 
 dotenv.config();
 
@@ -271,8 +272,17 @@ export const sendCommand = async (newState) => {
     });
 };
 
-/** Applique un changement partiel (power, mode, temperature...) et l'envoie. */
-export const applyPatch = async (patch = {}) => {
+const MODE_LABELS = { heat: 'chauffage', cool: 'clim', dry: 'déshumidification', fan: 'ventilation', auto: 'auto' };
+
+/** Résumé lisible d'un état, pour le journal et les messages. */
+export const describeState = (s) =>
+    s.power ? `${MODE_LABELS[s.mode] || s.mode} ${s.temperature}°` : 'arrêt';
+
+/**
+ * Applique un changement partiel (power, mode, temperature...) et l'envoie.
+ * @param {string} [source] qui a demandé (interface, agent, automatisme...) pour le journal
+ */
+export const applyPatch = async (patch = {}, source = 'interface') => {
     const cur = getState();
     const newState = {
         power: patch.power !== undefined ? Boolean(patch.power) : cur.power,
@@ -283,7 +293,13 @@ export const applyPatch = async (patch = {}) => {
         fanSpeed: patch.fanSpeed || cur.fanSpeed,
         vaneVertical: patch.vaneVertical || cur.vaneVertical,
     };
-    return isConnected() ? sendCommand(newState) : sendCommandDryRun(newState);
+    const result = isConnected() ? await sendCommand(newState) : sendCommandDryRun(newState);
+    journal.log({
+        kind: 'heating',
+        title: `Thermopompe : ${describeState(result)}`,
+        data: { state: result, source, dryRun: !isConnected() },
+    });
+    return result;
 };
 
 // For testing without a Broadlink device

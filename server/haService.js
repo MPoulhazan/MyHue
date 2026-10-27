@@ -56,6 +56,42 @@ export async function callService(domain, service, serviceData = {}) {
     return data;
 }
 
+/** Historique de plusieurs entités en un appel : { entity_id: [{ ts, value }] }. */
+export async function getHistoryMulti(entityIds, hours = 24) {
+    ensureConfigured();
+    if (entityIds.length === 0) return {};
+    const start = new Date(Date.now() - hours * 3600 * 1000).toISOString();
+    const { data } = await client.get(`/history/period/${start}`, {
+        params: {
+            filter_entity_id: entityIds.join(','),
+            minimal_response: true,
+            no_attributes: true,
+        },
+    });
+    const result = {};
+    for (const series of data) {
+        if (!series.length) continue;
+        // minimal_response : seul le premier point porte entity_id
+        result[series[0].entity_id] = series.map((p) => ({
+            ts: new Date(p.last_changed).getTime(),
+            value: isNaN(Number(p.state)) ? p.state : Number(p.state),
+        }));
+    }
+    return result;
+}
+
+/** Météo extérieure (intégration météo par défaut de HA). */
+export async function getWeather(entityId = process.env.HA_WEATHER_ENTITY || 'weather.forecast_home') {
+    const { state, attributes: a } = await getState(entityId);
+    return {
+        condition: state,
+        temperature: a.temperature ?? null,
+        humidity: a.humidity ?? null,
+        windSpeed: a.wind_speed ?? null,
+        unit: a.temperature_unit || '°C',
+    };
+}
+
 /** Historique du recorder HA (24h par défaut). */
 export async function getHistory(entityId, hours = 24) {
     ensureConfigured();

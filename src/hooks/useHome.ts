@@ -52,8 +52,32 @@ export interface Heating {
     temperature: number;
 }
 
-const now = () => new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const hhmm = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const now = () => hhmm(new Date());
 let logSeq = 0;
+
+// Entrée du journal serveur (/api/journal)
+interface JournalEntry {
+    id: string;
+    ts: number;
+    kind: string;
+    title: string;
+    data?: { isOpen?: boolean; level?: string };
+}
+
+const journalColor = (e: JournalEntry) => {
+    if (e.data?.level === 'alert') return '#FF3B5C';
+    if (e.kind === 'door' && e.data?.isOpen) return '#FFB547';
+    if (e.kind === 'companion' || e.kind === 'automation') return '#C8F560';
+    return undefined;
+};
+
+const fromJournal = (e: JournalEntry): LogEntry => ({
+    id: ++logSeq,
+    t: hhmm(new Date(e.ts)),
+    msg: e.title,
+    color: journalColor(e),
+});
 
 export function useHome() {
     const [lights, setLights] = useState<DashLight[]>([]);
@@ -113,7 +137,6 @@ export function useHome() {
                 setRooms(names);
             } catch { /* pont injoignable */ }
             await loadLights();
-            push('Interface démarrée');
         })();
         const t = setInterval(loadLights, 3000);
         return () => clearInterval(t);
@@ -164,7 +187,6 @@ export function useHome() {
                 const d = sensors.find((s) => s.type === 'door');
                 if (d) {
                     const open = d.props?.isOpen ?? null;
-                    if (lastDoor !== null && open !== lastDoor) push(`${d.name} · ${open ? 'ouverte' : 'fermée'}`, open ? '#FFB547' : undefined);
                     if (open !== lastDoor) setDoor({ name: d.name, open, since: now() });
                     lastDoor = open;
                 }
@@ -172,7 +194,24 @@ export function useHome() {
         };
         es.onerror = () => setOnline((o) => ({ ...o, zigbee: false }));
         return () => es.close();
-    }, [push]);
+    }, []);
+
+    // --- Journal de la maison (portes, clim, automatismes, compagnon) ---
+    // Les échanges avec l'agent restent locaux : ils sont déjà affichés par askAgent
+    useEffect(() => {
+        axios.get('/api/journal', { params: { limit: 25 } }).then(({ data }) => {
+            const entries = (data.entries as JournalEntry[]).filter((e) => e.kind !== 'agent');
+            setLog((l) => [...l, ...entries.map(fromJournal)].slice(0, 40));
+        }).catch(() => {});
+        const es = new EventSource('/api/journal/stream');
+        es.onmessage = (ev) => {
+            try {
+                const e = JSON.parse(ev.data) as JournalEntry;
+                if (e.kind !== 'agent') setLog((l) => [fromJournal(e), ...l].slice(0, 40));
+            } catch { /* ignore */ }
+        };
+        return () => es.close();
+    }, []);
 
     // --- Chauffage ---
     useEffect(() => {
@@ -185,7 +224,7 @@ export function useHome() {
         setHeating((h) => (h ? { ...h, ...patch } : h));
         try {
             const { data } = await axios.post('/api/heating/control', patch);
-            if (data?.state) setHeating((h) => (h ? { ...h, ...data.state } : h));
+            if (data?.mode) setHeating((h) => (h ? { ...h, ...data } : h));
         } catch {
             push('Clim · commande échouée', '#FF3B5C');
         }

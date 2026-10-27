@@ -14,7 +14,7 @@ const findCastDevice = (name) => {
     return device;
 };
 
-const runAction = async (action) => {
+const runAction = async (action, source) => {
     switch (action.type) {
         // Hue
         case 'toggle_light':
@@ -124,7 +124,7 @@ const runAction = async (action) => {
 
         // Thermopompe
         case 'set_heating': {
-            const result = await broadlinkService.applyPatch(action);
+            const result = await broadlinkService.applyPatch(action, source);
             return { action, result };
         }
 
@@ -133,12 +133,13 @@ const runAction = async (action) => {
     }
 };
 
-export const executeActions = async (actions) => {
+/** @param {string} [source] origine (agent, mcp, automatisme...) reportée dans le journal */
+export const executeActions = async (actions, source = 'agent') => {
     if (!Array.isArray(actions)) return [];
     const results = [];
     for (const action of actions) {
         try {
-            results.push({ status: 'ok', ...(await runAction(action)) });
+            results.push({ status: 'ok', ...(await runAction(action, source)) });
         } catch (error) {
             results.push({ action, status: 'error', error: error?.message || 'Action failed' });
         }

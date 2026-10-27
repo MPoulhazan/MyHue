@@ -48,7 +48,7 @@ const buildServer = ({ getContext, executeActions }) => {
             if (!ACTION_TOOLS.some((t) => t.name === name)) {
                 return textResult({ error: `Outil inconnu : ${name}` }, true);
             }
-            const results = await executeActions(toolCallToActions(name, args));
+            const results = await executeActions(toolCallToActions(name, args), 'claude');
             const summary = results.map(({ status, error, result }) => ({ status, error, result }));
             return textResult(summary, summary.some((r) => r.status !== 'ok'));
         } catch (error) {

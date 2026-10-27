@@ -7,7 +7,8 @@ import * as broadlinkService from '../broadlinkService.js';
 import * as zigbeeService from '../zigbeeService.js';
 import * as sensorRegistry from '../sensorRegistry.js';
 import * as haService from '../haService.js';
-import { getSensors } from '../sensors.js';
+import * as journal from '../journal.js';
+import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
 
 export const router = express.Router();
 
@@ -180,9 +181,11 @@ router.post('/api/zigbee/rename', async (req, res) => {
     }
 });
 
-router.get('/api/zigbee/history/:deviceId', (req, res) => {
-    const points = zigbeeService.getHistory(decodeURIComponent(req.params.deviceId));
-    res.json({ deviceId: req.params.deviceId, points });
+// ?hours=24 par défaut, jusqu'à 30 jours (recorder Home Assistant)
+router.get('/api/zigbee/history/:deviceId', async (req, res) => {
+    const hours = Math.min(Number(req.query.hours) || 24, 24 * 30);
+    const points = await getSensorHistory(decodeURIComponent(req.params.deviceId), hours);
+    res.json({ deviceId: req.params.deviceId, hours, points });
 });
 
 router.post('/api/zigbee/install-code', async (req, res) => {
@@ -194,6 +197,40 @@ router.post('/api/zigbee/install-code', async (req, res) => {
     } catch (err) {
         res.status(503).json({ error: err.message });
     }
+});
+
+// --- Journal ---
+
+router.get('/api/journal', (req, res) => {
+    res.json({
+        entries: journal.list({
+            limit: Math.min(Number(req.query.limit) || 50, 500),
+            kind: req.query.kind || undefined,
+            since: req.query.since ? Number(req.query.since) : undefined,
+        }),
+    });
+});
+
+// Nouvelles entrées en direct (SSE)
+router.get('/api/journal/stream', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+    const send = (entry) => res.write(`data: ${JSON.stringify(entry)}
+
+`);
+    journal.emitter.on('entry', send);
+    req.on('close', () => journal.emitter.off('entry', send));
+});
+
+// --- Météo extérieure ---
+
+router.get('/api/weather', async (_req, res) => {
+    const weather = await getOutdoorWeather();
+    if (!weather) return res.status(503).json({ error: 'Météo indisponible' });
+    res.json(weather);
 });
 
 // --- Home Assistant ---

@@ -13,6 +13,7 @@ import { installAuth, TOKEN, PUBLIC_PORT } from './auth.js';
 import { installWakewordRoutes } from './wakewordSamples.js';
 import { hueProxy } from './hue.js';
 import { getSensors } from './sensors.js';
+import './events.js';
 import { router as agentRoutes, GROQ_MODEL } from './routes/agent.js';
 import { router as mediaRoutes } from './routes/media.js';
 import { router as homeRoutes } from './routes/home.js';

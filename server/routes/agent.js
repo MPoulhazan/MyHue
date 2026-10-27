@@ -11,8 +11,9 @@ import { runGroqAgent, needsClaude, buildEscalation } from '../groqAgent.js';
 import { handleMcpRequest } from '../mcpServer.js';
 import { isValidToken } from '../auth.js';
 import { hueBaseUrl, getHueContext, getHueScenes } from '../hue.js';
-import { getSensors } from '../sensors.js';
-import { getHomeState } from '../homeState.js';
+import * as journal from '../journal.js';
+import { getSensors, getOutdoorWeather } from '../sensors.js';
+import { getHomeState, recentEvents } from '../homeState.js';
 import { executeActions } from '../actions.js';
 
 export const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -28,6 +29,13 @@ const groqClient = axios.create({
 });
 
 export const router = express.Router();
+
+// Seules les demandes qui ont agi sur la maison vont au journal
+const logAgent = (message, actionResults = []) => {
+    const done = actionResults.filter((r) => r.status === 'ok').length;
+    if (done === 0) return;
+    journal.log({ kind: 'agent', title: `Agent : « ${message.trim().slice(0, 80)} »`, data: { actions: done } });
+};
 
 router.get('/api/agent/status', async (_req, res) => {
     const castDevices = castService.getDevices();
@@ -64,6 +72,7 @@ router.post('/api/agent', async (req, res) => {
         if (intent) {
             const actionResults = await executeActions(intent.actions);
             const failed = actionResults.find((r) => r.status === 'error');
+            logAgent(message, actionResults);
             return res.json({
                 message: failed ? `Échec : ${failed.error}` : intent.message,
                 actions: intent.actions,
@@ -111,6 +120,8 @@ router.post('/api/agent', async (req, res) => {
                     sensors,
                     rules: rulesEngine.getRules(),
                     heating: heatingState,
+                    outdoor: await getOutdoorWeather(),
+                    recentEvents: recentEvents(),
                 },
                 executeActions,
             });
@@ -128,6 +139,7 @@ router.post('/api/agent', async (req, res) => {
             throw error;
         }
 
+        logAgent(message, result.actionResults);
         res.json({
             ...result,
             model: GROQ_MODEL,
