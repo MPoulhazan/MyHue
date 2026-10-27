@@ -13,6 +13,7 @@ import * as journal from '../journal.js';
 import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
 import * as moments from '../moments.js';
 import * as presence from '../presence.js';
+import * as thermostat from '../thermostat.js';
 
 export const router = express.Router();
 
@@ -24,7 +25,7 @@ router.get('/api/heating/status', (_req, res) => {
 
 router.post('/api/heating/control', async (req, res) => {
     try {
-        res.json(await broadlinkService.applyPatch(req.body || {}));
+        res.json(await thermostat.userCommand(req.body || {}));
     } catch (error) {
         res.status(500).json({ error: error?.message || 'Heating control failed' });
     }
@@ -47,6 +48,30 @@ router.post('/api/heating/discover', async (_req, res) => {
         res.status(500).json({ error: error?.message || 'Discovery failed' });
     }
 });
+
+// --- Thermostat intelligent ---
+
+router.get('/api/thermostat', (_req, res) => res.json(thermostat.getStatus()));
+
+// { enabled?, schedule?, awayTarget?, away?, sensorDid? }
+router.put('/api/thermostat', (req, res) => {
+    try {
+        res.json(thermostat.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// { target, hours? } : dérogation jusqu'à la fin de la période (ou pendant `hours` heures)
+router.post('/api/thermostat/override', (req, res) => {
+    try {
+        res.json(thermostat.setOverride(Number(req.body?.target), req.body?.hours ? Number(req.body.hours) : undefined));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.delete('/api/thermostat/override', (_req, res) => res.json(thermostat.clearOverride()));
 
 // --- Automatismes (ex « règles ») ---
 

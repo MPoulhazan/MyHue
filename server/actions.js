@@ -4,7 +4,7 @@
  */
 import * as castService from './castService.js';
 import * as automations from './automations.js';
-import * as broadlinkService from './broadlinkService.js';
+import * as thermostat from './thermostat.js';
 import { hueClient, ensureHueConfigured, clamp, rgbToXy, getHueScenes } from './hue.js';
 import { getYtDlpAudioUrl } from './ytdlp.js';
 
@@ -125,7 +125,7 @@ const runAction = async (action, source) => {
 
         // Thermopompe
         case 'set_heating': {
-            const result = await broadlinkService.applyPatch(action, source);
+            const result = await thermostat.userCommand(action, source);
             return { action, result };
         }
 

@@ -91,6 +91,10 @@
 .card-foot > div { display: flex; justify-content: space-between; gap: 12px; }
 .card-foot > div > span:last-child { color: var(--h-text); }
 .card-foot > div > span.warn { color: var(--h-warn); }
+.foot-link { display: flex; justify-content: space-between; gap: 12px; min-height: 44px; margin: -6px -10px; padding: 0 10px; border: none; border-radius: 12px; background: transparent; color: var(--h-muted) !important; font-size: 14px; align-items: center; text-align: left; }
+.foot-link span:last-child { color: var(--h-text); }
+.foot-link:hover { background: var(--h-surface-2); }
+.foot-note { font-size: 13px; color: var(--h-muted); line-height: 1.4; }
 
 /* Pièces */
 .home-center { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -275,3 +279,27 @@
     .lamp-name { width: 110px; }
     .steps { font-size: 12px; }
 }
+
+/* Programme du thermostat */
+.schedule-sheet { width: min(760px, 100%); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.toggle-row { display: flex; align-items: center; gap: 16px; }
+.toggle-row > div:first-child { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.toggle-row.compact { justify-content: space-between; flex-wrap: wrap; font-size: 15px; }
+.toggle-title { font-size: 17px; font-weight: 700; }
+.switch { position: relative; width: 60px; height: 36px; flex: none; border-radius: 999px; border: none; background: var(--h-line-2); }
+.switch span { position: absolute; left: 4px; top: 4px; width: 28px; height: 28px; border-radius: 999px; background: var(--h-text); transition: transform 0.2s; }
+.switch.on { background: var(--h-accent); }
+.switch.on span { transform: translateX(24px); background: var(--h-on-accent); }
+.frieze { position: relative; display: flex; height: 56px; border-radius: 16px; overflow: hidden; font-size: 13px; font-weight: 600; }
+.frieze > div { display: flex; align-items: center; padding-left: 10px; overflow: hidden; white-space: nowrap; }
+.frieze-now { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: var(--h-accent); }
+.frieze-scale { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--h-muted); }
+.periods { display: flex; flex-direction: column; gap: 10px; }
+.period { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border-radius: 18px; background: var(--h-surface-2); }
+.period-name input { width: 130px; height: 44px; border-radius: 12px; border: 1px solid var(--h-line-2); background: transparent; padding: 0 12px; font-size: 16px; font-weight: 600; }
+.mini-stepper { display: inline-flex; align-items: center; gap: 4px; border-radius: 14px; background: var(--h-surface); padding: 4px; }
+.mini-stepper button { width: 40px; height: 40px; border-radius: 10px; border: none; background: #30332c; font-size: 20px; }
+.mini-stepper span { min-width: 64px; text-align: center; font-size: 15px; }
+.round-btn.small { width: 44px; height: 44px; margin-left: auto; }
+.saved-note { align-self: center; margin-right: 16px; }

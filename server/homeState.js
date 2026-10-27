@@ -8,6 +8,7 @@ import * as broadlinkService from './broadlinkService.js';
 import { getHueContext, getHueScenes } from './hue.js';
 import * as journal from './journal.js';
 import * as presence from './presence.js';
+import * as thermostat from './thermostat.js';
 import { getSensors, getOutdoorWeather } from './sensors.js';
 
 const TZ = process.env.TZ || 'America/Toronto';
@@ -33,6 +34,7 @@ export const getHomeState = async () => {
         sensors,
         rules: automations.getForAgent(),
         heating: broadlinkService.getState(),
+        thermostat: (({ enabled, target, why, status }) => ({ enabled, target, why, status: status.text }))(thermostat.getStatus()),
         outdoor,
         people: presence.getPeople(),
         recentEvents: recentEvents(),

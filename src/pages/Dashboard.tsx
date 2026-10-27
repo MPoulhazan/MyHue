@@ -9,6 +9,7 @@ import { RoomSheet } from '../components/home/RoomSheet';
 import { AddSensorSheet } from '../components/home/AddSensorSheet';
 import { NightMode } from '../components/home/NightMode';
 import { PhoneLayout } from '../components/phone/PhoneLayout';
+import { ScheduleSheet } from '../components/home/ScheduleSheet';
 import { ClimateCard, HouseCard, Journal, MenuSheet, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import './Dashboard.css';
 
@@ -34,6 +35,7 @@ export function Dashboard() {
     const [openRoom, setOpenRoom] = useState<string | null>(null);
     const [adding, setAdding] = useState(false);
     const [menu, setMenu] = useState(false);
+    const [schedule, setSchedule] = useState(false);
 
     // Échap ferme le panneau ouvert
     useEffect(() => {
@@ -42,6 +44,7 @@ export function Dashboard() {
             setOpenRoom(null);
             setAdding(false);
             setMenu(false);
+            setSchedule(false);
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
@@ -74,13 +77,19 @@ export function Dashboard() {
             )}
             {adding && <AddSensorSheet key="add" rooms={roomLights.map(([r]) => r)} onClose={() => setAdding(false)} />}
             {menu && <MenuSheet key="menu" onClose={() => setMenu(false)} />}
+            {schedule && home.thermostat && (
+                <ScheduleSheet key="schedule" status={home.thermostat} neverSent={!home.heating?.lastUpdated}
+                    onUpdate={home.updateThermostat} onClearOverride={() => home.overrideTarget(null)}
+                    onClose={() => setSchedule(false)} />
+            )}
         </AnimatePresence>
     );
 
     if (phone) {
         return (
             <PhoneLayout home={home} roomLights={roomLights}
-                onOpenRoom={setOpenRoom} onAdd={() => setAdding(true)} onMenu={() => setMenu(true)}>
+                onOpenRoom={setOpenRoom} onAdd={() => setAdding(true)} onMenu={() => setMenu(true)}
+                onSchedule={() => setSchedule(true)}>
                 {sheets}
             </PhoneLayout>
         );
@@ -109,7 +118,7 @@ export function Dashboard() {
             </header>
 
             <div className="home-grid">
-                <ClimateCard home={home} />
+                <ClimateCard home={home} onSchedule={() => setSchedule(true)} />
 
                 <section className="home-center" aria-label="Lumières">
                     <div className="section-head">

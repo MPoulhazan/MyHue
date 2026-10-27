@@ -66,12 +66,13 @@ function TemperatureChart({ did, name }: { did: string; name: string }) {
     );
 }
 
-export function PhoneLayout({ home, roomLights, onOpenRoom, onAdd, onMenu, children }: {
+export function PhoneLayout({ home, roomLights, onOpenRoom, onAdd, onMenu, onSchedule, children }: {
     home: ReturnType<typeof useHome>;
     roomLights: [string, DashLight[]][];
     onOpenRoom: (room: string) => void;
     onAdd: () => void;
     onMenu: () => void;
+    onSchedule: () => void;
     children?: ReactNode;
 }) {
     const [tab, setTabState] = useState<Tab>(loadTab);
@@ -139,7 +140,7 @@ export function PhoneLayout({ home, roomLights, onOpenRoom, onAdd, onMenu, child
                 {tab === 'climate' && (
                     <>
                         <header className="phone-head"><h1>Climat</h1></header>
-                        <ClimateCard home={home} />
+                        <ClimateCard home={home} onSchedule={onSchedule} />
                         {climate && (
                             <section className="card" aria-label="Dernières 24 heures">
                                 <h2 className="card-title">Dernières 24 h · {climate.name}</h2>

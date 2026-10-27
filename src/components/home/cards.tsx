@@ -133,11 +133,24 @@ const MODES: { id: string; label: string }[] = [
     { id: 'auto', label: 'Auto' },
 ];
 
-export function ClimateCard({ home }: { home: ReturnType<typeof useHome> }) {
+export function ClimateCard({ home, onSchedule }: { home: ReturnType<typeof useHome>; onSchedule: () => void }) {
     const h = home.heating;
+    const t = home.thermostat;
+    const smart = Boolean(t?.enabled && t.target != null);
     const room = home.sensors.find((s) => s.props.temperature != null);
     const openOutside = home.sensors.filter((s) => s.type === 'door' && s.outside && s.props.isOpen);
-    const setpoint = h?.temperature ?? 22;
+    // Thermostat actif : la consigne est celle de la pièce, et la changer crée une dérogation
+    const setpoint = smart ? t!.target! : h?.temperature ?? 22;
+    const step = smart ? 0.5 : 1;
+    const changeSetpoint = (v: number) =>
+        smart ? home.overrideTarget(v) : home.controlHeating({ temperature: v, power: true });
+    const programLabel = !t?.enabled
+        ? 'désactivé'
+        : t.why === 'dérogation'
+            ? `${fmtTarget(t.target)}° jusqu'à ${t.untilLabel ?? 'la prochaine période'}`
+            : t.untilLabel
+                ? `${t.why} ${fmtTarget(t.target)}° jusqu'à ${t.untilLabel}`
+                : `${t.why} ${fmtTarget(t.target)}°`;
     const modeLabel = !h?.power ? 'Arrêt' : MODES.find((m) => m.id === h.mode)?.label ?? h.mode;
 
     return (
@@ -154,12 +167,12 @@ export function ClimateCard({ home }: { home: ReturnType<typeof useHome> }) {
                 <div className="warn-line">{openOutside.map((s) => s.name).join(', ')} ouverte : chauffage en pause automatique</div>
             )}
             <div className="stepper">
-                <button type="button" aria-label="Baisser la consigne" onClick={() => home.controlHeating({ temperature: setpoint - 1, power: true })}>−</button>
+                <button type="button" aria-label="Baisser la consigne" onClick={() => changeSetpoint(setpoint - step)}>−</button>
                 <div>
-                    <div className="stepper-label">Consigne</div>
-                    <div className="stepper-value">{setpoint}°</div>
+                    <div className="stepper-label">{smart ? 'Consigne pièce' : 'Consigne'}</div>
+                    <div className="stepper-value">{fmtTarget(setpoint)}°</div>
                 </div>
-                <button type="button" aria-label="Monter la consigne" onClick={() => home.controlHeating({ temperature: setpoint + 1, power: true })}>+</button>
+                <button type="button" aria-label="Monter la consigne" onClick={() => changeSetpoint(setpoint + step)}>+</button>
             </div>
             <div className="modes">
                 {MODES.map((m) => (
@@ -171,12 +184,18 @@ export function ClimateCard({ home }: { home: ReturnType<typeof useHome> }) {
                     onClick={() => home.controlHeating({ power: false })}>Arrêt</button>
             </div>
             <div className="card-foot">
+                <button type="button" className="foot-link" onClick={onSchedule}>
+                    <span>Programme</span><span>{programLabel} ›</span>
+                </button>
+                {smart && t?.status.text && <div className="foot-note">{t.status.text}</div>}
                 <div><span>Dernière commande</span><span>{h?.lastUpdated ? hhmm(new Date(h.lastUpdated)) : 'aucune'}</span></div>
                 {!h?.connected && <div><span>Émetteur infrarouge</span><span className="warn">non connecté</span></div>}
             </div>
         </section>
     );
 }
+
+const fmtTarget = (n: number | null | undefined) => (n == null ? '--' : String(n).replace('.', ','));
 
 // ── Maison : ouvertures, piles ───────────────────────────────────────────────
 

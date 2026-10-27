@@ -69,6 +69,25 @@ export interface Weather {
     temperature: number | null;
 }
 
+export interface Period {
+    label: string;
+    from: string; // HH:MM
+    target: number;
+}
+
+export interface ThermostatStatus {
+    enabled: boolean;
+    target: number | null;
+    why: string;
+    untilLabel: string | null;
+    period: { label: string; target: number; nextLabel: string } | null;
+    away: boolean;
+    anyoneHome: boolean | null;
+    offset: number;
+    status: { state: string; text: string };
+    config: { schedule: Period[]; awayTarget: number; override: { target: number; until: number } | null };
+}
+
 export interface Moment {
     id: string;
     label: string;
@@ -121,6 +140,7 @@ export function useHome() {
     const [sensors, setSensors] = useState<Sensor[]>([]);
     const [weather, setWeather] = useState<Weather | null>(null);
     const [moments, setMoments] = useState<Moment[]>([]);
+    const [thermostat, setThermostat] = useState<ThermostatStatus | null>(null);
 
     const editing = useRef<Record<string, number>>({});
     const pending = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -285,15 +305,43 @@ export function useHome() {
         ).catch(() => {});
     }, []);
 
+    // --- Thermostat intelligent ---
+    const loadThermostat = useCallback(() => {
+        axios.get('/api/thermostat').then(({ data }) => setThermostat(data)).catch(() => {});
+    }, []);
+    useEffect(() => {
+        loadThermostat();
+        const t = setInterval(loadThermostat, 60_000);
+        return () => clearInterval(t);
+    }, [loadThermostat]);
+
+    const updateThermostat = useCallback(async (patch: Record<string, unknown>) => {
+        const { data } = await axios.put('/api/thermostat', patch);
+        setThermostat(data);
+        return data as ThermostatStatus;
+    }, []);
+
+    const overrideTarget = useCallback(async (target: number | null) => {
+        try {
+            const { data } = target == null
+                ? await axios.delete('/api/thermostat/override')
+                : await axios.post('/api/thermostat/override', { target });
+            setThermostat(data);
+        } catch {
+            push('Thermostat · consigne refusée', '#FF3B5C');
+        }
+    }, [push]);
+
     const controlHeating = useCallback(async (patch: Partial<Heating>) => {
         setHeating((h) => (h ? { ...h, ...patch } : h));
         try {
             const { data } = await axios.post('/api/heating/control', patch);
             if (data?.mode) setHeating((h) => (h ? { ...h, ...data } : h));
+            loadThermostat(); // « arrêt » ou « froid » désactivent le thermostat
         } catch {
             push('Clim · commande échouée', '#FF3B5C');
         }
-    }, [push]);
+    }, [push, loadThermostat]);
 
     // --- Agent ---
     // Renvoie la réponse de l'agent (lue à voix haute quand la demande est vocale)
@@ -312,7 +360,7 @@ export function useHome() {
     }, [push, loadLights]);
 
     return {
-        lights, rooms, climate, door, heating, log, online, sensors, weather, moments,
-        push, setLevel, setColor, applyAmbiance, controlHeating, askAgent, runMoment,
+        lights, rooms, climate, door, heating, log, online, sensors, weather, moments, thermostat,
+        push, setLevel, setColor, applyAmbiance, controlHeating, askAgent, runMoment, updateThermostat, overrideTarget,
     };
 }
