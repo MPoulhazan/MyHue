@@ -97,13 +97,15 @@ zigbeeService.emitter.on('devices', seedFromHomeAssistant);
 
 /**
  * Historique d'un capteur : recorder HA (jours/semaines), à défaut les 24 h en mémoire.
- * Points au format { ts, temperature, humidity, pressure, battery }.
+ * Renvoie { source: 'ha' | 'memory', points: [{ ts, temperature, humidity, pressure, battery }], error? }.
  */
 export const getSensorHistory = async (nameOrIeee, hours = 24) => {
     const device = zigbeeService
         .getDevices()
         .find((d) => d.friendlyName === nameOrIeee || d.ieeeAddr === nameOrIeee);
-    if (!device || !haService.isConfigured()) return zigbeeService.getHistory(nameOrIeee);
+    const memory = (error) => ({ source: 'memory', points: zigbeeService.getHistory(nameOrIeee), error });
+    if (!device) return memory('appareil inconnu');
+    if (!haService.isConfigured()) return memory();
 
     try {
         const prefix = slugify(device.friendlyName);
@@ -126,10 +128,11 @@ export const getSensorHistory = async (nameOrIeee, hours = 24) => {
             if (last && last.ts === ev.ts) Object.assign(last, current);
             else points.push({ ts: ev.ts, ...current });
         }
-        return points;
+        return { source: 'ha', points };
     } catch (err) {
-        console.warn('[Sensors] Historique HA indisponible:', err.message);
-        return zigbeeService.getHistory(nameOrIeee);
+        const detail = err.response ? `HTTP ${err.response.status}` : err.message;
+        console.warn('[Sensors] Historique HA indisponible:', detail);
+        return memory(detail);
     }
 };
 

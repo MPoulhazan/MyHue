@@ -184,8 +184,8 @@ router.post('/api/zigbee/rename', async (req, res) => {
 // ?hours=24 par défaut, jusqu'à 30 jours (recorder Home Assistant)
 router.get('/api/zigbee/history/:deviceId', async (req, res) => {
     const hours = Math.min(Number(req.query.hours) || 24, 24 * 30);
-    const points = await getSensorHistory(decodeURIComponent(req.params.deviceId), hours);
-    res.json({ deviceId: req.params.deviceId, hours, points });
+    const history = await getSensorHistory(decodeURIComponent(req.params.deviceId), hours);
+    res.json({ deviceId: req.params.deviceId, hours, ...history });
 });
 
 router.post('/api/zigbee/install-code', async (req, res) => {
