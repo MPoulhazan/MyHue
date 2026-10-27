@@ -50,6 +50,37 @@ export interface Heating {
     power: boolean;
     mode: string;
     temperature: number;
+    lastUpdated?: string | null;
+}
+
+export interface Sensor {
+    did: string;
+    name: string;
+    type: string;
+    room: string | null;
+    outside: boolean;
+    isOnline: boolean;
+    lastUpdated: string | null;
+    props: { temperature: number | null; humidity: number | null; pressure: number | null; battery: number | null; isOpen: boolean | null };
+}
+
+export interface Weather {
+    condition: string;
+    temperature: number | null;
+}
+
+export interface Moment {
+    id: string;
+    label: string;
+    icon: string;
+}
+
+/** Ambiance appliquée à une pièce : blanc (ct) ou couleur (hex), à une intensité donnée. */
+export interface Ambiance {
+    label: string;
+    level: number;
+    ct?: number;
+    hex?: string;
 }
 
 const hhmm = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -87,6 +118,9 @@ export function useHome() {
     const [heating, setHeating] = useState<Heating | null>(null);
     const [log, setLog] = useState<LogEntry[]>([]);
     const [online, setOnline] = useState({ hue: false, zigbee: false });
+    const [sensors, setSensors] = useState<Sensor[]>([]);
+    const [weather, setWeather] = useState<Weather | null>(null);
+    const [moments, setMoments] = useState<Moment[]>([]);
 
     const editing = useRef<Record<string, number>>({});
     const pending = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -174,6 +208,18 @@ export function useHome() {
         setLights((ls) => ls.map((l) => (set.has(l.id) ? { ...l, color: sw.hex, level: l.level || 60 } : l)));
     }, [sendState]);
 
+    const applyAmbiance = useCallback((ids: string[], a: Ambiance) => {
+        const targets = lightsRef.current.filter((l) => ids.includes(l.id) && l.reachable);
+        targets.forEach((l, i) => {
+            editing.current[l.id] = Date.now();
+            const color = !l.colorable ? {} : a.ct ? { ct: a.ct } : a.hex ? { xy: hexToXy(a.hex) } : {};
+            sendState(l.id, l.dimmable ? { on: true, bri: pctToBri(a.level), ...color } : { on: true }, i * 60);
+        });
+        const set = new Set(targets.map((l) => l.id));
+        const hex = a.ct ? ctToHex(a.ct) : a.hex;
+        setLights((ls) => ls.map((l) => (set.has(l.id) ? { ...l, level: l.dimmable ? a.level : 100, color: l.colorable && hex ? hex : l.color } : l)));
+    }, [sendState]);
+
     // --- Capteurs (SSE) ---
     useEffect(() => {
         const es = new EventSource('/api/sensors/events');
@@ -181,6 +227,7 @@ export function useHome() {
         es.onmessage = (ev) => {
             try {
                 const sensors = JSON.parse(ev.data) as any[];
+                setSensors(sensors);
                 setOnline((o) => ({ ...o, zigbee: true }));
                 const th = sensors.find((s) => s.props?.temperature != null);
                 if (th) setClimate({ ...th.props, name: th.name });
@@ -212,6 +259,24 @@ export function useHome() {
         };
         return () => es.close();
     }, []);
+
+    // --- Météo extérieure et Moments ---
+    useEffect(() => {
+        const loadWeather = () => axios.get('/api/weather').then(({ data }) => setWeather(data)).catch(() => {});
+        loadWeather();
+        axios.get('/api/moments').then(({ data }) => setMoments(data.moments)).catch(() => {});
+        const t = setInterval(loadWeather, 10 * 60_000);
+        return () => clearInterval(t);
+    }, []);
+
+    const runMoment = useCallback(async (id: string) => {
+        try {
+            await axios.post(`/api/moments/${id}`);
+        } catch {
+            push('Moment · échec', '#FF3B5C');
+        }
+        setTimeout(loadLights, 800);
+    }, [push, loadLights]);
 
     // --- Chauffage ---
     useEffect(() => {
@@ -246,5 +311,8 @@ export function useHome() {
         }
     }, [push, loadLights]);
 
-    return { lights, rooms, climate, door, heating, log, online, push, setLevel, setColor, controlHeating, askAgent };
+    return {
+        lights, rooms, climate, door, heating, log, online, sensors, weather, moments,
+        push, setLevel, setColor, applyAmbiance, controlHeating, askAgent, runMoment,
+    };
 }

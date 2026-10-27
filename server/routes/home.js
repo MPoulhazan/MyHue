@@ -11,6 +11,7 @@ import * as sensorRegistry from '../sensorRegistry.js';
 import * as haService from '../haService.js';
 import * as journal from '../journal.js';
 import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
+import * as moments from '../moments.js';
 
 export const router = express.Router();
 
@@ -119,12 +120,23 @@ router.get('/api/sensors/registry', (_req, res) => {
     res.json({ sensors: sensorRegistry.getAll() });
 });
 
+// { ieee, name, type, room?, outside?, automations?: ['door_left_open', ...] }
 router.post('/api/sensors/registry', (req, res) => {
-    const { ieee, name, type } = req.body || {};
+    const { ieee, name, type, room, outside, automations: templates } = req.body || {};
     if (!ieee || !name || !type) {
         return res.status(400).json({ error: '"ieee", "name" et "type" sont requis' });
     }
-    res.json(sensorRegistry.upsert({ ieee, name, type }));
+    const entry = sensorRegistry.upsert({ ieee, name, type, room, outside });
+    // Automatismes choisis dans l'assistant d'ajout
+    const created = [];
+    for (const template of Array.isArray(templates) ? templates : []) {
+        try {
+            created.push(automations.createFromTemplate(template, { did: ieee }));
+        } catch (err) {
+            console.warn(`Automatisme ${template} non créé:`, err.message);
+        }
+    }
+    res.json({ ...entry, automations: created });
 });
 
 router.delete('/api/sensors/registry/:ieee', (req, res) => {
@@ -274,6 +286,18 @@ router.get('/api/journal/stream', (req, res) => {
 `);
     journal.emitter.on('entry', send);
     req.on('close', () => journal.emitter.off('entry', send));
+});
+
+// --- Moments (Cinéma, Dodo, Je pars...) ---
+
+router.get('/api/moments', (_req, res) => res.json({ moments: moments.list() }));
+
+router.post('/api/moments/:id', async (req, res) => {
+    try {
+        res.json(await moments.run(req.params.id));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 });
 
 // --- Météo extérieure ---

@@ -3,7 +3,8 @@
 export type IconName =
     | 'home' | 'lights' | 'rooms' | 'scenes' | 'agent' | 'music'
     | 'cast' | 'rules' | 'heating' | 'settings' | 'grid' | 'power'
-    | 'thermo' | 'door' | 'drag';
+    | 'thermo' | 'door' | 'drag'
+    | 'screen' | 'glass' | 'moon' | 'leave' | 'check' | 'close' | 'plus' | 'sun' | 'cloud' | 'menu' | 'battery';
 
 const PATHS: Record<IconName, string> = {
     home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
@@ -21,6 +22,17 @@ const PATHS: Record<IconName, string> = {
     thermo: 'M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0zM12 17v-5',
     door: 'M5 21V3h11v18M16 21h3M13 12h.01M5 21H3',
     drag: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
+    screen: 'M3 5h18v12H3zM8 21h8',
+    glass: 'M8 3h8l-1 7a3 3 0 0 1-6 0zM12 13v8M9 21h6',
+    moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
+    leave: 'M10 17l5-5-5-5M15 12H3M21 3v18',
+    check: 'M5 12l5 5 9-10',
+    close: 'M6 6l12 12M18 6L6 18',
+    plus: 'M12 5v14M5 12h14',
+    sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+    cloud: 'M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 9.5 4.3 4.3 0 0 0 7 18z',
+    menu: 'M4 7h16M4 12h16M4 17h16',
+    battery: 'M3 8h15v8H3zM21 11v2',
 };
 
 export function Icon({ name, size = 20, strokeWidth = 1.8, className }: { name: IconName; size?: number; strokeWidth?: number; className?: string }) {

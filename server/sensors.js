@@ -18,6 +18,8 @@ export const getSensors = async () => {
             model: device?.model || 'Zigbee',
             type: entry.type,
             icon: entry.icon || '📡',
+            room: entry.room || null,
+            outside: Boolean(entry.outside),
             isOnline: device ? device.available !== false : false,
             mac: entry.ieee,
             zigbeeName: device?.friendlyName || entry.ieee,

@@ -46,11 +46,22 @@ const save = (registry) => {
 /** Retourne tous les capteurs enregistrés. */
 export const getAll = () => load();
 
-/** Ajoute ou met à jour un capteur dans le registre. */
-export const upsert = ({ ieee, name, type }) => {
+/**
+ * Ajoute ou met à jour un capteur dans le registre.
+ * `room` : pièce Hue où il se trouve ; `outside` : ouverture vers l'extérieur (pilote le chauffage).
+ */
+export const upsert = ({ ieee, name, type, room, outside }) => {
     const registry = load();
     const idx = registry.findIndex((e) => e.ieee === ieee);
-    const entry = { ieee, name, type, icon: ICON_MAP[type] || '📡' };
+    const previous = idx >= 0 ? registry[idx] : {};
+    const entry = {
+        ieee,
+        name,
+        type,
+        icon: ICON_MAP[type] || '📡',
+        room: room ?? previous.room ?? null,
+        outside: outside ?? previous.outside ?? false,
+    };
     if (idx >= 0) {
         registry[idx] = entry;
     } else {
