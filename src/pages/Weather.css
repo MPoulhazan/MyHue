@@ -113,6 +113,25 @@ button.wx-tile:hover { background: var(--h-surface-2); }
 .wx-chart text { font-family: Manrope, system-ui, sans-serif; }
 .wx-chart text.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 
+/* Briefing du matin */
+.wx-switch { width: 52px; height: 32px; flex: none; border-radius: 999px; border: none; background: var(--h-line-2); padding: 4px; display: inline-flex; }
+.wx-switch i { width: 24px; height: 24px; border-radius: 999px; background: var(--h-muted); transition: transform 0.2s, background 0.2s; }
+.wx-switch.on { background: #2f3a1a; }
+.wx-switch.on i { transform: translateX(20px); background: var(--h-accent); }
+.wx-brief-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.wx-brief-actions .ghost-btn { min-height: 44px; padding: 0 14px; font-size: 14px; color: var(--h-text); }
+.wx-brief-actions .ghost-btn:disabled { opacity: 0.5; }
+.wx-brief-text { margin: 0; padding: 12px 14px; border-radius: 16px; background: var(--h-surface-2); font-size: 14px; line-height: 1.5; }
+.wx-brief-settings { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
+.wx-brief-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wx-brief-row input[type='time'],
+.wx-brief-row select { min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--h-line-2); background: var(--h-surface-2); color: var(--h-text); font: inherit; font-size: 15px; }
+.wx-brief-check { justify-content: flex-start; font-size: 14px; }
+.wx-brief-check input { width: 22px; height: 22px; accent-color: var(--h-accent); }
+.wx-days { display: flex; gap: 4px; }
+.wx-days button { width: 36px; height: 44px; border-radius: 10px; border: 1px solid var(--h-line-2); background: transparent; color: var(--h-text); font-size: 14px; font-weight: 700; }
+.wx-days button.active { background: var(--h-accent); border-color: var(--h-accent); color: var(--h-on-accent); }
+
 @media (max-width: 1180px) {
     .wx-layout { grid-template-columns: minmax(0, 1fr) 360px; }
     .wx-outfit { grid-template-columns: 200px minmax(0, 1fr); }

@@ -16,6 +16,7 @@ import * as moments from '../moments.js';
 import * as presence from '../presence.js';
 import * as thermostat from '../thermostat.js';
 import * as flexd from '../flexd.js';
+import * as briefing from '../briefing.js';
 import * as circadian from '../circadian.js';
 
 export const router = express.Router();
@@ -75,6 +76,37 @@ router.post('/api/thermostat/override', (req, res) => {
 });
 
 router.delete('/api/thermostat/override', (_req, res) => res.json(thermostat.clearOverride()));
+
+// --- Briefing du matin ---
+
+router.get('/api/briefing', async (_req, res) => {
+    const speakers = await briefing.getSpeakers().catch(() => []);
+    res.json({ ...briefing.getStatus(), speakers });
+});
+
+router.put('/api/briefing', (req, res) => {
+    try {
+        res.json(briefing.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.get('/api/briefing/preview', async (_req, res) => {
+    try {
+        res.json({ text: await briefing.preview() });
+    } catch (err) {
+        res.status(503).json({ error: err.message });
+    }
+});
+
+router.post('/api/briefing/play', async (_req, res) => {
+    try {
+        res.json(await briefing.play());
+    } catch (err) {
+        res.status(503).json({ error: err.message });
+    }
+});
 
 // --- Pointes Flex D (Hydro-Québec) ---
 

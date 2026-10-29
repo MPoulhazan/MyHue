@@ -468,6 +468,7 @@ export function Weather() {
                         )}
 
                         {data.sun && <SunTile sun={data.sun} updatedAt={data.updatedAt} />}
+                        <BriefingTile />
                     </aside>
                 </div>
             )}
@@ -513,6 +514,127 @@ function SunTile({ sun, updatedAt }: { sun: NonNullable<WeatherDetails['sun']>; 
                 {sun.deltaMin != null && <span>{sun.deltaMin > 0 ? '+' : '−'}{Math.abs(sun.deltaMin)} min / jour</span>}
                 <span>Coucher <b className="mono">{hm(sun.sunset)}</b></span>
             </span>
+        </section>
+    );
+}
+
+// ── Briefing du matin ────────────────────────────────────────────────────────
+
+interface Briefing {
+    enabled: boolean;
+    time: string;
+    days: number[];
+    useAlarm: boolean;
+    speaker: string;
+    speakers: { id: string; name: string; available: boolean }[];
+}
+
+const DAYS = [
+    { d: 1, label: 'L', name: 'lundi' },
+    { d: 2, label: 'M', name: 'mardi' },
+    { d: 3, label: 'M', name: 'mercredi' },
+    { d: 4, label: 'J', name: 'jeudi' },
+    { d: 5, label: 'V', name: 'vendredi' },
+    { d: 6, label: 'S', name: 'samedi' },
+    { d: 0, label: 'D', name: 'dimanche' },
+];
+
+const daysText = (days: number[]) => {
+    const s = [...days].sort().join();
+    if (s === '1,2,3,4,5') return 'En semaine';
+    if (days.length === 7) return 'Tous les jours';
+    if (s === '0,6') return 'Le week-end';
+    if (!days.length) return 'Aucun jour';
+    const names = DAYS.filter((x) => days.includes(x.d)).map((x) => x.name).join(', ');
+    return names.charAt(0).toUpperCase() + names.slice(1);
+};
+
+function BriefingTile() {
+    const [b, setB] = useState<Briefing | null>(null);
+    const [open, setOpen] = useState(false);
+    const [text, setText] = useState<string | null>(null);
+    const [busy, setBusy] = useState<'preview' | 'play' | null>(null);
+    const [msg, setMsg] = useState<string | null>(null);
+
+    useEffect(() => {
+        axios.get('/api/briefing').then(({ data }) => setB(data)).catch(() => {});
+    }, []);
+    if (!b) return null;
+
+    const speakerName = b.speakers.find((s) => s.id === b.speaker)?.name ?? b.speaker.replace('media_player.', '');
+    const save = (patch: Partial<Briefing>) => {
+        setB({ ...b, ...patch });
+        axios.put('/api/briefing', patch)
+            .then(({ data }) => setB((cur) => (cur ? { ...cur, ...data } : cur)))
+            .catch(() => setMsg('Réglage refusé.'));
+    };
+    const preview = () => {
+        setBusy('preview');
+        axios.get('/api/briefing/preview')
+            .then(({ data }) => setText(data.text))
+            .catch(() => setMsg('Aperçu indisponible.'))
+            .finally(() => setBusy(null));
+    };
+    const play = () => {
+        setBusy('play');
+        setMsg(null);
+        axios.post('/api/briefing/play')
+            .then(({ data }) => { setText(data.text); setMsg(`Envoyé sur ${speakerName}.`); })
+            .catch(() => setMsg(`Impossible de parler sur ${speakerName}.`))
+            .finally(() => setBusy(null));
+    };
+
+    return (
+        <section className="wx-tile wx-brief" aria-label="Briefing du matin">
+            <span className="wx-tile-head">
+                <strong>Briefing du matin</strong>
+                <button type="button" className={`wx-switch ${b.enabled ? 'on' : ''}`} role="switch" aria-checked={b.enabled}
+                    aria-label="Briefing du matin" onClick={() => save({ enabled: !b.enabled })}><i /></button>
+            </span>
+            <span className="muted">
+                {b.enabled
+                    ? `${daysText(b.days)} à ${b.time} sur ${speakerName}${b.useAlarm ? ', ou 5 min après l’alarme du téléphone quand HA Companion la donne' : ''}.`
+                    : 'Désactivé.'}
+            </span>
+            <span className="wx-brief-actions">
+                <button type="button" className="ghost-btn" onClick={preview} disabled={busy != null}>{busy === 'preview' ? 'Préparation…' : 'Aperçu'}</button>
+                <button type="button" className="ghost-btn" onClick={play} disabled={busy != null}>{busy === 'play' ? 'Envoi…' : 'Écouter maintenant'}</button>
+                <button type="button" className="ghost-btn" aria-expanded={open} onClick={() => setOpen((o) => !o)}>Régler</button>
+            </span>
+            {msg && <span className="muted">{msg}</span>}
+            {text && <p className="wx-brief-text">« {text} »</p>}
+            {open && (
+                <div className="wx-brief-settings">
+                    <label className="wx-brief-row">
+                        <span className="muted">Heure</span>
+                        <input type="time" value={b.time} onChange={(e) => e.target.value && save({ time: e.target.value })} />
+                    </label>
+                    <div className="wx-brief-row" role="group" aria-label="Jours">
+                        <span className="muted">Jours</span>
+                        <span className="wx-days">
+                            {DAYS.map((x) => {
+                                const on = b.days.includes(x.d);
+                                return (
+                                    <button key={x.d} type="button" className={on ? 'active' : ''} aria-pressed={on} aria-label={x.name}
+                                        onClick={() => save({ days: on ? b.days.filter((d) => d !== x.d) : [...b.days, x.d] })}>{x.label}</button>
+                                );
+                            })}
+                        </span>
+                    </div>
+                    <label className="wx-brief-row">
+                        <span className="muted">Enceinte</span>
+                        <select value={b.speaker} onChange={(e) => save({ speaker: e.target.value })}>
+                            {b.speakers.map((s) => (
+                                <option key={s.id} value={s.id} disabled={!s.available}>{s.name}{s.available ? '' : ' (hors ligne)'}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="wx-brief-row wx-brief-check">
+                        <input type="checkbox" checked={b.useAlarm} onChange={(e) => save({ useAlarm: e.target.checked })} />
+                        <span>Suivre l’alarme du téléphone (HA Companion)</span>
+                    </label>
+                </div>
+            )}
         </section>
     );
 }
