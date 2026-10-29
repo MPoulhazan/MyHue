@@ -11,6 +11,7 @@ import * as sensorRegistry from '../sensorRegistry.js';
 import * as haService from '../haService.js';
 import * as journal from '../journal.js';
 import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
+import { getWeatherDetails } from '../weather.js';
 import * as moments from '../moments.js';
 import * as presence from '../presence.js';
 import * as thermostat from '../thermostat.js';
@@ -352,6 +353,15 @@ router.get('/api/weather', async (_req, res) => {
     const weather = await getOutdoorWeather();
     if (!weather) return res.status(503).json({ error: 'Météo indisponible' });
     res.json(weather);
+});
+
+router.get('/api/weather/details', async (_req, res) => {
+    try {
+        res.json(await getWeatherDetails());
+    } catch (err) {
+        console.warn('[Météo] Détails indisponibles:', err.message);
+        res.status(503).json({ error: 'Météo indisponible' });
+    }
 });
 
 // --- Home Assistant ---

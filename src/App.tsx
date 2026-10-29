@@ -6,6 +6,7 @@ import { Remote } from './pages/Remote';
 import { Dashboard } from './pages/Dashboard';
 import { Lights } from './pages/Lights';
 import { Climate } from './pages/Climate';
+import { Weather } from './pages/Weather';
 import { Settings } from './pages/Settings';
 import { Sensors } from './pages/Sensors';
 import { Speakers } from './pages/Speakers';
@@ -19,6 +20,7 @@ function App() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/lights" element={<Lights />} />
                     <Route path="/climate" element={<Climate />} />
+                    <Route path="/climate/weather" element={<Weather />} />
                     <Route path="/music" element={<Music />} />
                     <Route path="/agent" element={<Navigate to="/" replace />} />
                     <Route path="/settings" element={<Settings />} />

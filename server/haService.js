@@ -36,6 +36,13 @@ export async function getStatus() {
     }
 }
 
+/** Configuration HA : position (latitude, longitude), fuseau, unités. */
+export async function getConfig() {
+    ensureConfigured();
+    const { data } = await client.get('/config');
+    return data;
+}
+
 /** Tous les états, filtrables par domaine (light, sensor, climate...). */
 export async function getStates(domain) {
     ensureConfigured();

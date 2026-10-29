@@ -87,10 +87,10 @@ export function Dashboard() {
                     </span>
                 </div>
                 {home.weather && (
-                    <span className="weather-pill">
+                    <Link to="/climate/weather" className="weather-pill">
                         <Icon name={weatherIcon(home.weather.condition)} size={18} />
                         Dehors <strong>{fmt(home.weather.temperature, 0)}°</strong>
-                    </span>
+                    </Link>
                 )}
             </header>
 

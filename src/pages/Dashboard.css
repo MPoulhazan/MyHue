@@ -40,6 +40,8 @@
 .weather-pill { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; background: var(--h-surface); font-size: 15px; }
 .weather-pill svg { color: var(--h-light); }
 .weather-pill strong { font-weight: 600; }
+a.weather-pill { color: var(--h-text); text-decoration: none; min-height: 44px; }
+a.weather-pill:hover { background: var(--h-surface-2); }
 .round-btn { width: 48px; height: 48px; flex: none; border-radius: 999px; border: none; background: var(--h-surface); display: inline-flex; align-items: center; justify-content: center; }
 .round-btn:hover { background: var(--h-surface-2); }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { useHomeData } from '../hooks/useHome';
 import { Icon } from '../components/Icon';
 import { ClimateCard, EXTRA_MODES, fmt } from '../components/home/cards';
@@ -64,6 +65,11 @@ export function Climate() {
         <div className="home">
             <header className="home-top">
                 <div className="home-hello"><h1>Climat</h1></div>
+                <Link to="/climate/weather" className="weather-pill">
+                    <Icon name="cloud" size={18} />
+                    Météo, baromètre et tenue du jour
+                    <Icon name="chevron" size={18} strokeWidth={2.2} />
+                </Link>
             </header>
 
             <div className="climate-layout">
