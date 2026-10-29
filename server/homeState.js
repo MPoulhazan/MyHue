@@ -9,6 +9,7 @@ import { getHueContext, getHueScenes } from './hue.js';
 import * as journal from './journal.js';
 import * as presence from './presence.js';
 import * as thermostat from './thermostat.js';
+import * as circadian from './circadian.js';
 import { getSensors, getOutdoorWeather } from './sensors.js';
 
 const TZ = process.env.TZ || 'America/Toronto';
@@ -33,6 +34,8 @@ export const getHomeState = async () => {
         cast: castService.getDevices(),
         sensors,
         rules: automations.getForAgent(),
+        automationTemplates: Object.entries(automations.TEMPLATES).map(([id, t]) => ({ id, label: t.label, description: t.description })),
+        circadian: await circadian.getStatus().catch(() => null),
         heating: broadlinkService.getState(),
         thermostat: (({ enabled, target, why, status }) => ({ enabled, target, why, status: status.text }))(thermostat.getStatus()),
         outdoor,

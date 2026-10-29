@@ -10,6 +10,7 @@ import * as automations from './automations.js';
 import * as companion from './companion.js';
 import * as presence from './presence.js';
 import * as thermostat from './thermostat.js';
+import * as circadian from './circadian.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
 import { installAuth, TOKEN, PUBLIC_PORT } from './auth.js';
@@ -31,7 +32,11 @@ installWakewordRoutes(app, express);
 app.use(agentRoutes);
 app.use(mediaRoutes);
 app.use(homeRoutes);
-app.use('/api/hue', hueProxy);
+// Proxy Hue ; un réglage de couleur ou de blanc fait à la main suspend le circadien sur ces lampes
+app.use('/api/hue', (req, res) => {
+    if (req.method === 'PUT') circadian.noteHueCommand(req.url, req.body);
+    hueProxy(req, res);
+});
 
 // --- Front buildé (add-on / prod) ---
 
@@ -50,6 +55,7 @@ app.listen(PORT, () => {
     companion.start(getSensors);
     presence.start();
     thermostat.start(getSensors);
+    circadian.start();
     broadlinkService.discover().catch((err) => console.warn('⚠️  Broadlink:', err.message));
     zigbeeService.start().catch((err) => console.warn('⚠️  Zigbee:', err.message));
 });

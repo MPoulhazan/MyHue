@@ -5,6 +5,7 @@
 import * as castService from './castService.js';
 import * as automations from './automations.js';
 import * as thermostat from './thermostat.js';
+import * as circadian from './circadian.js';
 import { hueClient, ensureHueConfigured, clamp, rgbToXy, getHueScenes } from './hue.js';
 import { getYtDlpAudioUrl } from './ytdlp.js';
 
@@ -14,7 +15,28 @@ const findCastDevice = (name) => {
     return device;
 };
 
+// Chemin Hue touché par une action de couleur/blanc, pour suspendre le circadien sur ces lampes
+const colorTarget = (a) => {
+    switch (a.type) {
+        case 'set_color':
+        case 'set_rgb':
+        case 'set_color_temperature':
+            return [`/lights/${a.id}/state`, { ct: true }];
+        case 'set_light_state':
+            return [`/lights/${a.id}/state`, { ...a.state, ...(a.rgb ? { xy: true } : {}) }];
+        case 'set_group_state':
+            return [`/groups/${a.id}/action`, { ...a.state, ...(a.rgb ? { xy: true } : {}) }];
+        case 'activate_scene':
+            // Le groupe de la scène n'est pas connu ici : on laisse toute la maison à la scène
+            return ['/groups/0/action', { scene: a.sceneId }];
+        default:
+            return null;
+    }
+};
+
 const runAction = async (action, source) => {
+    const touched = colorTarget(action);
+    if (touched) circadian.noteHueCommand(...touched);
     switch (action.type) {
         // Hue
         case 'toggle_light':
@@ -117,6 +139,12 @@ const runAction = async (action, source) => {
             });
             return { action, result: { ruleId: rule.id, name: rule.name } };
         }
+        case 'create_automation': {
+            const automation = automations.createFromTemplate(action.template, action.params || {});
+            return { action, result: { id: automation.id, name: automation.name, summary: automations.summarize(automation) } };
+        }
+        case 'set_circadian':
+            return { action, result: await circadian.setEnabled(action.enabled) };
         case 'delete_rule':
             if (!automations.remove(action.ruleId)) {
                 throw new Error(`Règle non trouvée: ${action.ruleId}`);

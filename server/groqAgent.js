@@ -4,6 +4,9 @@
 // Ce qui dépasse la maison (mails, agenda, réorganisation) part vers Claude.
 
 import { normalize } from './intentParser.js';
+import { TEMPLATES } from './automations.js';
+
+const AUTOMATION_TEMPLATES = Object.keys(TEMPLATES);
 
 const MAX_ROUNDS = 3;
 
@@ -113,6 +116,22 @@ export const TOOLS = [
         ['sensor_did', 'property', 'operator', 'message', 'name'],
     ),
     tool(
+        'create_automation',
+        'Crée un automatisme à partir d’un modèle (voir automationTemplates dans le contexte) : porte oubliée, ouverture la nuit, fenêtre ouverte → pause chauffage, je pars, je rentre, pile faible, capteur muet.',
+        {
+            template: { type: 'string', enum: AUTOMATION_TEMPLATES },
+            sensor_did: { type: 'string', description: 'Capteur de porte visé, ou "*" pour toutes les portes (modèles de porte seulement)' },
+            minutes: { type: 'number', description: 'Délai avant de réagir (modèles de porte)' },
+        },
+        ['template'],
+    ),
+    tool(
+        'set_circadian',
+        'Active ou coupe la lumière qui suit le soleil (blanc froid le jour, chaud le soir).',
+        { enabled: { type: 'boolean' } },
+        ['enabled'],
+    ),
+    tool(
         'delete_notification_rule',
         'Supprime une règle de notification.',
         { rule_id: { type: 'string' } },
@@ -200,6 +219,14 @@ export const toolCallToActions = (name, args) => {
                     forMinutes: args.for_minutes || 0,
                 },
             ];
+        case 'create_automation': {
+            const params = {};
+            if (args.sensor_did) params.did = args.sensor_did;
+            if (args.minutes) params.minutes = Number(args.minutes);
+            return [{ type: 'create_automation', template: args.template, params }];
+        }
+        case 'set_circadian':
+            return [{ type: 'set_circadian', enabled: Boolean(args.enabled) }];
         case 'delete_notification_rule':
             return [{ type: 'delete_rule', ruleId: args.rule_id }];
         default:

@@ -339,14 +339,26 @@ export const castMedia = async (deviceId, mediaUrl, contentType = 'audio/mpeg', 
     }
 };
 
+// Titre, chaîne et vignette d'une vidéo, sans clé d'API (oEmbed) ; à défaut « YouTube »
+const youtubeInfo = async (videoId) => {
+    try {
+        const page = `https://www.youtube.com/watch?v=${videoId}`;
+        const res = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(page)}`, {
+            signal: AbortSignal.timeout(5000),
+        });
+        if (!res.ok) throw new Error(`oEmbed ${res.status}`);
+        const { title, author_name: subtitle, thumbnail_url: thumbnail } = await res.json();
+        return { title, subtitle, thumbnail };
+    } catch {
+        return { title: 'YouTube' };
+    }
+};
+
 export const castYouTube = async (deviceId, videoId, serverProxyUrl) => {
     if (!serverProxyUrl) {
         throw new Error('Server proxy URL required for YouTube casting');
     }
-    return castMedia(deviceId, serverProxyUrl, 'audio/mp4', {
-        title: 'YouTube',
-        subtitle: videoId,
-    });
+    return castMedia(deviceId, serverProxyUrl, 'audio/mp4', await youtubeInfo(videoId));
 };
 
 export const controlPlayback = async (deviceId, command) => {

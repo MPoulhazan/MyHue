@@ -58,16 +58,17 @@ const sensorLabel = (trigger) => {
 /** Résumé lisible d'un automatisme, pour l'interface, Telegram et l'agent. */
 export const summarize = (a) => {
     const t = a.trigger;
-    const who = sensorLabel(t);
     let what;
-    if (t.prop === 'isOpen') what = t.operator === 'is_false' ? `${who} fermée` : `${who} ouverte`;
+    const who = t.type === 'sensor' ? sensorLabel(t) : '';
+    if (t.type === 'presence') what = t.state === 'away' ? 'plus personne à la maison' : 'quelqu’un rentre';
+    else if (t.prop === 'isOpen') what = t.operator === 'is_false' ? `${who} fermée` : `${who} ouverte`;
     else what = `${who} : ${PROP_LABELS[t.prop] || t.prop} ${OP_LABELS[t.operator] || t.operator} ${t.value}`;
     if (t.forMinutes) what += ` depuis ${t.forMinutes} min`;
     const when = (a.conditions || [])
-        .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : ''))
+        .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : ''))
         .filter(Boolean);
     const does = a.actions
-        .map((x) => ({ notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison' })[x.type])
+        .map((x) => ({ notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison', moment: `moment ${x.id}` })[x.type])
         .filter(Boolean);
     return `Si ${what}${when.length ? ` (${when.join(', ')})` : ''} → ${does.join(' + ')}`;
 };
@@ -116,6 +117,31 @@ export const TEMPLATES = {
             cooldownMinutes: 5,
         }),
     },
+    leave_home: {
+        label: 'Je pars',
+        description: 'Quand plus personne n’est à la maison (HA Companion) : tout s’éteint et le chauffage passe en éco.',
+        build: () => ({
+            name: 'Je pars',
+            trigger: { type: 'presence', state: 'away' },
+            conditions: [],
+            actions: [
+                { type: 'moment', id: 'depart' },
+                { type: 'notify', message: '🏃 Plus personne à la maison : lumières éteintes, chauffage en éco.' },
+            ],
+            cooldownMinutes: 10,
+        }),
+    },
+    arrive_home: {
+        label: 'Je rentre',
+        description: 'À ton retour, s’il fait nuit : le salon s’allume doucement en blanc chaud.',
+        build: ({ groupId = '1' } = {}) => ({
+            name: 'Je rentre',
+            trigger: { type: 'presence', state: 'home' },
+            conditions: [{ type: 'dark' }],
+            actions: [{ type: 'home', action: { type: 'set_group_state', id: groupId, state: { on: true, bri: 140, ct: 400 } } }],
+            cooldownMinutes: 10,
+        }),
+    },
     low_battery: {
         label: 'Pile faible',
         description: 'Prévient quand la pile d’un capteur passe sous 15 %.',
@@ -161,6 +187,7 @@ export const createFromTemplate = (templateId, params = {}) => {
     const tpl = TEMPLATES[templateId];
     if (!tpl) throw new Error(`Modèle inconnu: ${templateId}`);
     const automation = normalize({ ...tpl.build(params), template: templateId });
+    if (automation.trigger.type === 'sensor' && !automation.trigger.did) throw new Error(`Le modèle « ${tpl.label} » demande un capteur`);
     automations.push(automation);
     save();
     console.log(`⚙️  Automatisme créé: "${automation.name}"`);
@@ -310,8 +337,24 @@ const toMinutes = (hhmm) => {
     return h * 60 + (m || 0);
 };
 
-const conditionsMet = (a) =>
-    a.conditions.every((c) => {
+// Soleil couché d'après Home Assistant (sun.sun), en cache 5 min
+let darkCache = { at: 0, dark: false };
+const isDark = async () => {
+    if (Date.now() - darkCache.at < 5 * 60_000) return darkCache.dark;
+    try {
+        const { getState } = await import('./haService.js');
+        darkCache = { at: Date.now(), dark: (await getState('sun.sun')).state === 'below_horizon' };
+    } catch {
+        // Sans HA : nuit entre 18 h et 7 h
+        const m = localMinutes();
+        darkCache = { at: Date.now(), dark: m >= 18 * 60 || m < 7 * 60 };
+    }
+    return darkCache.dark;
+};
+
+const conditionsMet = async (a) => {
+    if (a.conditions.some((c) => c.type === 'dark') && !(await isDark())) return false;
+    return a.conditions.every((c) => {
         if (c.type === 'time') {
             const now = localMinutes();
             const from = toMinutes(c.from);
@@ -321,6 +364,7 @@ const conditionsMet = (a) =>
         if (c.type === 'heating') return broadlinkService.getState().power === c.power;
         return true;
     });
+};
 
 const sensorValue = (sensor, prop) => {
     if (prop === 'silentHours') {
@@ -392,6 +436,11 @@ const runActions = async (a, actions, vars) => {
                     journal.log({ kind: 'automation', title: `${vars.sensor} refermée : thermopompe relancée.`, data: { automationId: a.id } });
                     break;
                 }
+                case 'moment': {
+                    const moments = await import('./moments.js');
+                    await moments.run(action.id);
+                    break;
+                }
                 case 'home': {
                     const { executeActions } = await import('./actions.js');
                     await executeActions([action.action], `automatisme « ${a.name} »`);
@@ -444,7 +493,7 @@ const evaluate = async () => {
                 if (rt.fired && !repeatDue) continue;
                 if (!rt.fired && a.lastTriggeredAt && now - Date.parse(a.lastTriggeredAt) < a.cooldownMinutes * 60_000) continue;
                 if (a.snoozedUntil && now < a.snoozedUntil) continue;
-                if (!conditionsMet(a)) continue;
+                if (!(await conditionsMet(a))) continue;
 
                 console.log(`⚙️  Automatisme déclenché: "${a.name}" (${sensor.name})`);
                 rt.fired = true;
@@ -466,10 +515,29 @@ const evaluate = async () => {
     }
 };
 
+// Départs et retours (presence.js) : déclencheurs ponctuels, sans durée
+const onPresence = async ({ home, anyoneHome }) => {
+    const state = home ? 'home' : anyoneHome === false ? 'away' : null;
+    if (!state) return; // quelqu'un part mais d'autres restent
+    const now = Date.now();
+    for (const a of automations) {
+        if (!a.enabled || a.trigger.type !== 'presence' || a.trigger.state !== state) continue;
+        if (a.lastTriggeredAt && now - Date.parse(a.lastTriggeredAt) < a.cooldownMinutes * 60_000) continue;
+        if (a.snoozedUntil && now < a.snoozedUntil) continue;
+        if (!(await conditionsMet(a))) continue;
+        console.log(`⚙️  Automatisme déclenché: "${a.name}" (présence)`);
+        a.lastTriggeredAt = new Date(now).toISOString();
+        a.triggerCount++;
+        save();
+        await runActions(a, a.actions, {});
+    }
+};
+
 export const start = (getSensors) => {
     getSensorsFn = getSensors;
     load();
     bus.on('sensor', () => evaluate());
+    bus.on('presence', onPresence);
     setInterval(evaluate, TICK_MS);
     setTimeout(evaluate, 5000);
     console.log(`⚙️  Automatismes: ${automations.filter((a) => a.enabled).length} actif(s) sur ${automations.length}`);

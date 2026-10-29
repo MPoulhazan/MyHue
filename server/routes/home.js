@@ -14,6 +14,7 @@ import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
 import * as moments from '../moments.js';
 import * as presence from '../presence.js';
 import * as thermostat from '../thermostat.js';
+import * as circadian from '../circadian.js';
 
 export const router = express.Router();
 
@@ -72,6 +73,13 @@ router.post('/api/thermostat/override', (req, res) => {
 });
 
 router.delete('/api/thermostat/override', (_req, res) => res.json(thermostat.clearOverride()));
+
+// --- Lumière qui suit le soleil ---
+
+router.get('/api/circadian', async (_req, res) => res.json(await circadian.getStatus()));
+
+// { enabled }
+router.put('/api/circadian', async (req, res) => res.json(await circadian.setEnabled(req.body?.enabled)));
 
 // --- Automatismes (ex « règles ») ---
 

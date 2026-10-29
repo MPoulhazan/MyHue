@@ -94,3 +94,10 @@
     .lamp-grid { flex: 1; min-height: 0; grid-template-rows: repeat(3, minmax(96px, 1fr)); grid-auto-rows: minmax(96px, 1fr); overflow-y: auto; }
     .lamp-tile { height: auto; }
 }
+
+/* Interrupteur « suit le soleil » dans l'en-tête */
+.sun-toggle { border: none; color: var(--h-text); cursor: pointer; }
+.sun-toggle .muted { font-size: 14px; }
+.switch.small { width: 40px; height: 24px; }
+.switch.small span { left: 3px; top: 3px; width: 18px; height: 18px; }
+.switch.small.on span { transform: translateX(16px); }
