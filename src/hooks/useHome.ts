@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { stateToHex, ctToHex, hexToXy, pctToBri, briToPct } from '../utils/hueColor';
 
@@ -363,4 +363,15 @@ export function useHome() {
         lights, rooms, climate, door, heating, log, online, sensors, weather, moments, thermostat,
         push, setLevel, setColor, applyAmbiance, controlHeating, askAgent, runMoment, updateThermostat, overrideTarget,
     };
+}
+
+export type Home = ReturnType<typeof useHome>;
+
+/** État de la maison partagé par tous les écrans : une seule connexion au serveur. */
+export const HomeContext = createContext<Home | null>(null);
+
+export function useHomeData(): Home {
+    const home = useContext(HomeContext);
+    if (!home) throw new Error('useHomeData doit être appelé sous AppShell');
+    return home;
 }

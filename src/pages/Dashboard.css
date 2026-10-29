@@ -1,5 +1,7 @@
 /* Tableau de bord « poste de pilotage » (tablette murale, s'adapte au téléphone) */
 
+/* Jetons partagés par la structure de l'app (rail, onglets) et les écrans */
+.shell,
 .home {
     --h-bg: #141513;
     --h-surface: #1d1f1b;
@@ -18,12 +20,11 @@
     --h-cool-dim: #20324d;
     --h-cool-text: #a9c9ff;
     --h-warn: #ffb547;
+}
 
-    /* Au-dessus de la trame et du halo de body::before/::after (thème des anciennes pages) */
-    position: relative;
-    z-index: 1;
-    min-height: 100vh;
-    min-height: 100dvh;
+/* Un écran : remplit la zone de contenu de la structure */
+.home {
+    min-height: 100%;
     box-sizing: border-box;
     padding: 24px;
     display: flex;
@@ -156,9 +157,6 @@
 .journal-time { flex: none; font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--h-muted); }
 .journal-link { color: var(--h-accent); }
 
-/* Barre de l'agent */
-.home-agent { position: sticky; bottom: 0; padding-top: 4px; background: var(--h-bg); }
-
 /* Panneaux (détail pièce, ajout capteur, menu) */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(5, 6, 5, 0.72); display: flex; align-items: center; justify-content: center; padding: 24px; }
 .sheet {
@@ -208,11 +206,6 @@
 .lamp-toggle { width: 44px; height: 44px; flex: none; border-radius: 12px; border: 1px solid #4a4d44; background: transparent; }
 .lamp-toggle.on { border: none; background: var(--h-light); }
 
-.menu-sheet { width: min(480px, 100%); }
-.menu-list { display: flex; flex-direction: column; gap: 8px; }
-.menu-list a { display: flex; align-items: center; min-height: 56px; padding: 0 20px; border-radius: 16px; background: var(--h-surface-2); color: var(--h-text); text-decoration: none; font-size: 17px; font-weight: 600; }
-.menu-list a:hover { background: var(--h-line); }
-
 /* Assistant d'ajout de capteur */
 .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; font-size: 14px; color: var(--h-muted); }
 .steps li { display: flex; flex-direction: column; gap: 8px; }
@@ -258,7 +251,7 @@
     .home-side { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* Téléphone (en attendant la mise en page dédiée du lot 8) */
+/* Téléphone */
 @media (max-width: 760px) {
     .home { padding: 16px; gap: 16px; }
     .home-hello h1 { font-size: 24px; }
@@ -306,7 +299,7 @@
 
 /* Tablette en paysage : la page tient exactement dans l'écran et les colonnes vont jusqu'en bas */
 @media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
-    .home { height: 100vh; height: 100dvh; min-height: 0; }
+    .home { height: 100%; min-height: 0; }
     .home-grid { grid-template-columns: 320px minmax(0, 1fr) 280px; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
     .home-grid > * { min-height: 0; }
     .climate { overflow-y: auto; }

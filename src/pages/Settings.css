@@ -1,0 +1,16 @@
+/* Écran Réglages */
+
+.settings-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 1000px; }
+.settings-row { display: flex; align-items: center; gap: 16px; min-height: 84px; padding: 16px 20px; border-radius: 22px; background: var(--h-surface); color: var(--h-text); text-decoration: none; }
+.settings-row:hover { background: var(--h-surface-2); }
+.settings-row > svg { flex: none; color: var(--h-muted); }
+.settings-icon { width: 48px; height: 48px; flex: none; border-radius: 14px; background: var(--h-surface-2); color: var(--h-accent); display: inline-flex; align-items: center; justify-content: center; }
+.settings-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.settings-text strong { font-size: 17px; }
+.settings-text .muted { font-size: 14px; }
+
+@media (max-width: 760px) {
+    .home:has(.settings-list) { padding: 20px 16px; }
+    .settings-list { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .settings-row { min-height: 72px; }
+}

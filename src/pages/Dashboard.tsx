@@ -1,41 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { useHome } from '../hooks/useHome';
+import { useHomeData } from '../hooks/useHome';
 import type { DashLight } from '../hooks/useHome';
+import { useIsPhone } from '../hooks/useIsPhone';
 import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
-import { AgentBar } from '../components/AgentBar';
 import { AddSensorSheet } from '../components/home/AddSensorSheet';
 import { NightMode } from '../components/home/NightMode';
-import { PhoneLayout } from '../components/phone/PhoneLayout';
+import { PhoneHome } from '../components/phone/PhoneHome';
 import { ScheduleSheet } from '../components/home/ScheduleSheet';
-import { ClimateCard, HouseCard, Journal, MenuSheet, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
+import { ClimateCard, HouseCard, Journal, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import './Dashboard.css';
 import '../components/lights/LightsPanel.css';
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-const PHONE_QUERY = '(max-width: 760px)';
-
-/** Téléphone : mise en page dédiée à onglets ; sinon le poste de pilotage tablette. */
-function useIsPhone() {
-    const [phone, setPhone] = useState(() => window.matchMedia(PHONE_QUERY).matches);
-    useEffect(() => {
-        const mq = window.matchMedia(PHONE_QUERY);
-        const onChange = () => setPhone(mq.matches);
-        mq.addEventListener('change', onChange);
-        return () => mq.removeEventListener('change', onChange);
-    }, []);
-    return phone;
-}
-
 export function Dashboard() {
-    const home = useHome();
+    const home = useHomeData();
     const clock = useClock();
     const navigate = useNavigate();
     const [adding, setAdding] = useState(false);
-    const [menu, setMenu] = useState(false);
     const [schedule, setSchedule] = useState(false);
 
     // Échap ferme le panneau ouvert
@@ -43,7 +28,6 @@ export function Dashboard() {
         const onKey = (e: globalThis.KeyboardEvent) => {
             if (e.key !== 'Escape') return;
             setAdding(false);
-            setMenu(false);
             setSchedule(false);
         };
         window.addEventListener('keydown', onKey);
@@ -71,7 +55,6 @@ export function Dashboard() {
     const sheets = (
         <AnimatePresence>
             {adding && <AddSensorSheet key="add" rooms={roomLights.map(([r]) => r)} onClose={() => setAdding(false)} />}
-            {menu && <MenuSheet key="menu" onClose={() => setMenu(false)} />}
             {schedule && home.thermostat && (
                 <ScheduleSheet key="schedule" status={home.thermostat} neverSent={!home.heating?.lastUpdated}
                     onUpdate={home.updateThermostat} onClearOverride={() => home.overrideTarget(null)}
@@ -82,11 +65,10 @@ export function Dashboard() {
 
     if (phone) {
         return (
-            <PhoneLayout home={home} roomLights={roomLights}
-                onAdd={() => setAdding(true)} onMenu={() => setMenu(true)}
-                onSchedule={() => setSchedule(true)}>
+            <>
+                <PhoneHome home={home} roomLights={roomLights} onAdd={() => setAdding(true)} />
                 {sheets}
-            </PhoneLayout>
+            </>
         );
     }
 
@@ -99,17 +81,12 @@ export function Dashboard() {
                         {clock.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} · <span className="mono">{hhmm(clock)}</span>
                     </span>
                 </div>
-                <div className="home-top-right">
-                    {home.weather && (
-                        <span className="weather-pill">
-                            <Icon name={/sun|clear/i.test(home.weather.condition) ? 'sun' : 'cloud'} size={18} />
-                            Dehors <strong>{fmt(home.weather.temperature, 0)}°</strong>
-                        </span>
-                    )}
-                    <button type="button" className="round-btn" aria-label="Autres écrans" onClick={() => setMenu(true)}>
-                        <Icon name="menu" size={22} />
-                    </button>
-                </div>
+                {home.weather && (
+                    <span className="weather-pill">
+                        <Icon name={/sun|clear/i.test(home.weather.condition) ? 'sun' : 'cloud'} size={18} />
+                        Dehors <strong>{fmt(home.weather.temperature, 0)}°</strong>
+                    </span>
+                )}
             </header>
 
             <div className="home-grid">
@@ -154,10 +131,6 @@ export function Dashboard() {
                     <HouseCard sensors={home.sensors} onAdd={() => setAdding(true)} />
                     <Journal log={home.log} />
                 </aside>
-            </div>
-
-            <div className="home-agent">
-                <AgentBar onAsk={home.askAgent} chips={[]} />
             </div>
 
             {sheets}

@@ -1,0 +1,21 @@
+/* Écran Climat (s'appuie sur les jetons et cartes de Dashboard.css) */
+
+.climate-layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+.climate-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+.temp-chart { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.temp-chart svg { width: 100%; height: 160px; }
+.temp-chart figcaption { display: flex; justify-content: space-between; font-size: 13px; }
+
+.climate-more { flex-direction: row; align-items: center; justify-content: space-between; color: var(--h-text); text-decoration: none; }
+.climate-more > span { display: flex; flex-direction: column; gap: 4px; }
+.climate-more strong { font-size: 17px; }
+.climate-more .muted { font-size: 14px; }
+.climate-more:hover { background: var(--h-surface-2); }
+
+@media (max-width: 760px) {
+    .home:has(.climate-layout) { padding: 20px 16px; }
+    .climate-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .climate-side { gap: 16px; }
+    .temp-chart svg { height: 110px; }
+}

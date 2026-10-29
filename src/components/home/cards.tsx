@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { useHome, DashLight, LogEntry, Sensor } from '../../hooks/useHome';
 import { Icon } from '../Icon';
@@ -198,33 +197,3 @@ export function Journal({ log }: { log: LogEntry[] }) {
         </section>
     );
 }
-
-// ── Menu des autres écrans ───────────────────────────────────────────────────
-
-const PAGES: { to: string; label: string }[] = [
-    { to: '/music', label: 'Musique' },
-    { to: '/agent', label: 'Conversation avec l’agent' },
-    { to: '/rules', label: 'Automatismes' },
-    { to: '/heating', label: 'Chauffage avancé' },
-    { to: '/google-home', label: 'Capteurs et appareils Cast' },
-    { to: '/scenes', label: 'Scènes Hue' },
-];
-
-export function MenuSheet({ onClose }: { onClose: () => void }) {
-    return (
-        <div className="sheet-backdrop" onClick={onClose}>
-            <motion.div className="sheet menu-sheet" role="dialog" aria-modal="true" aria-label="Menu"
-                initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
-                onClick={(e) => e.stopPropagation()}>
-                <div className="sheet-head">
-                    <h2>Autres écrans</h2>
-                    <button type="button" className="round-btn" aria-label="Fermer" onClick={onClose}><Icon name="close" size={22} strokeWidth={2} /></button>
-                </div>
-                <nav className="menu-list">
-                    {PAGES.map((p) => <Link key={p.to} to={p.to}>{p.label}</Link>)}
-                </nav>
-            </motion.div>
-        </div>
-    );
-}
-

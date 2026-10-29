@@ -1,0 +1,137 @@
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { HomeContext, useHome } from '../../hooks/useHome';
+import { useIsPhone } from '../../hooks/useIsPhone';
+import { AgentBar } from '../AgentBar';
+import { Icon } from '../Icon';
+import type { IconName } from '../Icon';
+import './AppShell.css';
+
+// ── Structure commune : rail à gauche (tablette), onglets en bas (téléphone) ──
+
+interface Destination {
+    to: string;
+    label: string;
+    icon: IconName;
+}
+
+const MAIN: Destination[] = [
+    { to: '/', label: 'Maison', icon: 'home' },
+    { to: '/lights', label: 'Lumières', icon: 'lights' },
+    { to: '/climate', label: 'Climat', icon: 'thermo' },
+    { to: '/music', label: 'Musique', icon: 'music' },
+];
+
+const SETTINGS: Destination = { to: '/settings', label: 'Réglages', icon: 'settings' };
+// Au téléphone l'agent garde son onglet ; les réglages s'ouvrent depuis l'accueil
+const PHONE_AGENT: Destination = { to: '/agent', label: 'Agent', icon: 'agent' };
+
+/** Écrans rangés sous Réglages (anciennes pages comprises). */
+const SETTINGS_PAGES = ['/rules', '/google-home', '/heating', '/scenes', '/rooms', '/wakeword'];
+
+// Tablette murale : retour à l'accueil après ce délai sans toucher
+const IDLE_MS = 2 * 60_000;
+
+function useIdleReturn(enabled: boolean) {
+    const navigate = useNavigate();
+    const { pathname } = useLocation();
+    useEffect(() => {
+        if (!enabled || pathname === '/') return;
+        let timer = 0;
+        const arm = () => {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(() => {
+                // Un panneau ouvert, c'est une saisie en cours : on attend encore
+                if (document.querySelector('.sheet-backdrop')) arm();
+                else navigate('/');
+            }, IDLE_MS);
+        };
+        const events = ['pointerdown', 'keydown', 'wheel'] as const;
+        events.forEach((e) => window.addEventListener(e, arm, { passive: true }));
+        arm();
+        return () => {
+            window.clearTimeout(timer);
+            events.forEach((e) => window.removeEventListener(e, arm));
+        };
+    }, [enabled, pathname, navigate]);
+}
+
+function NavItem({ dest, className }: { dest: Destination; className: string }) {
+    const { pathname } = useLocation();
+    const inSettings = dest === SETTINGS && SETTINGS_PAGES.includes(pathname);
+    return (
+        <NavLink to={dest.to} end={dest.to === '/'}
+            className={({ isActive }) => `${className} ${isActive || inSettings ? 'active' : ''}`}>
+            <span className="nav-pill"><Icon name={dest.icon} size={24} strokeWidth={2} /></span>
+            {dest.label}
+        </NavLink>
+    );
+}
+
+export function AppShell() {
+    const home = useHome();
+    const phone = useIsPhone();
+    const { pathname } = useLocation();
+    const [reply, setReply] = useState<string | null>(null);
+    const replyTimer = useRef(0);
+    useIdleReturn(!phone);
+
+    // Hors de l'accueil (où le journal l'affiche), la réponse de l'agent passe en bulle
+    const ask = async (message: string) => {
+        const answer = await home.askAgent(message);
+        if (answer) {
+            setReply(answer);
+            window.clearTimeout(replyTimer.current);
+            replyTimer.current = window.setTimeout(() => setReply(null), 10_000);
+        }
+        return answer;
+    };
+
+    const backToSettings = SETTINGS_PAGES.includes(pathname);
+    const showAgentBar = !phone && pathname !== '/agent';
+
+    return (
+        <HomeContext.Provider value={home}>
+            <div className={`shell ${phone ? 'phone' : ''}`}>
+                {!phone && (
+                    <nav className="shell-rail" aria-label="Navigation principale">
+                        {MAIN.map((d) => <NavItem key={d.to} dest={d} className="rail-item" />)}
+                        <div className="rail-bottom"><NavItem dest={SETTINGS} className="rail-item" /></div>
+                    </nav>
+                )}
+
+                <div className="shell-main">
+                    <div className="shell-page">
+                        {backToSettings && (
+                            <Link to="/settings" className="shell-back">
+                                <Icon name="back" size={20} strokeWidth={2.2} /> Réglages
+                            </Link>
+                        )}
+                        <Outlet />
+                    </div>
+
+                    {showAgentBar && (
+                        <div className="shell-agent">
+                            <AnimatePresence>
+                                {reply && pathname !== '/' && (
+                                    <motion.button key="reply" type="button" className="agent-reply" onClick={() => setReply(null)}
+                                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
+                                        {reply}
+                                    </motion.button>
+                                )}
+                            </AnimatePresence>
+                            <AgentBar onAsk={ask} chips={[]} />
+                        </div>
+                    )}
+                </div>
+
+                {phone && (
+                    <nav className="shell-tabs" aria-label="Navigation principale">
+                        {[...MAIN, PHONE_AGENT].map((d) => <NavItem key={d.to} dest={d} className="tab-item" />)}
+                    </nav>
+                )}
+            </div>
+        </HomeContext.Provider>
+    );
+}

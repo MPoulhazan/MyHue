@@ -1,0 +1,114 @@
+/* Structure de l'app : rail à gauche sur tablette, onglets en bas sur téléphone */
+
+.shell {
+    /* Au-dessus de la trame et du halo de body::before/::after (thème des anciennes pages) */
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    height: 100vh;
+    height: 100dvh;
+    background: var(--h-bg);
+    color: var(--h-text);
+    color-scheme: dark;
+}
+
+.shell-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.shell-page { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+
+/* Rail */
+.shell-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px 8px;
+    border-right: 1px solid var(--h-surface-2);
+    overflow-y: auto;
+    font-family: Manrope, system-ui, sans-serif;
+}
+.rail-bottom { margin-top: auto; }
+.rail-item,
+.tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--h-muted);
+    text-decoration: none;
+    font-weight: 600;
+    -webkit-tap-highlight-color: transparent;
+}
+.rail-item { min-height: 76px; border-radius: 18px; font-size: 13px; }
+.nav-pill { display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 36px; border-radius: 999px; transition: background 0.2s, color 0.2s; }
+.rail-item:hover .nav-pill { background: var(--h-surface); }
+.rail-item.active,
+.tab-item.active { color: var(--h-text); }
+.rail-item.active .nav-pill { background: var(--h-accent); color: var(--h-on-accent); }
+.rail-item:focus-visible,
+.tab-item:focus-visible { outline: 2px solid var(--h-accent); outline-offset: -2px; }
+
+/* Retour vers Réglages depuis une page rangée dessous */
+.shell-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 20px 24px 0;
+    min-height: 44px;
+    padding: 0 18px 0 12px;
+    border-radius: 999px;
+    background: var(--h-surface);
+    color: var(--h-text);
+    text-decoration: none;
+    font-family: Manrope, system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+}
+.shell-back:hover { background: var(--h-surface-2); }
+
+/* Barre de l'agent, présente sur tous les écrans de la tablette */
+.shell-agent { padding: 0 24px 20px; font-family: Manrope, system-ui, sans-serif; }
+.agent-reply {
+    display: block;
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 18px;
+    background: #232a17;
+    color: var(--h-text);
+    font: inherit;
+    font-size: 15px;
+    line-height: 1.4;
+    text-align: left;
+    cursor: pointer;
+}
+
+/* Anciennes pages : leur conteneur n'a plus à remplir toute la fenêtre */
+.shell .app { min-height: 0; }
+.shell .app > div { width: 100%; min-height: 0; min-width: 0; }
+
+/* Téléphone */
+.shell.phone { display: block; height: auto; min-height: 100vh; min-height: 100dvh; }
+.shell.phone .shell-main { display: block; }
+.shell.phone .shell-page { overflow: visible; overflow-x: clip; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+.shell.phone .shell-back { margin: 16px 16px 0; }
+.shell.phone .agent-container { height: calc(100dvh - 190px); min-height: 280px; border: none; margin: 0; }
+
+.shell-tabs {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--h-surface-2);
+    background: var(--h-bg);
+    font-family: Manrope, system-ui, sans-serif;
+}
+.tab-item { min-height: 60px; gap: 4px; font-size: 12px; }
+.tab-item .nav-pill { width: 52px; height: 30px; }
+.tab-item.active { color: var(--h-accent); font-weight: 700; }
+.tab-item.active .nav-pill { background: #2f3a1a; }
