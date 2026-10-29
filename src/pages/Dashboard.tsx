@@ -10,9 +10,13 @@ import { AddSensorSheet } from '../components/home/AddSensorSheet';
 import { NightMode } from '../components/home/NightMode';
 import { PhoneHome } from '../components/phone/PhoneHome';
 import { ScheduleSheet } from '../components/home/ScheduleSheet';
-import { ClimateCard, HouseCard, Journal, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
+import { ClimateCard, HouseCard, HueStatus, Journal, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import './Dashboard.css';
 import '../components/lights/LightsPanel.css';
+
+// Conditions de Home Assistant : « sunny » le jour, « clear-night » la nuit
+const weatherIcon = (condition: string): IconName =>
+    condition === 'clear-night' ? 'moon' : condition === 'sunny' ? 'sun' : 'cloud';
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -36,7 +40,8 @@ export function Dashboard() {
 
     const roomLights = useMemo(() => {
         const map = new Map<string, DashLight[]>();
-        for (const r of home.rooms) map.set(r, []);
+        // Avant la réponse du pont, une pièce Hue paraîtrait vide
+        if (home.lights.length) for (const r of home.rooms) map.set(r, []);
         for (const l of home.lights) {
             if (!map.has(l.room)) map.set(l.room, []);
             map.get(l.room)!.push(l);
@@ -83,7 +88,7 @@ export function Dashboard() {
                 </div>
                 {home.weather && (
                     <span className="weather-pill">
-                        <Icon name={/sun|clear/i.test(home.weather.condition) ? 'sun' : 'cloud'} size={18} />
+                        <Icon name={weatherIcon(home.weather.condition)} size={18} />
                         Dehors <strong>{fmt(home.weather.temperature, 0)}°</strong>
                     </span>
                 )}
@@ -109,7 +114,7 @@ export function Dashboard() {
                                 onLevel={(v) => home.setLevel(lights.map((l) => l.id), v)}
                                 onOpen={() => navigate(`/lights?room=${encodeURIComponent(room)}`)} />
                         ))}
-                        {!home.online.hue && !home.lights.length && <div className="muted">Pont Hue injoignable…</div>}
+                        <HueStatus />
                     </div>
 
                     {home.moments.length > 0 && (

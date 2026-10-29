@@ -78,3 +78,21 @@ button.item-row:hover { background: var(--h-surface-2); }
     .choice-grid { grid-template-columns: minmax(0, 1fr); }
     .sheet-foot .primary-btn { flex: 1; }
 }
+
+/* Mot d'activation : collecte de prises */
+.wakeword .card { max-width: 640px; }
+.wakeword .field input:disabled { opacity: 0.6; }
+.wakeword-count { display: flex; align-items: baseline; gap: 10px; }
+.wakeword-count strong { font-size: 44px; font-weight: 600; }
+.wakeword-count .muted { font-size: 17px; }
+.wakeword-bar { height: 8px; border-radius: 4px; background: var(--h-surface-2); overflow: hidden; }
+.wakeword-bar i { display: block; height: 100%; border-radius: 4px; background: var(--h-accent); }
+.wakeword-status { min-height: 72px; display: flex; align-items: center; justify-content: center; padding: 0 16px; border-radius: 18px; background: var(--h-surface-2); font-size: 17px; text-align: center; }
+.wakeword-status.live { color: var(--h-accent); font-size: 24px; font-weight: 700; }
+.wakeword-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.wakeword-actions .primary-btn { align-self: auto; }
+.wakeword-tips { margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.6; color: var(--h-muted); }
+
+@media (max-width: 760px) {
+    .wakeword-actions > * { flex: 1 1 calc(50% - 10px); }
+}

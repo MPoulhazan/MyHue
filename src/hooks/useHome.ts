@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { stateToHex, ctToHex, hexToXy, pctToBri, briToPct } from '../utils/hueColor';
 import { scenesByRoom } from '../utils/hueScenes';
@@ -39,6 +39,8 @@ export interface LogEntry {
     msg: string;
     color?: string;
     href?: string;
+    /** Capteur de porte concerné : le nom affiché suit son nom actuel */
+    did?: string;
 }
 
 /** Un échange avec l'agent, gardé le temps de la session. */
@@ -128,7 +130,7 @@ interface JournalEntry {
     ts: number;
     kind: string;
     title: string;
-    data?: { isOpen?: boolean; level?: string };
+    data?: { did?: string; isOpen?: boolean; level?: string };
 }
 
 const journalColor = (e: JournalEntry) => {
@@ -143,6 +145,7 @@ const fromJournal = (e: JournalEntry): LogEntry => ({
     t: hhmm(new Date(e.ts)),
     msg: e.title,
     color: journalColor(e),
+    did: e.kind === 'door' ? e.data?.did : undefined,
 });
 
 export function useHome() {
@@ -152,7 +155,8 @@ export function useHome() {
     const [door, setDoor] = useState<{ name: string; open: boolean | null; since: string } | null>(null);
     const [heating, setHeating] = useState<Heating | null>(null);
     const [log, setLog] = useState<LogEntry[]>([]);
-    const [online, setOnline] = useState({ hue: false, zigbee: false });
+    // hue : null tant que le pont n'a pas encore répondu (chargement, pas une panne)
+    const [online, setOnline] = useState<{ hue: boolean | null; zigbee: boolean }>({ hue: null, zigbee: false });
     const [sensors, setSensors] = useState<Sensor[]>([]);
     const [weather, setWeather] = useState<Weather | null>(null);
     const [moments, setMoments] = useState<Moment[]>([]);
@@ -200,28 +204,36 @@ export function useHome() {
         }
     }, []);
 
+    // Pièces et scènes Hue, redemandées tant que le pont n'a pas répondu
+    const groupsLoaded = useRef(false);
+    const loadGroups = useCallback(async () => {
+        try {
+            const { data } = await axios.get('/api/hue/groups');
+            const names: string[] = [];
+            const roomOfGroup: Record<string, string> = {};
+            for (const [gid, g] of Object.entries<any>(data)) {
+                if (g.type !== 'Room' || !g.lights.length) continue;
+                names.push(g.name);
+                roomOfGroup[gid] = g.name;
+                groupOf.current[g.name] = gid;
+                g.lights.forEach((id: string) => (roomOf.current[id] = g.name));
+            }
+            setRooms(names);
+            groupsLoaded.current = true;
+            const { data: scenes } = await axios.get('/api/hue/scenes');
+            setRoomScenes(scenesByRoom(scenes, roomOfGroup));
+        } catch { /* pont injoignable : nouvel essai au prochain passage */ }
+    }, []);
+
     useEffect(() => {
-        (async () => {
-            try {
-                const { data } = await axios.get('/api/hue/groups');
-                const names: string[] = [];
-                const roomOfGroup: Record<string, string> = {};
-                for (const [gid, g] of Object.entries<any>(data)) {
-                    if (g.type !== 'Room' || !g.lights.length) continue;
-                    names.push(g.name);
-                    roomOfGroup[gid] = g.name;
-                    groupOf.current[g.name] = gid;
-                    g.lights.forEach((id: string) => (roomOf.current[id] = g.name));
-                }
-                setRooms(names);
-                const { data: scenes } = await axios.get('/api/hue/scenes');
-                setRoomScenes(scenesByRoom(scenes, roomOfGroup));
-            } catch { /* pont injoignable */ }
+        const tick = async () => {
+            if (!groupsLoaded.current) await loadGroups();
             await loadLights();
-        })();
-        const t = setInterval(loadLights, 3000);
+        };
+        tick();
+        const t = setInterval(tick, 3000);
         return () => clearInterval(t);
-    }, [loadLights, push]);
+    }, [loadGroups, loadLights]);
 
     const sendState = useCallback((id: string, body: object, delay = 120) => {
         clearTimeout(pending.current[id]);
@@ -293,7 +305,9 @@ export function useHome() {
     // --- Journal de la maison (portes, clim, automatismes, compagnon) ---
     // Les échanges avec l'agent restent locaux : ils sont déjà affichés par askAgent
     useEffect(() => {
+        let alive = true; // réponse ignorée après démontage (sinon le journal apparaît deux fois)
         axios.get('/api/journal', { params: { limit: 25 } }).then(({ data }) => {
+            if (!alive) return;
             const entries = (data.entries as JournalEntry[]).filter((e) => e.kind !== 'agent');
             setLog((l) => [...l, ...entries.map(fromJournal)].slice(0, 40));
         }).catch(() => {});
@@ -304,7 +318,10 @@ export function useHome() {
                 if (e.kind !== 'agent') setLog((l) => [fromJournal(e), ...l].slice(0, 40));
             } catch { /* ignore */ }
         };
-        return () => es.close();
+        return () => {
+            alive = false;
+            es.close();
+        };
     }, []);
 
     // --- Météo extérieure et Moments ---
@@ -413,8 +430,15 @@ export function useHome() {
 
     const clearConversation = useCallback(() => setConversation([]), []);
 
+    // Un capteur renommé : ses anciennes entrées prennent le nouveau nom (« Porte chambre » → « Porte d'entrée »)
+    const namedLog = useMemo(() => log.map((e) => {
+        const name = e.did && sensors.find((s) => s.did === e.did)?.name;
+        const sep = e.msg.indexOf(' : ');
+        return name && sep > 0 ? { ...e, msg: name + e.msg.slice(sep) } : e;
+    }), [log, sensors]);
+
     return {
-        lights, rooms, roomScenes, climate, door, heating, log, online, sensors, weather, moments, thermostat, conversation, thinking,
+        lights, rooms, roomScenes, climate, door, heating, log: namedLog, online, sensors, weather, moments, thermostat, conversation, thinking,
         push, clearConversation, setLevel, setColor, applyAmbiance, activateScene, controlHeating, askAgent, runMoment, updateThermostat, overrideTarget, cast,
     };
 }

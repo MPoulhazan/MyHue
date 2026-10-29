@@ -1,9 +1,6 @@
 /* Structure de l'app : rail à gauche sur tablette, onglets en bas sur téléphone */
 
 .shell {
-    /* Au-dessus de la trame et du halo de body::before/::after (thème des anciennes pages) */
-    position: relative;
-    z-index: 1;
     display: grid;
     grid-template-columns: 104px minmax(0, 1fr);
     height: 100vh;

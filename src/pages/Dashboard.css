@@ -1,27 +1,5 @@
 /* Tableau de bord « poste de pilotage » (tablette murale, s'adapte au téléphone) */
 
-/* Jetons partagés par la structure de l'app (rail, onglets) et les écrans */
-.shell,
-.home {
-    --h-bg: #141513;
-    --h-surface: #1d1f1b;
-    --h-surface-2: #262823;
-    --h-line: #30332c;
-    --h-line-2: #3a3d35;
-    --h-text: #ededE6;
-    --h-muted: #9a9c92;
-    --h-accent: #c8f560;
-    --h-on-accent: #141513;
-    --h-light: #ffb547;
-    --h-light-dim: #2a2418;
-    --h-light-fill: #4a3a1c;
-    --h-light-text: #f2d9a6;
-    --h-cool: #6fa8ff;
-    --h-cool-dim: #20324d;
-    --h-cool-text: #a9c9ff;
-    --h-warn: #ffb547;
-}
-
 /* Un écran : remplit la zone de contenu de la structure */
 .home {
     min-height: 100%;

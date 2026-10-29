@@ -10,10 +10,6 @@ import { Settings } from './pages/Settings';
 import { Sensors } from './pages/Sensors';
 import { Speakers } from './pages/Speakers';
 import { WakewordRecorder } from './pages/WakewordRecorder';
-import './App.css';
-
-/** Ancienne page, gardée dans son conteneur d'origine jusqu'à sa refonte. */
-const legacy = (page: React.ReactNode) => <div className="app">{page}</div>;
 
 function App() {
     return (
@@ -31,7 +27,7 @@ function App() {
                     <Route path="/rules" element={<Rules />} />
                     <Route path="/google-home" element={<Navigate to="/sensors" replace />} />
                     <Route path="/remote" element={<Remote />} />
-                    <Route path="/wakeword" element={legacy(<WakewordRecorder />)} />
+                    <Route path="/wakeword" element={<WakewordRecorder />} />
                 </Route>
             </Routes>
         </Router>

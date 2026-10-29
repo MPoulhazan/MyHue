@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useHomeData } from '../../hooks/useHome';
 import type { useHome, DashLight, LogEntry, Sensor } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import { avgLevel, useLastLevel, useLevelGesture } from './levels';
@@ -26,6 +27,13 @@ export const greeting = (d: Date) => {
     if (h >= 18) return 'Bonsoir';
     return 'Bonjour';
 };
+
+/** Ligne à la place des pièces tant que le pont Hue n'a pas donné ses lampes. */
+export function HueStatus() {
+    const home = useHomeData();
+    if (home.lights.length || home.online.hue) return null;
+    return <div className="muted">{home.online.hue === null ? 'Connexion au pont Hue…' : 'Pont Hue injoignable'}</div>;
+}
 
 // ── Carte de pièce, la même partout : toucher = ouvrir, interrupteur = marche/arrêt,
 // glisser = intensité

@@ -1,49 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Emoji:wght@400;500&display=swap');
-
-/* Identité MyHue « HUD » — mêmes tokens que le tableau de bord */
+/* Identité MyHue : sombre et chaud, Manrope, citron / ambre / bleu */
 :root {
-  --bg-dark: #0a0b0a;
-  --bg-darker: #070807;
-  --panel: #111311;
-  --panel-2: #0d0f0d;
-  --line: #232723;
-  --line-2: #2e332e;
+  --h-bg: #141513;
+  --h-surface: #1d1f1b;
+  --h-surface-2: #262823;
+  --h-line: #30332c;
+  --h-line-2: #3a3d35;
+  --h-text: #ededE6;
+  --h-muted: #9a9c92;
+  --h-accent: #c8f560;
+  --h-on-accent: #141513;
+  --h-light: #ffb547;
+  --h-light-dim: #2a2418;
+  --h-light-fill: #4a3a1c;
+  --h-light-text: #f2d9a6;
+  --h-cool: #6fa8ff;
+  --h-cool-dim: #20324d;
+  --h-cool-text: #a9c9ff;
+  --h-warn: #ffb547;
 
-  --accent: #c8f560;
-  --accent-glow: rgba(var(--accent-rgb), 0.28);
-  --warn: #ffb547;
-  --danger: #ff5c6c;
-  --on-accent: #0a0b0a;
-  --heat: #5a615a;
-  --ink: #ffffff;
-
-  /* Triplets pour rgba(var(--x-rgb), a) — réécrits par src/theme/theme.ts */
-  --ink-rgb: 255, 255, 255;
-  --accent-rgb: 200, 245, 96;
-  --panel-rgb: 17, 19, 17;
-  --bg-dark-rgb: 10, 11, 10;
-  --text-primary-rgb: 230, 234, 227;
-  --shadow-alpha: 0.45;
-  --shade: 1;
-
-  /* Anciens noms, remappés pour les pages existantes */
-  --primary: var(--accent);
-  --primary-light: #dcff8a;
-  --primary-dark: #a6d13f;
-  --secondary: var(--warn);
-  --secondary-light: #ffcc80;
-
-  --text-primary: #e6eae3;
-  --text-secondary: #8e948c;
-  --border: var(--line);
-  --glass-bg: rgba(var(--panel-rgb), 0.88);
-  --glass-border: var(--line);
-  --shadow: 0 12px 32px rgba(0, 0, 0, var(--shadow-alpha));
-
-  --font-display: 'Chakra Petch', 'Noto Emoji', system-ui, sans-serif;
-  --font-body: 'IBM Plex Mono', 'Noto Emoji', ui-monospace, monospace;
-
-  font-family: var(--font-body);
+  font-family: Manrope, system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -59,115 +34,24 @@
 
 body {
   min-height: 100vh;
-  background: var(--bg-dark);
-  color: var(--text-primary);
+  background: var(--h-bg);
+  color: var(--h-text);
   overflow-x: hidden;
-  position: relative;
 }
 
-/* Grille de points + halo d'accent, en écho au tableau de bord */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: radial-gradient(rgba(var(--text-primary-rgb), 0.07) 1px, transparent 1.4px);
-  background-size: 28px 28px;
-  animation: hudGridDrift 40s linear infinite;
-  pointer-events: none;
-  z-index: 0;
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  left: 50%;
-  top: 40%;
-  width: 900px;
-  height: 900px;
-  border-radius: 50%;
-  background: var(--accent);
-  filter: blur(160px);
-  opacity: 0.08;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-@keyframes hudGridDrift {
-  to { background-position: 28px 0; }
-}
-
-#root {
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
-}
+#root { min-height: 100vh; }
 
 button, input, select, textarea { font-family: inherit; }
 
-/* Panneau HUD (ancienne classe .glass) */
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-}
-
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--bg-darker); }
-::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+::-webkit-scrollbar-track { background: var(--h-bg); }
+::-webkit-scrollbar-thumb { background: var(--h-line-2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--h-muted); }
 
-::selection { background: var(--accent); color: var(--on-accent); }
+::selection { background: var(--h-accent); color: var(--h-on-accent); }
 
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-html { scroll-behavior: smooth; }
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: 0.01em;
-}
-
-h1 {
-  font-size: clamp(2rem, 4vw, 3rem);
-  color: var(--text-primary);
-}
-
-.gradient-text {
-  color: var(--accent);
-}
-
-.glow {
-  box-shadow: 0 0 20px var(--accent-glow);
-}
-
-/* Bascule manuelle de thème : fondu court plutôt qu'un saut */
-.theme-animating, .theme-animating *, .theme-animating *::before, .theme-animating *::after {
-  transition: background-color 0.6s ease, border-color 0.6s ease, color 0.6s ease, fill 0.6s ease, stroke 0.6s ease !important;
-}
+:focus-visible { outline: 2px solid var(--h-accent); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-}
-
-/* Escalade de l'assistant vers Claude (agent, widget, journal) */
-.ask-claude-btn {
-  display: inline-block;
-  margin-top: 6px;
-  margin-left: 8px;
-  padding: 3px 10px;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  color: var(--accent);
-  font-size: 0.8em;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.ask-claude-btn:hover {
-  background: var(--accent);
-  color: var(--on-accent);
 }

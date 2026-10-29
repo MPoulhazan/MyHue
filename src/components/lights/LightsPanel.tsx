@@ -5,7 +5,7 @@ import { SWATCHES } from '../../hooks/useHome';
 import type { useHome, Ambiance, DashLight } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import { avgLevel, useLastLevel, useLevelGesture } from '../home/levels';
-import { RoomCard } from '../home/cards';
+import { HueStatus, RoomCard } from '../home/cards';
 import './LightsPanel.css';
 
 // Écran Lumières : les pièces › une pièce › ses lampes (tablette et téléphone)
@@ -126,7 +126,7 @@ export function LightsPanel({ home, room, onRoom }: {
                             onOpen={() => onRoom(r)}
                             onLevel={(v) => home.setLevel(ls.map((l) => l.id), v)} />
                     ))}
-                    {!home.online.hue && !home.lights.length && <div className="muted">Pont Hue injoignable…</div>}
+                    <HueStatus />
                 </div>
             </section>
 

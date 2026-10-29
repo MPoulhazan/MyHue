@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import type { DashLight, Home } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import type { IconName } from '../Icon';
-import { HouseCard, RoomCard, fmt } from '../home/cards';
+import { HouseCard, HueStatus, RoomCard, fmt } from '../home/cards';
 import './PhoneHome.css';
 
 /** Accueil du téléphone : moments, pièces et état de la maison sur une colonne. */
@@ -52,7 +52,7 @@ export function PhoneHome({ home, roomLights, onAdd }: {
                         onLevel={(v) => home.setLevel(lights.map((l) => l.id), v)}
                         onOpen={() => navigate(`/lights?room=${encodeURIComponent(room)}`)} />
                 ))}
-                {!home.online.hue && !home.lights.length && <div className="muted">Pont Hue injoignable…</div>}
+                <HueStatus />
             </div>
 
             <HouseCard sensors={home.sensors} onAdd={onAdd} />
