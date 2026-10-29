@@ -5,14 +5,16 @@ import type { useHome, DashLight } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import type { IconName } from '../Icon';
 import { ClimateCard, HouseCard, RoomCard, fmt } from '../home/cards';
+import { LightsPanel } from '../lights/LightsPanel';
 import Music from '../../pages/Music';
 import { Agent } from '../../pages/Agent';
 import './PhoneLayout.css';
 
-type Tab = 'home' | 'climate' | 'music' | 'agent';
+type Tab = 'home' | 'lights' | 'climate' | 'music' | 'agent';
 
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
     { id: 'home', label: 'Maison', icon: 'home' },
+    { id: 'lights', label: 'Lumières', icon: 'lights' },
     { id: 'climate', label: 'Climat', icon: 'thermo' },
     { id: 'music', label: 'Musique', icon: 'music' },
     { id: 'agent', label: 'Agent', icon: 'agent' },
@@ -66,16 +68,16 @@ function TemperatureChart({ did, name }: { did: string; name: string }) {
     );
 }
 
-export function PhoneLayout({ home, roomLights, onOpenRoom, onAdd, onMenu, onSchedule, children }: {
+export function PhoneLayout({ home, roomLights, onAdd, onMenu, onSchedule, children }: {
     home: ReturnType<typeof useHome>;
     roomLights: [string, DashLight[]][];
-    onOpenRoom: (room: string) => void;
     onAdd: () => void;
     onMenu: () => void;
     onSchedule: () => void;
     children?: ReactNode;
 }) {
     const [tab, setTabState] = useState<Tab>(loadTab);
+    const [lightsRoom, setLightsRoom] = useState<string | null>(null);
     const setTab = (t: Tab) => {
         setTabState(t);
         try {
@@ -128,12 +130,22 @@ export function PhoneLayout({ home, roomLights, onOpenRoom, onAdd, onMenu, onSch
                                 <RoomCard key={room} name={room} lights={lights}
                                     sensors={home.sensors.filter((s) => s.room === room)}
                                     onLevel={(v) => home.setLevel(lights.map((l) => l.id), v)}
-                                    onOpen={() => onOpenRoom(room)} />
+                                    onOpen={() => {
+                                        setLightsRoom(room);
+                                        setTab('lights');
+                                    }} />
                             ))}
                             {!home.online.hue && !home.lights.length && <div className="muted">Pont Hue injoignable…</div>}
                         </div>
 
                         <HouseCard sensors={home.sensors} onAdd={onAdd} />
+                    </>
+                )}
+
+                {tab === 'lights' && (
+                    <>
+                        <header className="phone-head"><h1>Lumières</h1></header>
+                        <LightsPanel home={home} room={lightsRoom} onRoom={setLightsRoom} />
                     </>
                 )}
 

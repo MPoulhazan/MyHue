@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
 import { useHome } from '../hooks/useHome';
 import type { DashLight } from '../hooks/useHome';
 import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { AgentBar } from '../components/AgentBar';
-import { RoomSheet } from '../components/home/RoomSheet';
 import { AddSensorSheet } from '../components/home/AddSensorSheet';
 import { NightMode } from '../components/home/NightMode';
 import { PhoneLayout } from '../components/phone/PhoneLayout';
 import { ScheduleSheet } from '../components/home/ScheduleSheet';
 import { ClimateCard, HouseCard, Journal, MenuSheet, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import './Dashboard.css';
+import '../components/lights/LightsPanel.css';
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ function useIsPhone() {
 export function Dashboard() {
     const home = useHome();
     const clock = useClock();
-    const [openRoom, setOpenRoom] = useState<string | null>(null);
+    const navigate = useNavigate();
     const [adding, setAdding] = useState(false);
     const [menu, setMenu] = useState(false);
     const [schedule, setSchedule] = useState(false);
@@ -41,7 +42,6 @@ export function Dashboard() {
     useEffect(() => {
         const onKey = (e: globalThis.KeyboardEvent) => {
             if (e.key !== 'Escape') return;
-            setOpenRoom(null);
             setAdding(false);
             setMenu(false);
             setSchedule(false);
@@ -64,17 +64,12 @@ export function Dashboard() {
 
     const anyOn = home.lights.some((l) => l.reachable && l.level > 0);
     const allIds = home.lights.map((l) => l.id);
-    const sheetLights = openRoom ? roomLights.find(([r]) => r === openRoom)?.[1] ?? [] : [];
+    const onCount = home.lights.filter((l) => l.reachable && l.level > 0).length;
     const phone = useIsPhone();
 
     // Panneaux communs aux deux mises en page
     const sheets = (
         <AnimatePresence>
-            {openRoom && (
-                <RoomSheet key="room" room={openRoom} lights={sheetLights}
-                    onLevel={home.setLevel} onAmbiance={home.applyAmbiance} onColor={home.setColor}
-                    onClose={() => setOpenRoom(null)} />
-            )}
             {adding && <AddSensorSheet key="add" rooms={roomLights.map(([r]) => r)} onClose={() => setAdding(false)} />}
             {menu && <MenuSheet key="menu" onClose={() => setMenu(false)} />}
             {schedule && home.thermostat && (
@@ -88,7 +83,7 @@ export function Dashboard() {
     if (phone) {
         return (
             <PhoneLayout home={home} roomLights={roomLights}
-                onOpenRoom={setOpenRoom} onAdd={() => setAdding(true)} onMenu={() => setMenu(true)}
+                onAdd={() => setAdding(true)} onMenu={() => setMenu(true)}
                 onSchedule={() => setSchedule(true)}>
                 {sheets}
             </PhoneLayout>
@@ -122,7 +117,12 @@ export function Dashboard() {
 
                 <section className="home-center" aria-label="Lumières">
                     <div className="section-head">
-                        <h2>Pièces</h2>
+                        <Link to="/lights" className="section-link">
+                            <span className="section-link-icon"><Icon name="lights" size={18} strokeWidth={2.2} /></span>
+                            <strong>Lumières</strong>
+                            <span>{onCount ? `${onCount} allumée${onCount > 1 ? 's' : ''}` : 'tout est éteint'}</span>
+                            <Icon name="chevron" size={18} strokeWidth={2.2} />
+                        </Link>
                         {anyOn && <button type="button" className="ghost-btn" onClick={() => home.setLevel(allIds, 0)}>Tout éteindre</button>}
                     </div>
                     <div className="rooms">
@@ -130,11 +130,11 @@ export function Dashboard() {
                             <RoomCard key={room} name={room} lights={lights}
                                 sensors={home.sensors.filter((s) => s.room === room)}
                                 onLevel={(v) => home.setLevel(lights.map((l) => l.id), v)}
-                                onOpen={() => setOpenRoom(room)} />
+                                onOpen={() => navigate(`/lights?room=${encodeURIComponent(room)}`)} />
                         ))}
                         {!home.online.hue && !home.lights.length && <div className="muted">Pont Hue injoignable…</div>}
                     </div>
-                    <div className="hint">Toucher : allumer ou éteindre · Glisser : intensité · Ampoule : détail</div>
+                    <div className="hint">Toucher : allumer ou éteindre · Glisser : intensité · Flèche : ses lampes</div>
 
                     {home.moments.length > 0 && (
                         <>

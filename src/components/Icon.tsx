@@ -4,7 +4,8 @@ export type IconName =
     | 'home' | 'lights' | 'rooms' | 'scenes' | 'agent' | 'music'
     | 'cast' | 'rules' | 'heating' | 'settings' | 'grid' | 'power'
     | 'thermo' | 'door' | 'drag'
-    | 'screen' | 'glass' | 'moon' | 'leave' | 'check' | 'close' | 'plus' | 'sun' | 'cloud' | 'menu' | 'battery';
+    | 'screen' | 'glass' | 'moon' | 'leave' | 'check' | 'close' | 'plus' | 'sun' | 'cloud' | 'menu' | 'battery'
+    | 'chevron' | 'back' | 'alert';
 
 const PATHS: Record<IconName, string> = {
     home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
@@ -33,6 +34,9 @@ const PATHS: Record<IconName, string> = {
     cloud: 'M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 9.5 4.3 4.3 0 0 0 7 18z',
     menu: 'M4 7h16M4 12h16M4 17h16',
     battery: 'M3 8h15v8H3zM21 11v2',
+    chevron: 'M9 6l6 6-6 6',
+    back: 'M15 18l-6-6 6-6',
+    alert: 'M12 8v5M12 17h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
 };
 
 export function Icon({ name, size = 20, strokeWidth = 1.8, className }: { name: IconName; size?: number; strokeWidth?: number; className?: string }) {

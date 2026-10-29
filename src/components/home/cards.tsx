@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import type { KeyboardEvent, PointerEvent as RPointerEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { useHome, DashLight, LogEntry, Sensor } from '../../hooks/useHome';
 import { Icon } from '../Icon';
+import { avgLevel, useLastLevel, useLevelGesture } from './levels';
 
 // Cartes du tableau de bord, partagées par la tablette et le téléphone
 
@@ -28,11 +28,6 @@ export const greeting = (d: Date) => {
     return 'Bonjour';
 };
 
-const avgLevel = (lights: DashLight[]) => {
-    const on = lights.filter((l) => l.reachable && l.level > 0);
-    return on.length ? Math.round(on.reduce((a, l) => a + l.level, 0) / on.length) : 0;
-};
-
 // ── Carte de pièce : toucher = marche/arrêt, glisser = intensité ─────────────
 
 export function RoomCard({ name, lights, sensors, onLevel, onOpen }: {
@@ -45,12 +40,8 @@ export function RoomCard({ name, lights, sensors, onLevel, onOpen }: {
     const live = lights.filter((l) => l.reachable);
     const on = live.filter((l) => l.level > 0);
     const level = avgLevel(lights);
-    const lastLevel = useRef(level || 70);
-    if (level) lastLevel.current = level;
-    const gesture = useRef<{ x: number; base: number; moved: boolean; width: number } | null>(null);
-    const [dragging, setDragging] = useState(false);
-
-    const toggle = () => onLevel(on.length ? 0 : lastLevel.current);
+    const lastLevel = useLastLevel(level);
+    const { dragging, handlers } = useLevelGesture(level, onLevel, () => onLevel(on.length ? 0 : lastLevel.current));
 
     if (!lights.length) {
         // Pièce sans lampe : seulement ses capteurs
@@ -61,44 +52,6 @@ export function RoomCard({ name, lights, sensors, onLevel, onOpen }: {
             </div>
         );
     }
-
-    const handlers = {
-        onPointerDown: (e: RPointerEvent<HTMLDivElement>) => {
-            if ((e.target as HTMLElement).closest('button')) return;
-            e.currentTarget.setPointerCapture(e.pointerId);
-            gesture.current = { x: e.clientX, base: level, moved: false, width: e.currentTarget.clientWidth };
-        },
-        onPointerMove: (e: RPointerEvent<HTMLDivElement>) => {
-            const g = gesture.current;
-            if (!g) return;
-            const dx = e.clientX - g.x;
-            if (!g.moved && Math.abs(dx) < 10) return;
-            if (!g.moved) {
-                g.moved = true;
-                setDragging(true);
-            }
-            const v = Math.round(Math.max(0, Math.min(100, g.base + (dx / g.width) * 100)) / 5) * 5;
-            onLevel(v);
-        },
-        onPointerUp: () => {
-            const g = gesture.current;
-            gesture.current = null;
-            setDragging(false);
-            if (g && !g.moved) toggle();
-        },
-        onPointerCancel: () => {
-            gesture.current = null;
-            setDragging(false);
-        },
-        onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                toggle();
-            }
-            if (e.key === 'ArrowRight') onLevel(Math.min(100, level + 10));
-            if (e.key === 'ArrowLeft') onLevel(Math.max(0, level - 10));
-        },
-    };
 
     const sub = on.length
         ? `${on.length} sur ${lights.length} allumée${on.length > 1 ? 's' : ''}`
@@ -113,8 +66,8 @@ export function RoomCard({ name, lights, sensors, onLevel, onOpen }: {
                 animate={{ width: `${level}%` }} transition={{ type: 'spring', stiffness: dragging ? 700 : 200, damping: 34 }} />
             <span className="room-top">
                 <span className="room-name">{name}</span>
-                <button type="button" className="room-more" aria-label={`Détail ${name}`} onClick={onOpen}>
-                    <Icon name="lights" size={20} strokeWidth={2} />
+                <button type="button" className="room-more" aria-label={`Lampes de ${name}`} onClick={onOpen}>
+                    <Icon name="chevron" size={20} strokeWidth={2.2} />
                 </button>
             </span>
             <span className="room-bottom">

@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { AgentWidget } from './components/AgentWidget';
-import { Home } from './pages/Home';
 import { Scenes } from './pages/Scenes';
 import { Rooms } from './pages/Rooms';
 import { Agent } from './pages/Agent';
@@ -10,6 +9,7 @@ import { GoogleHome } from './pages/GoogleHome';
 import { Rules } from './pages/Rules';
 import { Heating } from './pages/Heating';
 import { Dashboard } from './pages/Dashboard';
+import { Lights } from './pages/Lights';
 import { WakewordRecorder } from './pages/WakewordRecorder';
 import './App.css';
 
@@ -18,6 +18,7 @@ function App() {
         <Router>
             <Routes>
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/lights" element={<Lights />} />
                 <Route path="*" element={<Classic />} />
             </Routes>
         </Router>
@@ -30,7 +31,6 @@ function Classic() {
         <div className="app">
                 <Navigation />
                 <Routes>
-                    <Route path="/lights" element={<Home />} />
                     <Route path="/rooms" element={<Rooms />} />
                     <Route path="/scenes" element={<Scenes />} />
                     <Route path="/agent" element={<Agent />} />
