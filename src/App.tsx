@@ -1,7 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
-import { Scenes } from './pages/Scenes';
-import { Rooms } from './pages/Rooms';
 import { Agent } from './pages/Agent';
 import Music from './pages/Music';
 import { GoogleHome } from './pages/GoogleHome';
@@ -31,8 +29,6 @@ function App() {
                     <Route path="/rules" element={legacy(<Rules />)} />
                     <Route path="/google-home" element={legacy(<GoogleHome />)} />
                     <Route path="/heating" element={legacy(<Heating />)} />
-                    <Route path="/scenes" element={legacy(<Scenes />)} />
-                    <Route path="/rooms" element={legacy(<Rooms />)} />
                     <Route path="/wakeword" element={legacy(<WakewordRecorder />)} />
                 </Route>
             </Routes>

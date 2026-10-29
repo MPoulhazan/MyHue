@@ -8,8 +8,6 @@ const ENTRIES: { to: string; icon: IconName; label: string; hint: string }[] = [
     { to: '/rules', icon: 'rules', label: 'Automatismes', hint: 'Alertes et réactions automatiques' },
     { to: '/google-home', icon: 'cast', label: 'Capteurs et enceintes', hint: 'Capteurs Zigbee, appareils Cast' },
     { to: '/heating', icon: 'heating', label: 'Chauffage avancé', hint: 'Ventilation, volet, télécommande' },
-    { to: '/scenes', icon: 'scenes', label: 'Scènes Hue', hint: 'Scènes enregistrées sur le pont' },
-    { to: '/rooms', icon: 'rooms', label: 'Pièces Hue', hint: 'Pièces et groupes du pont' },
     { to: '/wakeword', icon: 'agent', label: 'Mot d’activation', hint: 'Enregistrer des exemples de voix' },
 ];
 

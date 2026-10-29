@@ -4,11 +4,11 @@ import { motion } from 'framer-motion';
 import { SWATCHES } from '../../hooks/useHome';
 import type { useHome, Ambiance, DashLight } from '../../hooks/useHome';
 import { Icon } from '../Icon';
-import type { IconName } from '../Icon';
 import { avgLevel, useLastLevel, useLevelGesture } from '../home/levels';
+import { RoomCard } from '../home/cards';
 import './LightsPanel.css';
 
-// Écran Lumières : toute la maison › une pièce › ses lampes (tablette et onglet du téléphone)
+// Écran Lumières : les pièces › une pièce › ses lampes (tablette et téléphone)
 
 // Ambiances prêtes : blanc plus ou moins chaud (mireds) à une intensité donnée
 const AMBIANCES: (Ambiance & { bg: string; fg: string })[] = [
@@ -18,8 +18,6 @@ const AMBIANCES: (Ambiance & { bg: string; fg: string })[] = [
     { label: 'Bougie', ct: 500, level: 25, bg: '#6E3B1E', fg: '#FFE2C4' },
     { label: 'Veilleuse', ct: 454, level: 5, bg: '#3A2A12', fg: '#F2D9A6' },
 ];
-
-const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
 /** Curseur horizontal : glisser ou flèches du clavier, par pas de 5 %. */
 function Slider({ value, label, onChange, className = '' }: { value: number; label: string; onChange: (v: number) => void; className?: string }) {
@@ -61,43 +59,6 @@ function useRoomLights(home: ReturnType<typeof useHome>) {
     }, [home.rooms, home.lights]);
 }
 
-// ── Pièce : toucher = la choisir, glisser = intensité, interrupteur = marche/arrêt
-
-function RoomTile({ name, lights, selected, onSelect, onLevel }: {
-    name: string;
-    lights: DashLight[];
-    selected: boolean;
-    onSelect: () => void;
-    onLevel: (v: number) => void;
-}) {
-    const on = lights.filter((l) => l.reachable && l.level > 0);
-    const level = avgLevel(lights);
-    const lastLevel = useLastLevel(level);
-    const { dragging, handlers } = useLevelGesture(level, onLevel, onSelect);
-    const toggle = () => onLevel(on.length ? 0 : lastLevel.current);
-
-    return (
-        <div className={`lights-room ${on.length ? 'on' : ''} ${selected ? 'selected' : ''} ${dragging ? 'dragging' : ''}`}
-            role="slider" tabIndex={0} aria-label={`${name}${selected ? ', affichée' : ''}`}
-            aria-valuemin={0} aria-valuemax={100} aria-valuenow={level} aria-valuetext={on.length ? `${level} %` : 'éteinte'}
-            {...handlers}>
-            <motion.span className="room-fill" aria-hidden="true"
-                animate={{ width: `${level}%` }} transition={{ type: 'spring', stiffness: dragging ? 700 : 200, damping: 34 }} />
-            <span className="lights-room-text">
-                <span className="room-name">{name}</span>
-                <span className="lights-room-sub">
-                    <span className="room-sub">{on.length ? `${on.length} sur ${lights.length} allumée${on.length > 1 ? 's' : ''}` : `Éteinte · ${plural(lights.length, 'lampe')}`}</span>
-                    {on.length > 0 && <span className="room-pct">{level} %</span>}
-                </span>
-            </span>
-            <button type="button" className={`switch ${on.length ? 'on light' : ''}`} aria-pressed={on.length > 0}
-                aria-label={`${on.length ? 'Éteindre' : 'Allumer'} ${name}`} onClick={toggle}>
-                <span />
-            </button>
-        </div>
-    );
-}
-
 // ── Lampe : toucher = marche/arrêt, glisser = intensité ─────────────────────
 
 function LampTile({ light, onLevel }: { light: DashLight; onLevel: (v: number) => void }) {
@@ -130,7 +91,7 @@ function LampTile({ light, onLevel }: { light: DashLight; onLevel: (v: number) =
                 <span className="lamp-bulb" style={on ? { background: light.color, boxShadow: `0 0 24px ${light.color}66` } : undefined}>
                     <Icon name="lights" size={20} strokeWidth={2} />
                 </span>
-                {on && <span className="room-pct">{light.dimmable ? `${light.level} %` : 'on'}</span>}
+                {on && light.dimmable && <span className="room-pct">{light.level} %</span>}
             </span>
             <span className="lamp-label">
                 <span className="lamp-tile-name">{light.name}</span>
@@ -140,7 +101,7 @@ function LampTile({ light, onLevel }: { light: DashLight; onLevel: (v: number) =
     );
 }
 
-// ── Panneau complet ──────────────────────────────────────────────────────────
+// ── Panneau complet : les pièces › la pièce choisie et ses lampes ────────────
 
 export function LightsPanel({ home, room, onRoom }: {
     home: ReturnType<typeof useHome>;
@@ -150,52 +111,19 @@ export function LightsPanel({ home, room, onRoom }: {
     const roomLights = useRoomLights(home);
     const [colors, setColors] = useState(false);
 
-    const live = home.lights.filter((l) => l.reachable);
-    const onCount = live.filter((l) => l.level > 0).length;
-    const houseLevel = avgLevel(home.lights);
-    const allIds = live.map((l) => l.id);
-
     const current = roomLights.find(([r]) => r === room) ?? roomLights[0];
     const [roomName, lights] = current ?? ['', []];
     const roomIds = lights.filter((l) => l.reachable).map((l) => l.id);
     const roomLevel = avgLevel(lights);
+    const scenes = home.roomScenes[roomName] ?? [];
 
     return (
         <div className="lights-layout">
-            <section className="card lights-house" aria-label="Toute la maison">
-                <div className="card-head">
-                    <span>Toute la maison</span>
-                    <span className="pill">{onCount} / {home.lights.length} allumées</span>
-                </div>
-                <div className="lights-big mono">{houseLevel}<span> %</span></div>
-                <Slider value={houseLevel} label="Intensité de toute la maison" onChange={(v) => home.setLevel(allIds, v)} className="big" />
-                <div className="lights-pair">
-                    <button type="button" className="pill-btn" onClick={() => home.setLevel(allIds, 70)}>Tout allumer</button>
-                    <button type="button" className="pill-btn solid" onClick={() => home.setLevel(allIds, 0)}>Tout éteindre</button>
-                </div>
-                {home.moments.length > 0 && (
-                    <>
-                        <h2 className="sub-title">Moments</h2>
-                        <div className="lights-moments">
-                            {home.moments.map((m) => (
-                                <button key={m.id} type="button" onClick={() => home.runMoment(m.id)}>
-                                    <Icon name={m.icon as IconName} size={20} />{m.label}
-                                </button>
-                            ))}
-                        </div>
-                    </>
-                )}
-            </section>
-
             <section className="lights-rooms" aria-label="Pièces">
-                <div className="section-head">
-                    <h2>Pièces</h2>
-                    <span className="muted lights-tip">Toucher : voir ses lampes</span>
-                </div>
                 <div className="lights-room-list">
                     {roomLights.map(([r, ls]) => (
-                        <RoomTile key={r} name={r} lights={ls} selected={r === roomName}
-                            onSelect={() => onRoom(r)}
+                        <RoomCard key={r} name={r} lights={ls} selected={r === roomName}
+                            onOpen={() => onRoom(r)}
                             onLevel={(v) => home.setLevel(ls.map((l) => l.id), v)} />
                     ))}
                     {!home.online.hue && !home.lights.length && <div className="muted">Pont Hue injoignable…</div>}
@@ -228,12 +156,18 @@ export function LightsPanel({ home, room, onRoom }: {
                             ))}
                         </div>
                     )}
+                    {scenes.length > 0 && (
+                        <div className="lights-scenes" role="group" aria-label={`Scènes Hue de ${roomName}`}>
+                            {scenes.map((s) => (
+                                <button key={s.id} type="button" onClick={() => home.activateScene(roomName, s)}>{s.name}</button>
+                            ))}
+                        </div>
+                    )}
                     <div className="lamp-grid">
                         {lights.map((l) => (
                             <LampTile key={l.id} light={l} onLevel={(v) => home.setLevel([l.id], v)} />
                         ))}
                     </div>
-                    <span className="hint">Toucher une lampe : marche / arrêt · Glisser : intensité</span>
                 </section>
             )}
         </div>

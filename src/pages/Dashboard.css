@@ -129,13 +129,14 @@
 .room-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--h-light-fill); pointer-events: none; }
 .room-top,
 .room-bottom { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.room-name { font-size: 20px; font-weight: 700; }
+.room-name { display: inline-flex; align-items: center; gap: 4px; min-width: 0; font-size: 20px; font-weight: 700; }
+.room-name svg { flex: none; color: var(--h-muted); }
+.room-card.on .room-name svg { color: var(--h-light-text); }
 .room-sub { font-size: 15px; color: var(--h-muted); }
 .room-card.on .room-sub { color: var(--h-light-text); }
 .room-pct { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 15px; color: var(--h-light); }
-.room-more { width: 44px; height: 44px; flex: none; border-radius: 999px; border: none; background: #30332c; color: var(--h-muted); display: inline-flex; align-items: center; justify-content: center; }
-.room-card.on .room-more { background: var(--h-light); color: var(--h-on-accent); }
-.hint { font-size: 13px; color: var(--h-muted); }
+.room-card.selected { outline: 2px solid var(--h-accent); outline-offset: -2px; }
+.room-card .switch:disabled { opacity: 0.4; }
 
 .moments { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .moments button { height: 72px; border-radius: 20px; border: none; background: var(--h-surface); font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -284,6 +285,7 @@
 .switch span { position: absolute; left: 4px; top: 4px; width: 28px; height: 28px; border-radius: 999px; background: var(--h-text); transition: transform 0.2s; }
 .switch.on { background: var(--h-accent); }
 .switch.on span { transform: translateX(24px); background: var(--h-on-accent); }
+.switch.on.light { background: var(--h-light); }
 .frieze { position: relative; display: flex; height: 56px; border-radius: 16px; overflow: hidden; font-size: 13px; font-weight: 600; }
 .frieze > div { display: flex; align-items: center; padding-left: 10px; overflow: hidden; white-space: nowrap; }
 .frieze-now { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: var(--h-accent); }

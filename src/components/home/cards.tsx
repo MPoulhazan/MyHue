@@ -27,12 +27,14 @@ export const greeting = (d: Date) => {
     return 'Bonjour';
 };
 
-// ── Carte de pièce : toucher = marche/arrêt, glisser = intensité ─────────────
+// ── Carte de pièce, la même partout : toucher = ouvrir, interrupteur = marche/arrêt,
+// glisser = intensité
 
-export function RoomCard({ name, lights, sensors, onLevel, onOpen }: {
+export function RoomCard({ name, lights, sensors = [], selected = false, onLevel, onOpen }: {
     name: string;
     lights: DashLight[];
-    sensors: Sensor[];
+    sensors?: Sensor[];
+    selected?: boolean;
     onLevel: (v: number) => void;
     onOpen: () => void;
 }) {
@@ -40,7 +42,7 @@ export function RoomCard({ name, lights, sensors, onLevel, onOpen }: {
     const on = live.filter((l) => l.level > 0);
     const level = avgLevel(lights);
     const lastLevel = useLastLevel(level);
-    const { dragging, handlers } = useLevelGesture(level, onLevel, () => onLevel(on.length ? 0 : lastLevel.current));
+    const { dragging, handlers } = useLevelGesture(level, onLevel, onOpen);
 
     if (!lights.length) {
         // Pièce sans lampe : seulement ses capteurs
@@ -57,16 +59,18 @@ export function RoomCard({ name, lights, sensors, onLevel, onOpen }: {
         : live.length ? `Éteinte · ${lights.length} lampe${lights.length > 1 ? 's' : ''}` : 'Injoignable';
 
     return (
-        <div className={`room-card ${on.length ? 'on' : ''} ${dragging ? 'dragging' : ''}`}
-            role="slider" tabIndex={0} aria-label={`Lumière ${name}`}
+        <div className={`room-card ${on.length ? 'on' : ''} ${selected ? 'selected' : ''} ${dragging ? 'dragging' : ''}`}
+            role="slider" tabIndex={0} aria-label={`${name}, ouvrir ses lampes`}
             aria-valuemin={0} aria-valuemax={100} aria-valuenow={level} aria-valuetext={on.length ? `${level} %` : 'éteinte'}
             {...handlers}>
             <motion.span className="room-fill" aria-hidden="true"
                 animate={{ width: `${level}%` }} transition={{ type: 'spring', stiffness: dragging ? 700 : 200, damping: 34 }} />
             <span className="room-top">
-                <span className="room-name">{name}</span>
-                <button type="button" className="room-more" aria-label={`Lampes de ${name}`} onClick={onOpen}>
-                    <Icon name="chevron" size={20} strokeWidth={2.2} />
+                <span className="room-name">{name}<Icon name="chevron" size={18} strokeWidth={2.4} /></span>
+                <button type="button" className={`switch ${on.length ? 'on light' : ''}`} aria-pressed={on.length > 0}
+                    aria-label={`${on.length ? 'Éteindre' : 'Allumer'} ${name}`} disabled={!live.length}
+                    onClick={() => onLevel(on.length ? 0 : lastLevel.current)}>
+                    <span />
                 </button>
             </span>
             <span className="room-bottom">

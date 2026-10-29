@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { stateToHex, ctToHex, hexToXy, pctToBri, briToPct } from '../utils/hueColor';
+import { scenesByRoom } from '../utils/hueScenes';
+import type { RoomScene } from '../utils/hueScenes';
 
 export interface DashLight {
     id: string;
@@ -141,10 +143,12 @@ export function useHome() {
     const [weather, setWeather] = useState<Weather | null>(null);
     const [moments, setMoments] = useState<Moment[]>([]);
     const [thermostat, setThermostat] = useState<ThermostatStatus | null>(null);
+    const [roomScenes, setRoomScenes] = useState<Record<string, RoomScene[]>>({});
 
     const editing = useRef<Record<string, number>>({});
     const pending = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const roomOf = useRef<Record<string, string>>({});
+    const groupOf = useRef<Record<string, string>>({});
 
     const push = useCallback((msg: string, color?: string, href?: string) => {
         setLog((l) => [{ id: ++logSeq, t: now(), msg, color, href }, ...l].slice(0, 40));
@@ -183,12 +187,17 @@ export function useHome() {
             try {
                 const { data } = await axios.get('/api/hue/groups');
                 const names: string[] = [];
-                for (const g of Object.values<any>(data)) {
+                const roomOfGroup: Record<string, string> = {};
+                for (const [gid, g] of Object.entries<any>(data)) {
                     if (g.type !== 'Room' || !g.lights.length) continue;
                     names.push(g.name);
+                    roomOfGroup[gid] = g.name;
+                    groupOf.current[g.name] = gid;
                     g.lights.forEach((id: string) => (roomOf.current[id] = g.name));
                 }
                 setRooms(names);
+                const { data: scenes } = await axios.get('/api/hue/scenes');
+                setRoomScenes(scenesByRoom(scenes, roomOfGroup));
             } catch { /* pont injoignable */ }
             await loadLights();
         })();
@@ -298,6 +307,18 @@ export function useHome() {
         setTimeout(loadLights, 800);
     }, [push, loadLights]);
 
+    // Scène Hue d'une pièce : le pont l'applique à tout le groupe
+    const activateScene = useCallback(async (room: string, scene: RoomScene) => {
+        const gid = groupOf.current[room];
+        if (!gid) return;
+        try {
+            await axios.put(`/api/hue/groups/${gid}/action`, { scene: scene.id });
+        } catch {
+            push(`${scene.name} · échec`, '#FF3B5C');
+        }
+        setTimeout(loadLights, 800);
+    }, [push, loadLights]);
+
     // --- Chauffage ---
     useEffect(() => {
         axios.get('/api/heating/status').then(({ data }) =>
@@ -360,8 +381,8 @@ export function useHome() {
     }, [push, loadLights]);
 
     return {
-        lights, rooms, climate, door, heating, log, online, sensors, weather, moments, thermostat,
-        push, setLevel, setColor, applyAmbiance, controlHeating, askAgent, runMoment, updateThermostat, overrideTarget,
+        lights, rooms, roomScenes, climate, door, heating, log, online, sensors, weather, moments, thermostat,
+        push, setLevel, setColor, applyAmbiance, activateScene, controlHeating, askAgent, runMoment, updateThermostat, overrideTarget,
     };
 }
 

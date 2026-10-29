@@ -4,6 +4,7 @@
 .home a.round-btn { color: var(--h-text); }
 .warn-pill { background: #3a2a12; color: var(--h-light-text); font-size: 14px; }
 .warn-pill svg { flex: none; color: var(--h-light); }
+.home-top-right .ghost-btn { white-space: nowrap; }
 
 /* Accès depuis l'accueil : « Lumières · 8 allumées › » */
 .section-link { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 16px 0 7px; border-radius: 999px; background: #2f3a1a; color: var(--h-text); text-decoration: none; }
@@ -13,54 +14,15 @@
 .section-link span:not(.section-link-icon),
 .section-link > svg:last-child { color: var(--h-accent); font-size: 14px; }
 
-/* Curseurs posés directement dans une carte en colonne : pas de flex: 1 */
-.lights-house > .slider,
+/* Curseur posé directement dans une carte en colonne : pas de flex: 1 */
 .lights-lamps > .slider { flex: none; }
 
-.lights-layout { display: grid; grid-template-columns: 320px 360px minmax(0, 1fr); gap: 20px; align-items: start; }
-
-/* Toute la maison */
-.lights-house { gap: 18px; }
-.lights-big { font-size: 72px; font-weight: 500; line-height: 1; letter-spacing: -0.04em; color: var(--h-light); }
-.lights-big span { font-size: 32px; color: var(--h-muted); }
-.lights-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.lights-pair .pill-btn { min-height: 56px; padding: 0 12px; border-radius: 16px; font-size: 15px; }
-.pill-btn.solid { border: none; background: var(--h-text); color: var(--h-bg) !important; }
-.lights-house .sub-title { margin: 4px 0 0; }
-.lights-moments { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.lights-moments button { min-height: 64px; padding: 0 10px; border-radius: 18px; border: none; background: var(--h-surface-2); font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.lights-moments button svg { flex: none; color: var(--h-accent); }
-.lights-moments button:hover { background: var(--h-line); }
-.lights-moments button:active { transform: scale(0.97); }
+.lights-layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 20px; align-items: start; }
 
 /* Pièces */
 .lights-rooms { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.lights-tip { font-size: 13px; }
 .lights-room-list { display: flex; flex-direction: column; gap: 14px; }
-.lights-room {
-    position: relative;
-    overflow: hidden;
-    height: 124px;
-    padding: 20px;
-    border-radius: 24px;
-    background: var(--h-surface);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    touch-action: pan-y;
-    user-select: none;
-    -webkit-user-select: none;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-.lights-room.on { background: var(--h-light-dim); }
-.lights-room.selected { outline: 2px solid var(--h-accent); outline-offset: -2px; }
-.lights-room.dragging { cursor: grabbing; }
-.lights-room-text { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
-.lights-room-sub { display: flex; align-items: baseline; gap: 12px; }
-.lights-room.on .room-sub { color: var(--h-light-text); }
-.lights-room .switch { position: relative; }
-.switch.on.light { background: var(--h-light); }
+.lights-room-list .room-card { flex: none; height: 124px; }
 
 /* Lampes de la pièce choisie */
 .lights-lamps { gap: 18px; }
@@ -70,6 +32,12 @@
 .lights-ambiances button { min-height: 52px; padding: 0 4px; border-radius: 14px; border: none; font-size: 14px; font-weight: 600; }
 .lights-ambiances button:active { transform: scale(0.97); }
 .lights-lamps .swatches { margin-top: -6px; }
+
+/* Scènes Hue de la pièce : une ligne qui défile */
+.lights-scenes { display: flex; gap: 8px; overflow-x: auto; margin: -4px -24px 0; padding: 2px 24px 4px; scrollbar-width: none; }
+.lights-scenes button { flex: none; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--h-line-2); background: transparent; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.lights-scenes button:hover { background: var(--h-surface-2); }
+.lights-scenes button:active { transform: scale(0.97); }
 
 .lamp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .lamp-tile {
@@ -100,38 +68,28 @@
 
 /* Tablette en portrait : la maison passe au-dessus */
 @media (max-width: 1180px) {
-    .lights-layout { grid-template-columns: 300px minmax(0, 1fr); }
-    .lights-house { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 24px; }
-    .lights-house > .card-head,
-    .lights-house > .sub-title,
-    .lights-house > .lights-moments { grid-column: 1 / -1; }
-    .lights-moments { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .lights-layout { grid-template-columns: 280px minmax(0, 1fr); }
+    .lights-ambiances { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* Téléphone : une colonne, les pièces défilent à l'horizontale */
 @media (max-width: 760px) {
     .lights-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-    .lights-house { display: flex; align-items: stretch; padding: 20px; border-radius: 24px; }
-    .lights-big { font-size: 56px; }
-    .lights-moments { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .lights-rooms .section-head { min-height: 0; }
     .lights-room-list { flex-direction: row; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 4px; scroll-snap-type: x mandatory; scrollbar-width: none; }
-    .lights-room { flex: 0 0 74%; height: 104px; padding: 16px; scroll-snap-align: start; touch-action: pan-x pan-y; }
+    .lights-room-list .room-card { flex: 0 0 74%; height: 104px; padding: 16px; scroll-snap-align: start; touch-action: pan-x pan-y; }
+    .lights-room-list .room-name { font-size: 18px; }
     .lights-lamps { padding: 20px; border-radius: 24px; }
-    .lights-ambiances { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .lights-scenes { margin: -4px -20px 0; padding: 2px 20px 4px; }
     .lamp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .lamp-tile { height: 100px; }
 }
 
-/* Tablette en paysage : trois colonnes sur toute la hauteur de l'écran */
+/* Tablette en paysage : deux colonnes sur toute la hauteur de l'écran */
 @media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
-    .lights-layout { flex: 1; min-height: 0; grid-template-columns: 300px 340px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+    .lights-layout { flex: 1; min-height: 0; grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; }
     .lights-layout > * { min-height: 0; overflow-y: auto; }
-    .lights-house { display: flex; grid-column: auto; }
-    .lights-house .sub-title { margin-top: auto; }
-    .lights-moments { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(64px, 96px); }
     .lights-room-list { flex: 1; }
-    .lights-room { flex: 1; height: auto; min-height: 104px; max-height: 220px; }
+    .lights-room-list .room-card { flex: 1; height: auto; min-height: 104px; max-height: 220px; }
     /* Trois rangées réservées : les tuiles gardent la même taille d'une pièce à l'autre */
     .lamp-grid { flex: 1; min-height: 0; grid-template-rows: repeat(3, minmax(96px, 1fr)); grid-auto-rows: minmax(96px, 1fr); overflow-y: auto; }
     .lamp-tile { height: auto; }

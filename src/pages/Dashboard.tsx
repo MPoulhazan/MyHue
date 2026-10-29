@@ -111,7 +111,6 @@ export function Dashboard() {
                         ))}
                         {!home.online.hue && !home.lights.length && <div className="muted">Pont Hue injoignable…</div>}
                     </div>
-                    <div className="hint">Toucher : allumer ou éteindre · Glisser : intensité · Flèche : ses lampes</div>
 
                     {home.moments.length > 0 && (
                         <>
