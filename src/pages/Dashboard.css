@@ -303,3 +303,18 @@
 .mini-stepper span { min-width: 64px; text-align: center; font-size: 15px; }
 .round-btn.small { width: 44px; height: 44px; margin-left: auto; }
 .saved-note { align-self: center; margin-right: 16px; }
+
+/* Tablette en paysage : la page tient exactement dans l'écran et les colonnes vont jusqu'en bas */
+@media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
+    .home { height: 100vh; height: 100dvh; min-height: 0; }
+    .home-grid { grid-template-columns: 320px minmax(0, 1fr) 280px; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+    .home-grid > * { min-height: 0; }
+    .climate { overflow-y: auto; }
+    .climate .card-foot { margin-top: auto; }
+    .home-center { overflow-y: auto; }
+    .rooms { flex: 1; min-height: 0; grid-auto-rows: minmax(130px, 1fr); }
+    .room-card { height: auto; }
+    .home-side { display: flex; grid-column: auto; }
+    .journal { flex: 1; min-height: 0; }
+    .journal ul { flex: 1; min-height: 0; max-height: none; }
+}

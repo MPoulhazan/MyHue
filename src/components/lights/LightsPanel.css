@@ -122,3 +122,17 @@
     .lamp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .lamp-tile { height: 100px; }
 }
+
+/* Tablette en paysage : trois colonnes sur toute la hauteur de l'écran */
+@media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
+    .lights-layout { flex: 1; min-height: 0; grid-template-columns: 300px 340px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+    .lights-layout > * { min-height: 0; overflow-y: auto; }
+    .lights-house { display: flex; grid-column: auto; }
+    .lights-house .sub-title { margin-top: auto; }
+    .lights-moments { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(64px, 96px); }
+    .lights-room-list { flex: 1; }
+    .lights-room { flex: 1; height: auto; min-height: 104px; max-height: 220px; }
+    /* Trois rangées réservées : les tuiles gardent la même taille d'une pièce à l'autre */
+    .lamp-grid { flex: 1; min-height: 0; grid-template-rows: repeat(3, minmax(96px, 1fr)); grid-auto-rows: minmax(96px, 1fr); overflow-y: auto; }
+    .lamp-tile { height: auto; }
+}
