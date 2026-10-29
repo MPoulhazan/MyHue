@@ -29,7 +29,6 @@
         "mqtt": "^5.15.0",
         "node-telegram-bot-api": "^0.67.0",
         "onnxruntime-web": "^1.30.0",
-        "qr-scanner": "^1.4.2",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
         "react-router-dom": "^7.13.0",

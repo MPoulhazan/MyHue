@@ -6,7 +6,8 @@ export type IconName =
     | 'thermo' | 'door' | 'drag'
     | 'screen' | 'glass' | 'moon' | 'leave' | 'check' | 'close' | 'plus' | 'sun' | 'cloud' | 'menu' | 'battery'
     | 'chevron' | 'back' | 'alert'
-    | 'play' | 'pause' | 'stop' | 'volume' | 'minus' | 'radio' | 'list';
+    | 'play' | 'pause' | 'stop' | 'volume' | 'minus' | 'radio' | 'list'
+    | 'trash' | 'drop' | 'wifi' | 'refresh';
 
 const PATHS: Record<IconName, string> = {
     home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
@@ -45,6 +46,10 @@ const PATHS: Record<IconName, string> = {
     minus: 'M5 12h14',
     radio: 'M4 9h16v11H4zM7 9l10-5M9 14.5a1.5 1.5 0 1 0 0 .01M14 13h3M14 16h3',
     list: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
+    trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+    drop: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z',
+    wifi: 'M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01',
+    refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
 };
 
 export function Icon({ name, size = 20, strokeWidth = 1.8, className }: { name: IconName; size?: number; strokeWidth?: number; className?: string }) {

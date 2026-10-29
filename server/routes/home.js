@@ -90,10 +90,16 @@ router.get('/api/automations/templates', (_req, res) => {
     });
 });
 
-// { template, params: { did, minutes... } }
+// { template, params: { did, minutes... } } ou un seuil libre { rule: { sensorDid, property, operator, value, name, message } }
 router.post('/api/automations', (req, res) => {
     try {
-        const { template, params } = req.body || {};
+        const { template, params, rule } = req.body || {};
+        if (rule) {
+            if (!rule.sensorDid || !rule.property || !rule.operator || typeof rule.value !== 'number') {
+                return res.status(400).json({ error: '"sensorDid", "property", "operator" et "value" sont requis' });
+            }
+            return res.json(automations.addRule(rule));
+        }
         res.json(automations.createFromTemplate(template, params || {}));
     } catch (err) {
         res.status(400).json({ error: err.message });

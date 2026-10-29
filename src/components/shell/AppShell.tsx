@@ -28,8 +28,8 @@ const SETTINGS: Destination = { to: '/settings', label: 'Réglages', icon: 'sett
 // Au téléphone l'agent garde son onglet ; les réglages s'ouvrent depuis l'accueil
 const PHONE_AGENT: Destination = { to: '/agent', label: 'Agent', icon: 'agent' };
 
-/** Écrans rangés sous Réglages (anciennes pages comprises). */
-const SETTINGS_PAGES = ['/rules', '/google-home', '/remote', '/wakeword'];
+/** Écrans rangés sous Réglages. */
+const SETTINGS_PAGES = ['/sensors', '/speakers', '/rules', '/remote', '/wakeword'];
 
 // Tablette murale : retour à l'accueil après ce délai sans toucher
 const IDLE_MS = 2 * 60_000;

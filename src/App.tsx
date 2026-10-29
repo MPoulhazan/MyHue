@@ -1,14 +1,15 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
 import { Agent } from './pages/Agent';
 import { Music } from './pages/Music';
-import { GoogleHome } from './pages/GoogleHome';
 import { Rules } from './pages/Rules';
 import { Remote } from './pages/Remote';
 import { Dashboard } from './pages/Dashboard';
 import { Lights } from './pages/Lights';
 import { Climate } from './pages/Climate';
 import { Settings } from './pages/Settings';
+import { Sensors } from './pages/Sensors';
+import { Speakers } from './pages/Speakers';
 import { WakewordRecorder } from './pages/WakewordRecorder';
 import './App.css';
 
@@ -26,8 +27,10 @@ function App() {
                     <Route path="/music" element={<Music />} />
                     <Route path="/agent" element={legacy(<Agent />)} />
                     <Route path="/settings" element={<Settings />} />
-                    <Route path="/rules" element={legacy(<Rules />)} />
-                    <Route path="/google-home" element={legacy(<GoogleHome />)} />
+                    <Route path="/sensors" element={<Sensors />} />
+                    <Route path="/speakers" element={<Speakers />} />
+                    <Route path="/rules" element={<Rules />} />
+                    <Route path="/google-home" element={<Navigate to="/sensors" replace />} />
                     <Route path="/remote" element={<Remote />} />
                     <Route path="/wakeword" element={legacy(<WakewordRecorder />)} />
                 </Route>
