@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { DashLight, Home } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import type { IconName } from '../Icon';
@@ -25,9 +25,6 @@ export function PhoneHome({ home, roomLights, onAdd }: {
                         {home.weather && <> · dehors {fmt(home.weather.temperature, 0)}°</>}
                     </div>
                 </div>
-                <Link to="/settings" className="round-btn" aria-label="Réglages">
-                    <Icon name="settings" size={22} />
-                </Link>
             </header>
 
             {openDoors.length > 0 && (

@@ -41,6 +41,17 @@ export interface LogEntry {
     href?: string;
 }
 
+/** Un échange avec l'agent, gardé le temps de la session. */
+export interface AgentTurn {
+    id: number;
+    role: 'user' | 'assistant';
+    content: string;
+    escalation?: string;
+}
+
+// Échanges renvoyés à l'agent pour qu'il suive la conversation
+const AGENT_MEMORY = 10;
+
 export interface Climate {
     temperature: number | null;
     humidity: number | null;
@@ -147,6 +158,10 @@ export function useHome() {
     const [moments, setMoments] = useState<Moment[]>([]);
     const [thermostat, setThermostat] = useState<ThermostatStatus | null>(null);
     const [roomScenes, setRoomScenes] = useState<Record<string, RoomScene[]>>({});
+    const [conversation, setConversation] = useState<AgentTurn[]>([]);
+    const [thinking, setThinking] = useState(false);
+    const conversationRef = useRef<AgentTurn[]>([]);
+    conversationRef.current = conversation;
 
     const editing = useRef<Record<string, number>>({});
     const pending = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -373,23 +388,34 @@ export function useHome() {
     // --- Agent ---
     // Renvoie la réponse de l'agent (lue à voix haute quand la demande est vocale)
     const askAgent = useCallback(async (message: string): Promise<string | undefined> => {
+        const history = conversationRef.current.slice(-AGENT_MEMORY).map(({ role, content }) => ({ role, content }));
+        const say = (role: AgentTurn['role'], content: string, escalation?: string) =>
+            setConversation((c) => [...c, { id: ++logSeq, role, content, escalation }]);
         push(`> ${message}`);
+        say('user', message);
+        setThinking(true);
         try {
-            const { data } = await axios.post('/api/agent', { message, history: [] });
+            const { data } = await axios.post('/api/agent', { message, history });
             const reply: string = data.message || data.reply || 'OK';
             push(reply, '#C8F560', data.escalation?.url);
+            say('assistant', reply, data.escalation?.url);
             setTimeout(loadLights, 600);
             setTimeout(cast.refresh, 1500); // l'agent a peut-être lancé ou coupé la musique
             return reply;
         } catch {
             push('Agent indisponible', '#FF3B5C');
+            say('assistant', 'Je n’arrive pas à joindre l’agent. Réessaie dans un instant.');
             return 'Agent indisponible.';
+        } finally {
+            setThinking(false);
         }
     }, [push, loadLights, cast.refresh]);
 
+    const clearConversation = useCallback(() => setConversation([]), []);
+
     return {
-        lights, rooms, roomScenes, climate, door, heating, log, online, sensors, weather, moments, thermostat,
-        push, setLevel, setColor, applyAmbiance, activateScene, controlHeating, askAgent, runMoment, updateThermostat, overrideTarget, cast,
+        lights, rooms, roomScenes, climate, door, heating, log, online, sensors, weather, moments, thermostat, conversation, thinking,
+        push, clearConversation, setLevel, setColor, applyAmbiance, activateScene, controlHeating, askAgent, runMoment, updateThermostat, overrideTarget, cast,
     };
 }
 

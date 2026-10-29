@@ -91,9 +91,9 @@
 /* Téléphone */
 .shell.phone { display: block; height: auto; min-height: 100vh; min-height: 100dvh; }
 .shell.phone .shell-main { display: block; }
-.shell.phone .shell-page { overflow: visible; overflow-x: clip; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+/* Place pour les onglets et le bouton de l'assistant */
+.shell.phone .shell-page { overflow: visible; overflow-x: clip; padding-bottom: calc(160px + env(safe-area-inset-bottom)); }
 .shell.phone .shell-back { margin: 16px 16px 0; }
-.shell.phone .agent-container { height: calc(100dvh - 190px); min-height: 280px; border: none; margin: 0; }
 
 .shell-tabs {
     position: fixed;
@@ -151,4 +151,4 @@
 .shell-player { position: fixed; left: 8px; right: 8px; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: 39; }
 .shell-player .mini-player { margin: 0; gap: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
 .shell-player .mini-volume { display: none; }
-.shell.phone.has-player .shell-page { padding-bottom: calc(160px + env(safe-area-inset-bottom)); }
+.shell.phone.has-player .shell-page { padding-bottom: calc(232px + env(safe-area-inset-bottom)); }

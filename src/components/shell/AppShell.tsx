@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { HomeContext, useHome } from '../../hooks/useHome';
 import { useIsPhone } from '../../hooks/useIsPhone';
-import { AgentBar } from '../AgentBar';
+import { useVoice } from '../../hooks/useVoice';
+import { AgentBar, AgentFab, AgentSheet } from '../agent/Agent';
 import { Icon } from '../Icon';
 import type { IconName } from '../Icon';
 import { MiniPlayer } from './MiniPlayer';
@@ -25,8 +26,6 @@ const MAIN: Destination[] = [
 ];
 
 const SETTINGS: Destination = { to: '/settings', label: 'Réglages', icon: 'settings' };
-// Au téléphone l'agent garde son onglet ; les réglages s'ouvrent depuis l'accueil
-const PHONE_AGENT: Destination = { to: '/agent', label: 'Agent', icon: 'agent' };
 
 /** Écrans rangés sous Réglages. */
 const SETTINGS_PAGES = ['/sensors', '/speakers', '/rules', '/remote', '/wakeword'];
@@ -75,22 +74,32 @@ export function AppShell() {
     const phone = useIsPhone();
     const { pathname } = useLocation();
     const [reply, setReply] = useState<string | null>(null);
+    const [agentOpen, setAgentOpen] = useState(false);
+    const agentOpenRef = useRef(false);
+    useEffect(() => {
+        agentOpenRef.current = agentOpen;
+    }, [agentOpen]);
     const replyTimer = useRef(0);
     useIdleReturn(!phone);
 
-    // Hors de l'accueil (où le journal l'affiche), la réponse de l'agent passe en bulle
+    // Hors de l'accueil (où le journal l'affiche) et panneau fermé, la réponse passe en bulle
     const ask = async (message: string) => {
         const answer = await home.askAgent(message);
-        if (answer) {
+        if (answer && !agentOpenRef.current) {
             setReply(answer);
             window.clearTimeout(replyTimer.current);
             replyTimer.current = window.setTimeout(() => setReply(null), 10_000);
         }
         return answer;
     };
+    // Une seule écoute (micro + mot d'activation) pour toute l'app
+    const voice = useVoice(ask);
+    const openAgent = () => {
+        setReply(null);
+        setAgentOpen(true);
+    };
 
     const backToSettings = SETTINGS_PAGES.includes(pathname);
-    const showAgentBar = !phone && pathname !== '/agent';
     // L'écran Musique a son propre lecteur
     const showPlayer = Boolean(home.cast.now) && pathname !== '/music';
 
@@ -114,18 +123,18 @@ export function AppShell() {
                         <Outlet />
                     </div>
 
-                    {!phone && (showAgentBar || showPlayer) && (
+                    {!phone && (
                         <div className="shell-agent">
                             <AnimatePresence>
                                 {reply && pathname !== '/' && (
-                                    <motion.button key="reply" type="button" className="agent-reply" onClick={() => setReply(null)}
+                                    <motion.button key="reply" type="button" className="agent-reply" onClick={openAgent}
                                         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
                                         {reply}
                                     </motion.button>
                                 )}
                             </AnimatePresence>
                             {showPlayer && <MiniPlayer cast={home.cast} />}
-                            {showAgentBar && <AgentBar onAsk={ask} chips={[]} />}
+                            <AgentBar voice={voice} onAsk={ask} onOpen={openAgent} />
                         </div>
                     )}
                 </div>
@@ -133,10 +142,20 @@ export function AppShell() {
                 {phone && showPlayer && <div className="shell-player"><MiniPlayer cast={home.cast} /></div>}
 
                 {phone && (
-                    <nav className="shell-tabs" aria-label="Navigation principale">
-                        {[...MAIN, PHONE_AGENT].map((d) => <NavItem key={d.to} dest={d} className="tab-item" />)}
-                    </nav>
+                    <>
+                        <AgentFab voice={voice} onOpen={openAgent} />
+                        <nav className="shell-tabs" aria-label="Navigation principale">
+                            {[...MAIN, SETTINGS].map((d) => <NavItem key={d.to} dest={d} className="tab-item" />)}
+                        </nav>
+                    </>
                 )}
+
+                <AnimatePresence>
+                    {agentOpen && (
+                        <AgentSheet key="agent" voice={voice} conversation={home.conversation} thinking={home.thinking}
+                            onAsk={ask} onClear={home.clearConversation} onClose={() => setAgentOpen(false)} />
+                    )}
+                </AnimatePresence>
             </div>
         </HomeContext.Provider>
     );

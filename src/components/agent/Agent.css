@@ -1,0 +1,117 @@
+/* Agent : barre (texte + micro), conversation en panneau, bouton flottant au téléphone */
+
+.agentbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+.agent-input {
+    flex: 1 1 360px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 8px 0 24px;
+    border-radius: 22px;
+    border: 1px solid var(--h-line);
+    background: var(--h-surface);
+}
+.agent-input input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--h-text);
+    font-family: inherit;
+    font-size: 17px;
+}
+.agent-input input::placeholder { color: var(--h-muted); }
+.agent-input:focus-within { border-color: var(--h-line-2); }
+.agent-input .mic {
+    width: 48px;
+    height: 48px;
+    flex: none;
+    border-radius: 16px;
+    border: none;
+    background: var(--h-accent);
+    color: var(--h-on-accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.agent-input .mic:disabled { opacity: 0.4; cursor: default; }
+.agent-input.listening { border-color: var(--h-accent); }
+
+.agent-open {
+    width: 64px;
+    height: 64px;
+    flex: none;
+    border-radius: 22px;
+    border: 1px solid var(--h-line);
+    background: var(--h-surface);
+    color: var(--h-text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.agent-open:hover { background: var(--h-surface-2); }
+
+.wave { display: flex; gap: 3px; align-items: center; height: 22px; }
+.wave i { width: 3px; height: 100%; background: var(--h-accent); border-radius: 2px; animation: agent-wave 0.8s ease-in-out infinite; }
+@keyframes agent-wave { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+
+/* Panneau de conversation */
+.agent-sheet { width: min(760px, 100%); height: min(760px, calc(100dvh - 48px)); gap: 20px; }
+.agent-sheet .agent-input { flex-basis: 100%; }
+.agent-thread { flex: 1; min-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.agent-empty { display: flex; flex-direction: column; gap: 16px; margin: auto 0; }
+.agent-empty p { font-size: 16px; line-height: 1.45; }
+.agent-msg {
+    max-width: 85%;
+    padding: 12px 18px;
+    border-radius: 20px;
+    font-size: 16px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.agent-msg.user { align-self: flex-end; background: var(--h-surface-2); border-bottom-right-radius: 6px; }
+.agent-msg.assistant { align-self: flex-start; background: #232a17; border-bottom-left-radius: 6px; }
+.agent-escalate { display: block; margin-top: 8px; color: var(--h-accent); font-weight: 700; }
+.agent-msg.typing { display: inline-flex; gap: 6px; padding: 16px 18px; }
+.agent-msg.typing i { width: 8px; height: 8px; border-radius: 50%; background: var(--h-accent); animation: agent-blink 1s ease-in-out infinite; }
+.agent-msg.typing i:nth-child(2) { animation-delay: 0.15s; }
+.agent-msg.typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes agent-blink { 50% { opacity: 0.3; } }
+.agent-sheet .switch:disabled { opacity: 0.4; }
+
+/* Téléphone : bouton rond au-dessus des onglets (et du mini-lecteur) */
+.agent-fab {
+    position: fixed;
+    right: 16px;
+    bottom: calc(86px + env(safe-area-inset-bottom));
+    z-index: 41;
+    width: 60px;
+    height: 60px;
+    border: none;
+    border-radius: 20px;
+    background: var(--h-accent);
+    color: var(--h-on-accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    -webkit-tap-highlight-color: transparent;
+}
+.agent-fab .wave i { background: var(--h-on-accent); }
+.has-player .agent-fab { bottom: calc(158px + env(safe-area-inset-bottom)); }
+
+@media (max-width: 760px) {
+    .agent-input { height: 56px; flex-basis: 100%; }
+    .agent-input input { font-size: 16px; }
+    .agent-sheet { height: 92dvh; max-height: 92dvh; }
+    .agent-msg { font-size: 15px; }
+    .agent-empty .chips { gap: 8px; }
+    .agent-empty .chips button { min-height: 44px; padding: 0 16px; font-size: 15px; }
+}
