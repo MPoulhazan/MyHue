@@ -3,6 +3,7 @@ import axios from 'axios';
 import { stateToHex, ctToHex, hexToXy, pctToBri, briToPct } from '../utils/hueColor';
 import { scenesByRoom } from '../utils/hueScenes';
 import type { RoomScene } from '../utils/hueScenes';
+import { useCast } from './useCast';
 
 export interface DashLight {
     id: string;
@@ -366,6 +367,9 @@ export function useHome() {
         }
     }, [push, loadThermostat]);
 
+    // --- Musique ---
+    const cast = useCast(push);
+
     // --- Agent ---
     // Renvoie la réponse de l'agent (lue à voix haute quand la demande est vocale)
     const askAgent = useCallback(async (message: string): Promise<string | undefined> => {
@@ -375,16 +379,17 @@ export function useHome() {
             const reply: string = data.message || data.reply || 'OK';
             push(reply, '#C8F560', data.escalation?.url);
             setTimeout(loadLights, 600);
+            setTimeout(cast.refresh, 1500); // l'agent a peut-être lancé ou coupé la musique
             return reply;
         } catch {
             push('Agent indisponible', '#FF3B5C');
             return 'Agent indisponible.';
         }
-    }, [push, loadLights]);
+    }, [push, loadLights, cast.refresh]);
 
     return {
         lights, rooms, roomScenes, climate, door, heating, log, online, sensors, weather, moments, thermostat,
-        push, setLevel, setColor, applyAmbiance, activateScene, controlHeating, askAgent, runMoment, updateThermostat, overrideTarget,
+        push, setLevel, setColor, applyAmbiance, activateScene, controlHeating, askAgent, runMoment, updateThermostat, overrideTarget, cast,
     };
 }
 

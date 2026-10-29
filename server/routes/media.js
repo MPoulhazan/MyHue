@@ -12,6 +12,15 @@ export const router = express.Router();
 
 // --- Cast direct (sans IA) ---
 
+router.get('/api/cast/devices', (_req, res) => {
+    res.json({ devices: castService.getDevices() });
+});
+
+// Ce qui joue en ce moment (mini-lecteur), y compris lancé par l'agent
+router.get('/api/cast/now', (_req, res) => {
+    res.json({ now: castService.getNowPlaying() });
+});
+
 router.post('/api/cast/play', async (req, res) => {
     try {
         const { deviceId, mediaUrl, contentType, metadata } = req.body;

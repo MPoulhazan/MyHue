@@ -112,3 +112,43 @@
 .tab-item .nav-pill { width: 52px; height: 30px; }
 .tab-item.active { color: var(--h-accent); font-weight: 700; }
 .tab-item.active .nav-pill { background: #2f3a1a; }
+
+/* Mini-lecteur : ce qui joue, depuis n'importe quel écran */
+.mini-player {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 10px;
+    padding: 8px 10px 8px 8px;
+    border-radius: 20px;
+    background: var(--h-surface);
+    font-family: Manrope, system-ui, sans-serif;
+}
+.mini-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; color: var(--h-text); text-decoration: none; border-radius: 14px; }
+.mini-info:focus-visible { outline: 2px solid var(--h-accent); outline-offset: 2px; }
+.mini-thumb { width: 48px; height: 48px; flex: none; border-radius: 12px; object-fit: cover; background: var(--h-surface-2); display: inline-flex; align-items: center; justify-content: center; }
+.mini-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mini-text strong { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-text span { font-size: 13px; color: var(--h-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-controls { display: flex; align-items: center; gap: 6px; flex: none; }
+.mini-btn { width: 44px; height: 44px; border: none; border-radius: 14px; background: var(--h-surface-2); color: var(--h-text); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.mini-btn:hover { background: var(--h-line-2); }
+.mini-btn.main { background: var(--h-accent); color: var(--h-on-accent); }
+.mini-btn:focus-visible { outline: 2px solid var(--h-accent); outline-offset: 2px; }
+.mini-volume { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
+.mini-vol-value { min-width: 48px; text-align: center; font-size: 14px; color: var(--h-muted); display: inline-flex; justify-content: center; }
+
+/* Égaliseur « en lecture » */
+.eq { display: inline-flex; align-items: flex-end; gap: 3px; height: 18px; }
+.eq > span { width: 4px; height: 100%; border-radius: 2px; background: var(--h-accent); animation: eq-bounce 0.9s ease-in-out infinite; transform-origin: bottom; }
+.eq > span:nth-child(2) { animation-delay: -0.3s; }
+.eq > span:nth-child(3) { animation-delay: -0.6s; }
+.eq.paused > span { animation: none; transform: scaleY(0.35); }
+@keyframes eq-bounce { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .eq > span { animation: none; transform: scaleY(0.6); } }
+
+/* Téléphone : le mini-lecteur flotte au-dessus des onglets */
+.shell-player { position: fixed; left: 8px; right: 8px; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: 39; }
+.shell-player .mini-player { margin: 0; gap: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
+.shell-player .mini-volume { display: none; }
+.shell.phone.has-player .shell-page { padding-bottom: calc(160px + env(safe-area-inset-bottom)); }

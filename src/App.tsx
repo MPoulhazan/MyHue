@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
 import { Agent } from './pages/Agent';
-import Music from './pages/Music';
+import { Music } from './pages/Music';
 import { GoogleHome } from './pages/GoogleHome';
 import { Rules } from './pages/Rules';
 import { Remote } from './pages/Remote';
@@ -23,7 +23,7 @@ function App() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/lights" element={<Lights />} />
                     <Route path="/climate" element={<Climate />} />
-                    <Route path="/music" element={legacy(<Music />)} />
+                    <Route path="/music" element={<Music />} />
                     <Route path="/agent" element={legacy(<Agent />)} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/rules" element={legacy(<Rules />)} />

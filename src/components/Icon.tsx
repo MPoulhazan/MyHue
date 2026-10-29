@@ -5,7 +5,8 @@ export type IconName =
     | 'cast' | 'rules' | 'heating' | 'settings' | 'grid' | 'power'
     | 'thermo' | 'door' | 'drag'
     | 'screen' | 'glass' | 'moon' | 'leave' | 'check' | 'close' | 'plus' | 'sun' | 'cloud' | 'menu' | 'battery'
-    | 'chevron' | 'back' | 'alert';
+    | 'chevron' | 'back' | 'alert'
+    | 'play' | 'pause' | 'stop' | 'volume' | 'minus' | 'radio' | 'list';
 
 const PATHS: Record<IconName, string> = {
     home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
@@ -37,6 +38,13 @@ const PATHS: Record<IconName, string> = {
     chevron: 'M9 6l6 6-6 6',
     back: 'M15 18l-6-6 6-6',
     alert: 'M12 8v5M12 17h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
+    play: 'M7 5v14l12-7z',
+    pause: 'M8 5v14M16 5v14',
+    stop: 'M6 6h12v12H6z',
+    volume: 'M4 9v6h4l5 4V5L8 9zM16.5 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12',
+    minus: 'M5 12h14',
+    radio: 'M4 9h16v11H4zM7 9l10-5M9 14.5a1.5 1.5 0 1 0 0 .01M14 13h3M14 16h3',
+    list: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
 };
 
 export function Icon({ name, size = 20, strokeWidth = 1.8, className }: { name: IconName; size?: number; strokeWidth?: number; className?: string }) {

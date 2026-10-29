@@ -1,513 +1,300 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { youtubeApi, type YouTubePlaylist, type YouTubeVideo, type PlaylistData } from '../services/youtubeApi';
+import { useHomeData } from '../hooks/useHome';
+import { youtubeApi, type YouTubePlaylist, type YouTubeVideo } from '../services/youtubeApi';
+import { Icon } from '../components/Icon';
+import { Equalizer } from '../components/shell/MiniPlayer';
+import './Dashboard.css';
 import './Music.css';
 
-interface MusicGenre {
+interface Radio {
     id: string;
     name: string;
-    emoji: string;
-    gradient: string;
-    streamUrl: string;
     description: string;
+    streamUrl: string;
 }
 
-interface CastDevice {
-    id: string;
-    name: string;
-    host: string;
-    port: number;
-}
-
-type MusicMode = 'radios' | 'playlists';
-
-const musicGenres: MusicGenre[] = [
-    {
-        id: 'lofi',
-        name: 'Lo-Fi Hip Hop',
-        emoji: '🎧',
-        gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        streamUrl: 'https://streams.ilovemusic.de/iloveradio17.mp3',
-        description: 'Beats to relax/study to'
-    },
-    {
-        id: 'jazz',
-        name: 'Smooth Jazz',
-        emoji: '🎷',
-        gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-        streamUrl: 'https://streaming.radio.co/s774887f7b/listen',
-        description: 'Relaxing saxophone melodies'
-    },
-    {
-        id: 'electronic',
-        name: 'Electronic',
-        emoji: '🎹',
-        gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-        streamUrl: 'https://streams.ilovemusic.de/iloveradio2.mp3',
-        description: 'Energetic beats and synths'
-    },
-    {
-        id: 'ambient',
-        name: 'Ambient',
-        emoji: '🌌',
-        gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-        streamUrl: 'https://uk2.internet-radio.com/proxy/radioart_ambient?mp=/stream',
-        description: 'Peaceful atmospheric sounds'
-    },
-    {
-        id: 'piano',
-        name: 'Piano',
-        emoji: '🎹',
-        gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-        streamUrl: 'https://live.musopen.org:8085/streamvbr0',
-        description: 'Beautiful piano compositions'
-    },
-    {
-        id: 'rock',
-        name: 'Rock',
-        emoji: '🎸',
-        gradient: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
-        streamUrl: 'https://streams.ilovemusic.de/iloveradio3.mp3',
-        description: 'Classic rock anthems'
-    },
-    {
-        id: 'classical',
-        name: 'Classical',
-        emoji: '🎻',
-        gradient: 'linear-gradient(135deg, #fad0c4 0%, #ffd1ff 100%)',
-        streamUrl: 'https://stream.srg-ssr.ch/m/rsc_de/mp3_128',
-        description: 'Timeless orchestral pieces'
-    },
-    {
-        id: 'chillout',
-        name: 'Chillout',
-        emoji: '🌊',
-        gradient: 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
-        streamUrl: 'https://streams.ilovemusic.de/iloveradio7.mp3',
-        description: 'Laid-back vibes'
-    }
+const RADIOS: Radio[] = [
+    { id: 'lofi', name: 'Lo-fi', description: 'Pour se concentrer ou décompresser', streamUrl: 'https://streams.ilovemusic.de/iloveradio17.mp3' },
+    { id: 'jazz', name: 'Jazz doux', description: 'Saxophone et ambiance feutrée', streamUrl: 'https://streaming.radio.co/s774887f7b/listen' },
+    { id: 'electronic', name: 'Électro', description: 'Rythmes et synthés', streamUrl: 'https://streams.ilovemusic.de/iloveradio2.mp3' },
+    { id: 'ambient', name: 'Ambient', description: 'Nappes calmes et atmosphériques', streamUrl: 'https://uk2.internet-radio.com/proxy/radioart_ambient?mp=/stream' },
+    { id: 'piano', name: 'Piano', description: 'Pièces pour piano seul', streamUrl: 'https://live.musopen.org:8085/streamvbr0' },
+    { id: 'rock', name: 'Rock', description: 'Les grands classiques', streamUrl: 'https://streams.ilovemusic.de/iloveradio3.mp3' },
+    { id: 'classical', name: 'Classique', description: 'Orchestre et musique de chambre', streamUrl: 'https://stream.srg-ssr.ch/m/rsc_de/mp3_128' },
+    { id: 'chillout', name: 'Chill-out', description: 'Ambiance détendue', streamUrl: 'https://streams.ilovemusic.de/iloveradio7.mp3' },
 ];
 
-export default function Music() {
-    const [selectedDevice, setSelectedDevice] = useState<CastDevice | null>(null);
-    const [devices, setDevices] = useState<CastDevice[]>([]);
-    const [loading, setLoading] = useState<string | null>(null);
-    const [nowPlaying, setNowPlaying] = useState<{ title: string; subtitle: string; thumbnail?: string } | null>(null);
-    const [message, setMessage] = useState('');
-    const [mode, setMode] = useState<MusicMode>('radios');
+// Teintes des vignettes, reprises de la palette du tableau de bord
+const TINTS = ['lime', 'amber', 'blue'] as const;
 
-    // Playlist state
+const VOLUME_STEP = 10;
+
+type Tab = 'radios' | 'playlists';
+
+/** Écran Musique : choisir l'enceinte, lancer une radio ou une playlist YouTube, piloter la lecture. */
+export function Music() {
+    const { cast } = useHomeData();
+    const now = cast.now;
+    const live = cast.speakers.filter((s) => s.online);
+    const offline = cast.speakers.filter((s) => !s.online);
+
+    const [picked, setPicked] = useState<string | null>(null);
+    // Par défaut : l'enceinte qui joue, sinon la première joignable
+    const speaker = live.find((s) => s.id === picked) ?? live.find((s) => s.id === now?.deviceId) ?? live[0] ?? null;
+
+    const [tab, setTab] = useState<Tab>('radios');
+    const [starting, setStarting] = useState<string | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
+
+    // Playlists YouTube
     const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
-    const [selectedPlaylist, setSelectedPlaylist] = useState<YouTubePlaylist | null>(null);
+    const [playlist, setPlaylist] = useState<YouTubePlaylist | null>(null);
     const [tracks, setTracks] = useState<YouTubeVideo[]>([]);
-    const [playlistName, setPlaylistName] = useState('');
     const [loadingTracks, setLoadingTracks] = useState(false);
-    const [extracting, setExtracting] = useState<string | null>(null);
     const [customUrl, setCustomUrl] = useState('');
-    const [addingPlaylist, setAddingPlaylist] = useState(false);
-    const [ytAuthenticated, setYtAuthenticated] = useState(false);
-    const [ytOAuthConfigured, setYtOAuthConfigured] = useState(false);
+    const [adding, setAdding] = useState(false);
+    const [yt, setYt] = useState({ authenticated: false, oauthConfigured: false });
 
     useEffect(() => {
-        fetchDevices();
-        checkYouTubeAuth();
-
-        // Listen for OAuth popup callback
-        const handler = (e: MessageEvent) => {
+        youtubeApi.getAuthStatus().then(setYt).catch(() => {});
+        // Retour de la fenêtre de connexion YouTube
+        const onMessage = (e: MessageEvent) => {
             if (e.data === 'youtube-auth-success') {
-                setYtAuthenticated(true);
-                fetchPlaylists();
+                setYt((s) => ({ ...s, authenticated: true }));
+                loadPlaylists();
             }
         };
-        window.addEventListener('message', handler);
-        return () => window.removeEventListener('message', handler);
+        window.addEventListener('message', onMessage);
+        return () => window.removeEventListener('message', onMessage);
     }, []);
 
     useEffect(() => {
-        if (mode === 'playlists') {
-            fetchPlaylists();
-        }
-    }, [mode]);
+        if (tab === 'playlists') loadPlaylists();
+    }, [tab]);
 
-    const fetchDevices = async () => {
-        try {
-            const { data } = await axios.get('/api/agent/status');
-            const devs: CastDevice[] = data.devices || [];
-            setDevices(devs);
-            if (devs.length > 0) setSelectedDevice(devs[0]);
-        } catch (error) {
-            console.error('Error fetching devices:', error);
-        }
+    const loadPlaylists = () => {
+        youtubeApi.getPlaylists()
+            .then(({ playlists: list, authenticated }) => {
+                setPlaylists(list);
+                setYt((s) => ({ ...s, authenticated }));
+            })
+            .catch(() => setNotice('Impossible de charger les playlists YouTube.'));
     };
 
-    const checkYouTubeAuth = async () => {
-        try {
-            const status = await youtubeApi.getAuthStatus();
-            setYtAuthenticated(status.authenticated);
-            setYtOAuthConfigured(status.oauthConfigured);
-        } catch {}
-    };
-
-    const connectYouTube = async () => {
-        try {
-            const url = await youtubeApi.getAuthUrl();
-            window.open(url, 'youtube-auth', 'width=500,height=600');
-        } catch (error: any) {
-            setMessage(error?.response?.data?.error || 'Erreur OAuth');
-        }
-    };
-
-    const fetchPlaylists = async () => {
-        try {
-            const { playlists: list, authenticated } = await youtubeApi.getPlaylists();
-            setPlaylists(list);
-            setYtAuthenticated(authenticated);
-        } catch (error) {
-            console.error('Error fetching playlists:', error);
-        }
-    };
-
-    const selectPlaylist = async (playlist: YouTubePlaylist) => {
-        setSelectedPlaylist(playlist);
-        setLoadingTracks(true);
+    const openPlaylist = async (pl: YouTubePlaylist) => {
+        setPlaylist(pl);
         setTracks([]);
+        setLoadingTracks(true);
         try {
-            const data: PlaylistData = await youtubeApi.getPlaylistItems(playlist.id);
+            const data = await youtubeApi.getPlaylistItems(pl.id);
             setTracks(data.items);
-            setPlaylistName(data.playlistName);
-        } catch (error: any) {
-            const errMsg = error?.response?.data?.error || 'Erreur chargement playlist';
-            setMessage(errMsg);
+        } catch (err) {
+            setNotice(errorText(err, 'Impossible de charger cette playlist.'));
         } finally {
             setLoadingTracks(false);
         }
     };
 
-    const addCustomPlaylist = async () => {
+    const addPlaylist = async () => {
         if (!customUrl.trim()) return;
-        setAddingPlaylist(true);
+        setAdding(true);
         try {
-            const playlist = await youtubeApi.addPlaylist(customUrl.trim());
-            setPlaylists(prev => [...prev, playlist]);
+            const pl = await youtubeApi.addPlaylist(customUrl.trim());
+            setPlaylists((list) => [...list, pl]);
             setCustomUrl('');
-            selectPlaylist(playlist);
-        } catch (error: any) {
-            const errMsg = error?.response?.data?.error || 'URL invalide';
-            setMessage(errMsg);
+            openPlaylist(pl);
+        } catch (err) {
+            setNotice(errorText(err, 'Lien de playlist non reconnu.'));
         } finally {
-            setAddingPlaylist(false);
+            setAdding(false);
         }
     };
 
-    // --- Playback ---
-
-    const playRadio = async (genre: MusicGenre) => {
-        if (!selectedDevice) { setMessage('Selectionne un appareil Google Cast'); return; }
-        setLoading(genre.id);
-        setMessage('');
+    const connectYouTube = async () => {
         try {
-            await axios.post('/api/cast/play', {
-                deviceId: selectedDevice.id,
-                mediaUrl: genre.streamUrl,
-                contentType: 'audio/mpeg',
-                metadata: { title: genre.name, subtitle: genre.description },
-            });
-            setNowPlaying({ title: genre.name, subtitle: genre.description });
-            setMessage(`${genre.name} en lecture sur ${selectedDevice.name}`);
-        } catch (error: any) {
-            setMessage(error?.response?.data?.error || 'Erreur lors de la lecture');
-        } finally {
-            setLoading(null);
+            window.open(await youtubeApi.getAuthUrl(), 'youtube-auth', 'width=500,height=600');
+        } catch (err) {
+            setNotice(errorText(err, 'Connexion YouTube impossible.'));
         }
+    };
+
+    const playRadio = async (radio: Radio) => {
+        if (!speaker) return;
+        setNotice(null);
+        setStarting(radio.id);
+        await cast.play(speaker.id, { mediaUrl: radio.streamUrl, contentType: 'audio/mpeg', title: radio.name, subtitle: radio.description });
+        setStarting(null);
     };
 
     const playTrack = async (track: YouTubeVideo) => {
-        if (!selectedDevice) { setMessage('Selectionne un appareil Google Cast'); return; }
-        setExtracting(track.videoId);
-        setMessage('');
+        if (!speaker) return;
+        setNotice(null);
+        setStarting(track.videoId);
         try {
             const { audioUrl, contentType } = await youtubeApi.extractAudio(track.videoId);
-            await axios.post('/api/cast/play', {
-                deviceId: selectedDevice.id,
-                mediaUrl: audioUrl,
-                contentType,
-                metadata: { title: track.title, subtitle: track.artist },
-            });
-            setNowPlaying({ title: track.title, subtitle: track.artist, thumbnail: track.thumbnail });
-            setMessage(`${track.title} en lecture sur ${selectedDevice.name}`);
-        } catch (error: any) {
-            setMessage(error?.response?.data?.error || 'Erreur lors de la lecture');
+            await cast.play(speaker.id, { mediaUrl: audioUrl, contentType, title: track.title, subtitle: track.artist, thumbnail: track.thumbnail });
+        } catch (err) {
+            setNotice(errorText(err, `Impossible de lire « ${track.title} ».`));
         } finally {
-            setExtracting(null);
+            setStarting(null);
         }
     };
 
-    const controlPlayback = async (command: 'pause' | 'play' | 'stop') => {
-        if (!selectedDevice) return;
-        try {
-            await axios.post('/api/cast/control', { deviceId: selectedDevice.id, command });
-            if (command === 'stop') setNowPlaying(null);
-            setMessage({ pause: 'Pause', play: 'Lecture', stop: 'Stop' }[command]);
-        } catch (error: any) {
-            setMessage(error?.response?.data?.error || 'Erreur');
-        }
-    };
-
-    const handleVolume = async (level: number) => {
-        if (!selectedDevice) return;
-        try {
-            await axios.post('/api/cast/volume', { deviceId: selectedDevice.id, level: level / 100 });
-            setMessage(`Volume : ${level}%`);
-        } catch (error: any) {
-            setMessage(error?.response?.data?.error || 'Erreur volume');
-        }
-    };
+    const blocked = !speaker;
 
     return (
-        <div className="music-container">
-            {/* Header */}
-            <div className="music-header">
-                <div>
-                    <h1>Music Player</h1>
-                    <p className="subtitle">Choisis ton ambiance musicale</p>
-                </div>
-                <div className="device-selector">
-                    <label>Appareil :</label>
-                    <select
-                        value={selectedDevice?.id || ''}
-                        onChange={(e) => {
-                            const dev = devices.find(d => d.id === e.target.value);
-                            if (dev) setSelectedDevice(dev);
-                        }}
-                        disabled={devices.length === 0}
-                    >
-                        {devices.length === 0 ? (
-                            <option>Aucun appareil</option>
-                        ) : (
-                            devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)
-                        )}
-                    </select>
-                </div>
-            </div>
-
-            {/* Mode toggle */}
-            <div className="mode-toggle">
-                <button className={mode === 'radios' ? 'active' : ''} onClick={() => setMode('radios')}>
-                    Radios
-                </button>
-                <button className={mode === 'playlists' ? 'active' : ''} onClick={() => setMode('playlists')}>
-                    Playlists YouTube
-                </button>
-                <div className="mode-indicator" style={{ transform: mode === 'playlists' ? 'translateX(100%)' : 'translateX(0)' }} />
-            </div>
-
-            {/* Message */}
-            <AnimatePresence mode="wait">
-                {message && (
-                    <motion.div
-                        className="music-message"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        key={message}
-                    >
-                        {message}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Now Playing */}
-            {nowPlaying && (
-                <motion.div
-                    className="now-playing"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                >
-                    <div className="now-playing-info">
-                        {nowPlaying.thumbnail ? (
-                            <img src={nowPlaying.thumbnail} alt="" className="now-playing-thumb" />
-                        ) : (
-                            <div className="now-playing-emoji">🎵</div>
-                        )}
-                        <div>
-                            <div className="now-playing-title">En lecture</div>
-                            <div className="now-playing-genre">{nowPlaying.title}</div>
-                            {nowPlaying.subtitle && <div className="now-playing-artist">{nowPlaying.subtitle}</div>}
-                        </div>
-                    </div>
-                    <div className="playback-controls">
-                        <button onClick={() => controlPlayback('play')} title="Lecture">▶</button>
-                        <button onClick={() => controlPlayback('pause')} title="Pause">⏸</button>
-                        <button onClick={() => controlPlayback('stop')} title="Stop">⏹</button>
-                    </div>
-                    <div className="volume-controls">
-                        <span>🔉</span>
-                        <button onClick={() => handleVolume(20)}>20%</button>
-                        <button onClick={() => handleVolume(50)}>50%</button>
-                        <button onClick={() => handleVolume(80)}>80%</button>
-                    </div>
-                </motion.div>
-            )}
-
-            {/* Radios mode */}
-            {mode === 'radios' && (
-                <div className="music-grid">
-                    {musicGenres.map((genre, index) => (
-                        <motion.div
-                            key={genre.id}
-                            className={`music-card ${loading === genre.id ? 'loading' : ''} ${nowPlaying?.title === genre.name ? 'active' : ''}`}
-                            style={{ background: genre.gradient }}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            whileHover={{ scale: 1.05, y: -5 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => playRadio(genre)}
-                        >
-                            <div className="music-card-emoji">{genre.emoji}</div>
-                            <div className="music-card-content">
-                                <h3>{genre.name}</h3>
-                                <p>{genre.description}</p>
-                            </div>
-                            {loading === genre.id && (
-                                <div className="music-card-loader"><div className="spinner"></div></div>
-                            )}
-                            {nowPlaying?.title === genre.name && (
-                                <div className="music-card-playing">
-                                    <div className="equalizer">
-                                        <div className="bar"></div><div className="bar"></div>
-                                        <div className="bar"></div><div className="bar"></div>
-                                    </div>
-                                </div>
-                            )}
-                        </motion.div>
-                    ))}
-                </div>
-            )}
-
-            {/* Playlists mode */}
-            {mode === 'playlists' && (
-                <div className="playlists-layout">
-                    {/* Sidebar */}
-                    <div className="playlist-sidebar">
-                        <h3>Mes playlists</h3>
-
-                        {ytOAuthConfigured && !ytAuthenticated && (
-                            <button className="yt-connect-btn" onClick={connectYouTube}>
-                                Connecter YouTube
+        <div className="home music">
+            <header className="home-top">
+                <div className="home-hello"><h1>Musique</h1></div>
+                {live.length > 0 && (
+                    <div className="speaker-pick" role="radiogroup" aria-label="Enceinte">
+                        <span className="muted">Sur</span>
+                        {live.map((s) => (
+                            <button key={s.id} type="button" role="radio" aria-checked={speaker?.id === s.id}
+                                className={speaker?.id === s.id ? 'active' : ''} onClick={() => setPicked(s.id)}>
+                                {s.name}
                             </button>
-                        )}
-
-                        {playlists.length === 0 && !addingPlaylist && ytAuthenticated && (
-                            <p className="playlist-hint">Aucune playlist trouvee. Ajoute-en une ci-dessous.</p>
-                        )}
-
-                        {playlists.length === 0 && !addingPlaylist && !ytAuthenticated && !ytOAuthConfigured && (
-                            <p className="playlist-hint">Configure YOUTUBE_CLIENT_ID et YOUTUBE_CLIENT_SECRET dans .env pour connecter ton compte, ou colle une URL ci-dessous.</p>
-                        )}
-
-                        {playlists.map(pl => (
-                            <motion.div
-                                key={pl.id}
-                                className={`playlist-item ${selectedPlaylist?.id === pl.id ? 'active' : ''}`}
-                                onClick={() => selectPlaylist(pl)}
-                                whileHover={{ x: 4 }}
-                            >
-                                {pl.thumbnail && <img src={pl.thumbnail} alt="" className="playlist-thumb" />}
-                                <div className="playlist-item-info">
-                                    <span className="playlist-item-name">{pl.name}</span>
-                                    {pl.itemCount && <span className="playlist-item-count">{pl.itemCount} titres</span>}
-                                </div>
-                            </motion.div>
                         ))}
+                    </div>
+                )}
+            </header>
 
-                        <div className="add-playlist">
-                            <input
-                                type="text"
-                                placeholder="Coller l'URL d'une playlist..."
-                                value={customUrl}
-                                onChange={(e) => setCustomUrl(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && addCustomPlaylist()}
-                            />
-                            <button onClick={addCustomPlaylist} disabled={addingPlaylist || !customUrl.trim()}>
-                                {addingPlaylist ? '...' : '+'}
-                            </button>
+            {!live.length && (
+                <div className="warn-line">
+                    {cast.speakers.length
+                        ? 'Aucune enceinte joignable. Vérifie qu’elles sont allumées : MyHue les recherche toutes les 2 minutes.'
+                        : 'Aucune enceinte connue. Ajoute-les dans les options de l’add-on (cast_devices).'}
+                </div>
+            )}
+            {offline.length > 0 && live.length > 0 && (
+                <p className="muted music-offline">Hors ligne : {offline.map((s) => s.name).join(', ')}</p>
+            )}
+            {notice && <div className="warn-line" role="status">{notice}</div>}
+
+            {now && (
+                <section className="card now-card" aria-label="Lecture en cours">
+                    {now.thumbnail
+                        ? <img src={now.thumbnail} alt="" className="now-art" />
+                        : <span className="now-art"><Equalizer paused={now.paused} /></span>}
+                    <div className="now-text">
+                        <span className="muted">{now.paused ? 'En pause' : 'En lecture'} sur {now.device}</span>
+                        <strong>{now.title}</strong>
+                        {now.subtitle && <span className="muted">{now.subtitle}</span>}
+                    </div>
+                    <div className="now-controls">
+                        <button type="button" className="now-btn main" aria-label={now.paused ? 'Reprendre' : 'Pause'}
+                            onClick={() => cast.control(now.paused ? 'play' : 'pause')}>
+                            <Icon name={now.paused ? 'play' : 'pause'} size={24} strokeWidth={2.4} />
+                        </button>
+                        <button type="button" className="now-btn" aria-label="Arrêter" onClick={() => cast.control('stop')}>
+                            <Icon name="stop" size={22} strokeWidth={2.4} />
+                        </button>
+                        <div className="mini-stepper" role="group" aria-label="Volume">
+                            <button type="button" aria-label="Baisser le volume" onClick={() => cast.volume((now.volume ?? 50) - VOLUME_STEP)}>−</button>
+                            <span aria-live="polite">{now.volume != null ? `${now.volume} %` : 'Volume'}</span>
+                            <button type="button" aria-label="Monter le volume" onClick={() => cast.volume((now.volume ?? 50) + VOLUME_STEP)}>+</button>
                         </div>
                     </div>
+                </section>
+            )}
 
-                    {/* Track list */}
-                    <div className="track-list-area">
-                        {!selectedPlaylist && (
-                            <div className="track-list-empty">
-                                <p>Selectionne une playlist ou colle une URL</p>
-                            </div>
+            <div className="chips music-tabs" role="tablist" aria-label="Source">
+                <button type="button" role="tab" aria-selected={tab === 'radios'} className={tab === 'radios' ? 'active' : ''}
+                    onClick={() => setTab('radios')}><Icon name="radio" size={18} /> Radios</button>
+                <button type="button" role="tab" aria-selected={tab === 'playlists'} className={tab === 'playlists' ? 'active' : ''}
+                    onClick={() => setTab('playlists')}><Icon name="list" size={18} /> Playlists YouTube</button>
+            </div>
+
+            {tab === 'radios' && (
+                <div className="radio-grid">
+                    {RADIOS.map((r, i) => {
+                        const playing = now?.title === r.name;
+                        return (
+                            <button key={r.id} type="button" className={`radio-card ${playing ? 'playing' : ''}`}
+                                disabled={blocked || starting === r.id} onClick={() => playRadio(r)}>
+                                <span className={`radio-tile ${TINTS[i % TINTS.length]}`}>
+                                    {playing ? <Equalizer paused={now?.paused} /> : <Icon name="music" size={22} strokeWidth={2} />}
+                                </span>
+                                <span className="radio-text">
+                                    <strong>{r.name}</strong>
+                                    <span className="muted">{starting === r.id ? 'Lancement…' : playing ? 'En lecture' : r.description}</span>
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
+            {tab === 'playlists' && (
+                <div className="yt-layout">
+                    <section className="card yt-lists" aria-label="Mes playlists">
+                        <h2 className="card-title">Mes playlists</h2>
+                        {yt.oauthConfigured && !yt.authenticated && (
+                            <button type="button" className="ghost-btn" onClick={connectYouTube}>Connecter mon compte YouTube</button>
                         )}
-
-                        {selectedPlaylist && loadingTracks && (
-                            <div className="track-list-loading">
-                                <div className="spinner"></div>
-                                <p>Chargement de la playlist...</p>
-                            </div>
+                        {!playlists.length && (
+                            <p className="muted yt-hint">
+                                {yt.authenticated ? 'Aucune playlist sur ce compte. Colle le lien d’une playlist ci-dessous.' : 'Colle le lien d’une playlist YouTube ci-dessous.'}
+                            </p>
                         )}
+                        <ul>
+                            {playlists.map((pl) => (
+                                <li key={pl.id}>
+                                    <button type="button" className={playlist?.id === pl.id ? 'active' : ''} onClick={() => openPlaylist(pl)}>
+                                        {pl.thumbnail ? <img src={pl.thumbnail} alt="" /> : <span className="yt-ph"><Icon name="list" size={18} /></span>}
+                                        <span>
+                                            <strong>{pl.name}</strong>
+                                            {pl.itemCount != null && <span className="muted">{pl.itemCount} titres</span>}
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                        <form className="yt-add" onSubmit={(e) => { e.preventDefault(); addPlaylist(); }}>
+                            <input type="url" inputMode="url" placeholder="Lien d’une playlist YouTube" aria-label="Lien d’une playlist YouTube"
+                                value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} />
+                            <button type="submit" className="round-btn small" aria-label="Ajouter la playlist" disabled={adding || !customUrl.trim()}>
+                                <Icon name="plus" size={20} strokeWidth={2.2} />
+                            </button>
+                        </form>
+                    </section>
 
-                        {selectedPlaylist && !loadingTracks && tracks.length > 0 && (
+                    <section className="card yt-tracks" aria-label={playlist ? playlist.name : 'Titres'}>
+                        {!playlist && <p className="muted">Choisis une playlist pour voir ses titres.</p>}
+                        {playlist && (
                             <>
-                                <div className="track-list-header">
-                                    <h2>{playlistName}</h2>
-                                    <span className="track-count">{tracks.length} titres</span>
-                                </div>
+                                <h2 className="card-title">{playlist.name}{tracks.length ? ` · ${tracks.length} titres` : ''}</h2>
+                                {loadingTracks && <p className="muted">Chargement…</p>}
                                 <div className="track-grid">
-                                    {tracks.map((track, index) => (
-                                        <motion.div
-                                            key={track.videoId}
-                                            className={`track-card ${extracting === track.videoId ? 'extracting' : ''} ${nowPlaying?.title === track.title ? 'active' : ''}`}
-                                            initial={{ opacity: 0, y: 15 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: index * 0.03 }}
-                                            whileHover={{ scale: 1.03 }}
-                                            whileTap={{ scale: 0.97 }}
-                                            onClick={() => playTrack(track)}
-                                        >
-                                            <div className="track-thumb-wrap">
-                                                <img
-                                                    src={track.thumbnailHigh || track.thumbnail}
-                                                    alt=""
-                                                    className="track-thumb"
-                                                    loading="lazy"
-                                                />
-                                                <div className="track-play-overlay">
-                                                    {extracting === track.videoId ? (
-                                                        <div className="spinner small"></div>
-                                                    ) : nowPlaying?.title === track.title ? (
-                                                        <div className="equalizer">
-                                                            <div className="bar"></div><div className="bar"></div>
-                                                            <div className="bar"></div><div className="bar"></div>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="play-icon">▶</span>
+                                    {tracks.map((t) => {
+                                        const playing = now?.title === t.title;
+                                        return (
+                                            <button key={t.videoId} type="button" className={`track ${playing ? 'playing' : ''}`}
+                                                disabled={blocked || starting === t.videoId} onClick={() => playTrack(t)}>
+                                                <span className="track-art">
+                                                    <img src={t.thumbnailHigh || t.thumbnail} alt="" loading="lazy" />
+                                                    {(playing || starting === t.videoId) && (
+                                                        <span className="track-badge">{playing ? <Equalizer paused={now?.paused} /> : '…'}</span>
                                                     )}
-                                                </div>
-                                            </div>
-                                            <div className="track-info">
-                                                <span className="track-title">{track.title}</span>
-                                                <span className="track-artist">{track.artist}</span>
-                                            </div>
-                                        </motion.div>
-                                    ))}
+                                                </span>
+                                                <strong>{t.title}</strong>
+                                                <span className="muted">{t.artist}</span>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </>
                         )}
-                    </div>
-                </div>
-            )}
-
-            {devices.length === 0 && (
-                <div className="no-devices">
-                    <p>Aucun appareil Google Cast detecte</p>
-                    <p className="hint">Assure-toi que tes appareils sont allumes et sur le meme reseau, ou configure CAST_DEVICES dans .env</p>
+                    </section>
                 </div>
             )}
         </div>
     );
 }
+
+// Les erreurs du serveur sont en anglais et techniques : on garde un message clair, le détail va dans la console
+const errorText = (err: unknown, fallback: string) => {
+    if (axios.isAxiosError(err)) console.warn(fallback, err.response?.data?.error ?? err.message);
+    return fallback;
+};

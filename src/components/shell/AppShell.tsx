@@ -6,6 +6,7 @@ import { useIsPhone } from '../../hooks/useIsPhone';
 import { AgentBar } from '../AgentBar';
 import { Icon } from '../Icon';
 import type { IconName } from '../Icon';
+import { MiniPlayer } from './MiniPlayer';
 import './AppShell.css';
 
 // ── Structure commune : rail à gauche (tablette), onglets en bas (téléphone) ──
@@ -90,10 +91,12 @@ export function AppShell() {
 
     const backToSettings = SETTINGS_PAGES.includes(pathname);
     const showAgentBar = !phone && pathname !== '/agent';
+    // L'écran Musique a son propre lecteur
+    const showPlayer = Boolean(home.cast.now) && pathname !== '/music';
 
     return (
         <HomeContext.Provider value={home}>
-            <div className={`shell ${phone ? 'phone' : ''}`}>
+            <div className={`shell ${phone ? 'phone' : ''} ${showPlayer ? 'has-player' : ''}`}>
                 {!phone && (
                     <nav className="shell-rail" aria-label="Navigation principale">
                         {MAIN.map((d) => <NavItem key={d.to} dest={d} className="rail-item" />)}
@@ -111,7 +114,7 @@ export function AppShell() {
                         <Outlet />
                     </div>
 
-                    {showAgentBar && (
+                    {!phone && (showAgentBar || showPlayer) && (
                         <div className="shell-agent">
                             <AnimatePresence>
                                 {reply && pathname !== '/' && (
@@ -121,10 +124,13 @@ export function AppShell() {
                                     </motion.button>
                                 )}
                             </AnimatePresence>
-                            <AgentBar onAsk={ask} chips={[]} />
+                            {showPlayer && <MiniPlayer cast={home.cast} />}
+                            {showAgentBar && <AgentBar onAsk={ask} chips={[]} />}
                         </div>
                     )}
                 </div>
+
+                {phone && showPlayer && <div className="shell-player"><MiniPlayer cast={home.cast} /></div>}
 
                 {phone && (
                     <nav className="shell-tabs" aria-label="Navigation principale">
