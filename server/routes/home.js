@@ -15,6 +15,7 @@ import { getWeatherDetails } from '../weather.js';
 import * as moments from '../moments.js';
 import * as presence from '../presence.js';
 import * as thermostat from '../thermostat.js';
+import * as flexd from '../flexd.js';
 import * as circadian from '../circadian.js';
 
 export const router = express.Router();
@@ -74,6 +75,18 @@ router.post('/api/thermostat/override', (req, res) => {
 });
 
 router.delete('/api/thermostat/override', (_req, res) => res.json(thermostat.clearOverride()));
+
+// --- Pointes Flex D (Hydro-Québec) ---
+
+router.get('/api/flexd', (_req, res) => res.json(flexd.getStatus()));
+
+router.put('/api/flexd', (req, res) => {
+    try {
+        res.json(flexd.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
 
 // --- Lumière qui suit le soleil ---
 

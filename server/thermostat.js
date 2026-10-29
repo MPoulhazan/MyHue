@@ -17,6 +17,7 @@ import { dataFile } from './dataDir.js';
 import * as journal from './journal.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as presence from './presence.js';
+import * as flexd from './flexd.js';
 import { bus } from './events.js';
 
 const FILE = dataFile('thermostat.json');
@@ -95,10 +96,13 @@ export const computeTarget = () => {
     if (config.override && config.override.until > Date.now()) {
         return { target: config.override.target, why: 'dérogation', until: config.override.until };
     }
-    if (isAway()) return { target: config.awayTarget, why: config.away ? 'absence' : 'personne à la maison' };
+    // Pointe Flex D : préchauffage puis consigne réduite (une dérogation garde la priorité)
+    const flex = flexd.deltaNow();
+    const withFlex = (t) => (flex ? { ...t, target: t.target + flex, why: `${t.why} · ${flex > 0 ? 'préchauffage' : 'pointe'} Flex D` } : t);
+    if (isAway()) return withFlex({ target: config.awayTarget, why: config.away ? 'absence' : 'personne à la maison' });
     const p = currentPeriod();
     if (!p) return { target: null, why: 'aucun programme' };
-    return { target: p.target, why: p.label, untilMin: p.until };
+    return withFlex({ target: p.target, why: p.label, untilMin: p.until });
 };
 
 // --- Boucle de régulation ---

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 import { AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useHomeData } from '../hooks/useHome';
@@ -8,6 +9,15 @@ import { ScheduleSheet } from '../components/home/ScheduleSheet';
 import { TemperatureChart } from '../components/home/TemperatureChart';
 import './Dashboard.css';
 import './Climate.css';
+
+/** Pointes Flex D d'Hydro-Québec (GET /api/flexd). */
+interface FlexD {
+    enabled: boolean;
+    boost: number;
+    reduction: number;
+    phase: 'preheat' | 'peak' | null;
+    upcoming: { id: string; start: number; end: number; skipped: boolean; label: string }[];
+}
 
 const FAN_SPEEDS = [
     { id: 'auto', label: 'Auto' },
@@ -60,6 +70,10 @@ export function Climate() {
     const chartSensor = thermometers.find((s) => s.did === chartDid) ?? thermometers[0];
     const h = home.heating;
     const off = !h?.power;
+    const [flex, setFlex] = useState<FlexD | null>(null);
+    useEffect(() => {
+        axios.get('/api/flexd').then(({ data }) => setFlex(data)).catch(() => {});
+    }, []);
 
     return (
         <div className="home">
@@ -71,6 +85,14 @@ export function Climate() {
                     <Icon name="chevron" size={18} strokeWidth={2.2} />
                 </Link>
             </header>
+
+            {flex?.enabled && flex.upcoming.some((e) => !e.skipped) && (
+                <p className="warn-line">
+                    {flex.phase === 'peak' ? 'Pointe Flex D en cours : consigne baissée de ' + flex.reduction + ' °C, la thermopompe reste allumée.'
+                        : flex.phase === 'preheat' ? 'Préchauffage avant la pointe Flex D : consigne +' + flex.boost + ' °C.'
+                            : `Pointe Flex D ${flex.upcoming.find((e) => !e.skipped)!.label}.`}
+                </p>
+            )}
 
             <div className="climate-layout">
                 <ClimateCard home={home} onSchedule={() => setSchedule(true)} />
