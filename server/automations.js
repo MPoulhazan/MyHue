@@ -142,6 +142,20 @@ export const TEMPLATES = {
             cooldownMinutes: 10,
         }),
     },
+    water_leak: {
+        label: 'Fuite d’eau',
+        description: 'Alerte immédiate, répétée toutes les 15 min tant que le détecteur est mouillé.',
+        sensorType: 'water_leak',
+        build: ({ did = '*' } = {}) => ({
+            name: 'Fuite d’eau',
+            trigger: { type: 'sensor', did, sensorType: 'water_leak', prop: 'leak', operator: 'is_true', forMinutes: 0 },
+            conditions: [],
+            actions: [{ type: 'notify', level: 'alert', message: '💧 FUITE D’EAU détectée : {sensor}. Va vérifier tout de suite.' }],
+            onRelease: [{ type: 'notify', message: '✅ {sensor} est de nouveau sec.' }],
+            repeatMinutes: 15,
+            cooldownMinutes: 0,
+        }),
+    },
     low_battery: {
         label: 'Pile faible',
         description: 'Prévient quand la pile d’un capteur passe sous 15 %.',
@@ -247,6 +261,7 @@ const load = () => {
     try {
         if (existsSync(FILE)) {
             automations = JSON.parse(readFileSync(FILE, 'utf8')).map(normalize);
+            ensureSafety();
             return;
         }
     } catch (err) {
@@ -254,6 +269,14 @@ const load = () => {
         return; // ne pas écraser un fichier abîmé
     }
     migrate();
+    ensureSafety();
+};
+
+// Alertes de sécurité présentes d'office, même sur une installation plus ancienne (désactivables)
+const ensureSafety = () => {
+    if (automations.some((a) => a.template === 'water_leak')) return;
+    automations.push(normalize({ ...TEMPLATES.water_leak.build(), template: 'water_leak' }));
+    save();
 };
 
 // --- CRUD (API, agent) ---

@@ -233,16 +233,29 @@ function PressureChart({ b, storm, updatedAt }: { b: Barometer; storm: Storm | n
     );
 }
 
-const REFS: { id: '3' | '6' | '24'; label: string }[] = [
-    { id: '3', label: '3 h' },
-    { id: '6', label: '6 h' },
-    { id: '24', label: '24 h' },
+// Seuils de variation (légère, marquée, rapide) en hPa, selon la durée comparée
+const REFS: { id: '3' | '6' | '24'; label: string; steps: [number, number, number] }[] = [
+    { id: '3', label: '3 h', steps: [1, 3, 6] },
+    { id: '6', label: '6 h', steps: [2, 5, 9] },
+    { id: '24', label: '24 h', steps: [4, 10, 20] },
 ];
+
+function trendFor(delta: number | null, steps: [number, number, number]) {
+    if (delta == null) return { level: 'stable', label: 'Pas de mesure' };
+    const [light, marked, fast] = steps;
+    if (delta <= -fast) return { level: 'storm', label: 'Chute rapide : tempête probable' };
+    if (delta <= -marked) return { level: 'falling', label: 'Baisse marquée : ça se gâte' };
+    if (delta <= -light) return { level: 'easing', label: 'Légère baisse' };
+    if (delta >= marked) return { level: 'rising', label: 'Hausse marquée : ça se dégage' };
+    if (delta >= light) return { level: 'rising', label: 'Légère hausse' };
+    return { level: 'stable', label: 'Stable' };
+}
 
 function BarometerSheet({ b, storm, updatedAt, onClose }: { b: Barometer; storm: Storm | null; updatedAt: number; onClose: () => void }) {
     const [ref, setRef] = useState<'3' | '6' | '24'>('3');
     const refValue = b.refs[ref];
     const delta = refValue != null ? b.value - refValue : null;
+    const trend = trendFor(delta, REFS.find((r) => r.id === ref)!.steps);
     return (
         <div className="sheet-backdrop" onClick={onClose}>
             <motion.div className="sheet wx-sheet" role="dialog" aria-modal="true" aria-label="Baromètre"
@@ -260,7 +273,7 @@ function BarometerSheet({ b, storm, updatedAt, onClose }: { b: Barometer; storm:
 
                 <div className="wx-sheet-grid">
                     <div className="wx-dial">
-                        <Gauge value={b.value} reference={refValue} label={b.trend.label} />
+                        <Gauge value={b.value} reference={refValue} label={trend.label} />
                         <div className="wx-refs" role="group" aria-label="Aiguille témoin">
                             <span className="muted">Aiguille témoin</span>
                             {REFS.map((r) => (
@@ -269,8 +282,8 @@ function BarometerSheet({ b, storm, updatedAt, onClose }: { b: Barometer; storm:
                                 </button>
                             ))}
                         </div>
-                        <div className={`wx-trend lvl-${b.trend.level}`}>
-                            <strong>{b.trend.label}</strong>
+                        <div className={`wx-trend lvl-${trend.level}`}>
+                            <strong>{trend.label}</strong>
                             {delta != null && <span className="mono">{delta >= 0 ? '+' : '−'}{dec(Math.abs(delta))} hPa en {ref} h</span>}
                         </div>
                     </div>

@@ -29,6 +29,7 @@ export const getSensors = async () => {
                 pressure: state.pressure ?? null,
                 battery: state.battery ?? null,
                 isOpen: 'contact' in state ? !state.contact : null,
+                leak: 'water_leak' in state ? Boolean(state.water_leak) : null,
                 lastMotion: state.occupancy ? new Date().toISOString() : null,
                 lastOpen: null,
             },

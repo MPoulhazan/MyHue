@@ -79,7 +79,7 @@ export interface Sensor {
     outside: boolean;
     isOnline: boolean;
     lastUpdated: string | null;
-    props: { temperature: number | null; humidity: number | null; pressure: number | null; battery: number | null; isOpen: boolean | null };
+    props: { temperature: number | null; humidity: number | null; pressure: number | null; battery: number | null; isOpen: boolean | null; leak?: boolean | null };
 }
 
 export interface Weather {

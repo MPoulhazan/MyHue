@@ -295,7 +295,9 @@ function buildOutfits(forecast) {
 
 function buildAiring(forecast, sensors) {
     const indoor = sensors.find((s) => !s.outside && s.props.temperature != null && s.props.humidity != null);
-    const door = sensors.find((s) => s.type === 'door' && s.outside) || sensors.find((s) => s.type === 'door');
+    // Pour aérer : une porte balcon ou une fenêtre plutôt que la porte d'entrée
+    const doors = sensors.filter((s) => s.type === 'door');
+    const door = doors.find((s) => /balcon|fen[eê]tre|patio|terrasse/i.test(s.name)) || doors.find((s) => !/entr[ée]e/i.test(s.name)) || null;
     const c = forecast.current;
     if (!indoor) return null;
     const tIn = indoor.props.temperature;

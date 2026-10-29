@@ -28,7 +28,7 @@ const reading = (s: Sensor) => {
     const p = s.props;
     if (s.type === 'door') return p.isOpen == null ? '…' : p.isOpen ? 'ouverte' : 'fermée';
     if (p.temperature != null) return `${fmt(p.temperature)}°${p.humidity != null ? ` · ${fmt(p.humidity, 0)} %` : ''}`;
-    if (s.type === 'water_leak') return 'pas de fuite';
+    if (s.type === 'water_leak') return p.leak == null ? '…' : p.leak ? 'FUITE !' : 'au sec';
     if (s.type === 'smoke') return 'pas de fumée';
     return '';
 };
