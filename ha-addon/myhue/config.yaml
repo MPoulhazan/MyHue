@@ -1,5 +1,5 @@
 name: MyHue
-version: "1.20.0"
+version: "1.21.0"
 slug: myhue
 description: Interface MyHue (lumières, capteurs Zigbee, chauffage, Cast, agent Groq)
 url: https://github.com/MPoulhazan/MyHue

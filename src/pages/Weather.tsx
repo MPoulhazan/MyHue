@@ -469,6 +469,7 @@ export function Weather() {
 
                         {data.sun && <SunTile sun={data.sun} updatedAt={data.updatedAt} />}
                         <BriefingTile />
+                        <SignalTile />
                     </aside>
                 </div>
             )}
@@ -514,6 +515,69 @@ function SunTile({ sun, updatedAt }: { sun: NonNullable<WeatherDetails['sun']>; 
                 {sun.deltaMin != null && <span>{sun.deltaMin > 0 ? '+' : '−'}{Math.abs(sun.deltaMin)} min / jour</span>}
                 <span>Coucher <b className="mono">{hm(sun.sunset)}</b></span>
             </span>
+        </section>
+    );
+}
+
+// ── Lampe qui prévient ───────────────────────────────────────────────────────
+
+interface Signals { enabled: boolean; lightId: string | null; outHour: number; windowBeforeMin: number; windowAfterMin: number }
+interface HueLight { name: string; state: { reachable: boolean; xy?: number[] } }
+
+const hourMin = (min: number) => `${Math.floor(min / 60)} h${min % 60 ? String(min % 60).padStart(2, '0') : ''}`;
+
+function SignalTile() {
+    const [s, setS] = useState<Signals | null>(null);
+    const [lights, setLights] = useState<Record<string, HueLight>>({});
+    const [busy, setBusy] = useState<string | null>(null);
+    const [msg, setMsg] = useState<string | null>(null);
+
+    useEffect(() => {
+        axios.get('/api/signals').then(({ data }) => setS(data)).catch(() => {});
+        axios.get('/api/hue/lights').then(({ data }) => setLights(data)).catch(() => {});
+    }, []);
+    if (!s) return null;
+
+    // Seules les lampes couleur savent faire bleu et ambre
+    const colorLights = Object.entries(lights).filter(([, l]) => l.state?.xy);
+    const save = (patch: Partial<Signals>) => {
+        setS({ ...s, ...patch });
+        axios.put('/api/signals', patch).then(({ data }) => setS(data)).catch(() => setMsg('Réglage refusé.'));
+    };
+    const tryIt = (kind: 'rain' | 'storm') => {
+        setBusy(kind);
+        setMsg(null);
+        axios.post('/api/signals/test', { kind })
+            .then(({ data }) => setMsg(`${data.light.name} a ${kind === 'rain' ? 'respiré en bleu' : 'respiré en ambre'}, puis a repris son état.`))
+            .catch(() => setMsg('La lampe n’a pas répondu.'))
+            .finally(() => setBusy(null));
+    };
+
+    return (
+        <section className="wx-tile" aria-label="Lampe qui prévient">
+            <span className="wx-tile-head">
+                <strong>Lampe qui prévient</strong>
+                <button type="button" className={`wx-switch ${s.enabled ? 'on' : ''}`} role="switch" aria-checked={s.enabled}
+                    aria-label="Lampe qui prévient" onClick={() => save({ enabled: !s.enabled })}><i /></button>
+            </span>
+            <span className="muted">
+                Quand tu pars (porte d’entrée entre {hourMin(s.outHour * 60 - s.windowBeforeMin)} et {hourMin(s.outHour * 60 + s.windowAfterMin)}, ou « Je pars »),
+                la lampe respire en bleu si la pluie arrive dans 30 min, en ambre si une tempête approche.
+            </span>
+            <label className="wx-brief-row">
+                <span className="muted">Lampe</span>
+                <select value={s.lightId ?? ''} onChange={(e) => save({ lightId: e.target.value || null })}>
+                    <option value="">Automatique (salon)</option>
+                    {colorLights.map(([id, l]) => (
+                        <option key={id} value={id} disabled={!l.state.reachable}>{l.name}{l.state.reachable ? '' : ' (injoignable)'}</option>
+                    ))}
+                </select>
+            </label>
+            <span className="wx-brief-actions">
+                <button type="button" className="ghost-btn" onClick={() => tryIt('rain')} disabled={busy != null}>{busy === 'rain' ? 'En cours…' : 'Essayer la pluie'}</button>
+                <button type="button" className="ghost-btn" onClick={() => tryIt('storm')} disabled={busy != null}>{busy === 'storm' ? 'En cours…' : 'Essayer la tempête'}</button>
+            </span>
+            {msg && <span className="muted">{msg}</span>}
         </section>
     );
 }

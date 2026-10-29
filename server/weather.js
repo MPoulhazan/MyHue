@@ -46,6 +46,9 @@ async function getForecast() {
             hourly: HOURLY.join(','),
             current: CURRENT.join(','),
             daily: 'sunrise,sunset',
+            // Pluie au quart d'heure pour « il va pleuvoir dans 30 min »
+            minutely_15: 'precipitation,precipitation_probability',
+            forecast_minutely_15: 12,
             timezone: 'auto',
             timeformat: 'unixtime',
             past_days: 1,
@@ -70,10 +73,15 @@ async function getForecast() {
         uv: h.uv_index[i] ?? 0,
         cape: h.cape[i] ?? 0,
     }));
+    const q = data.minutely_15;
+    const quarters = q
+        ? q.time.map((t, i) => ({ ts: t * 1000, precip: q.precipitation[i] ?? 0, prob: q.precipitation_probability?.[i] ?? 0 }))
+        : [];
     const value = {
         offsetSec: data.utc_offset_seconds,
         current: data.current,
         hours,
+        quarters,
         days: data.daily.time.map((t, i) => ({ ts: t * 1000, sunrise: data.daily.sunrise[i] * 1000, sunset: data.daily.sunset[i] * 1000 })),
     };
     forecastCache = { at: Date.now(), value };
@@ -329,6 +337,18 @@ function buildAiring(forecast, sensors) {
 
 // --- Soleil ---
 
+// --- Pluie imminente (30 min) ---
+
+/** Premier quart d'heure de pluie dans les 30 min : { at, mm, prob } ou null. Repli sur l'heure en cours. */
+export function buildRainSoon(forecast, now = Date.now(), withinMin = 30) {
+    const limit = now + withinMin * 60_000;
+    const q = (forecast.quarters || []).find((x) => x.ts + 15 * 60_000 > now && x.ts <= limit && (x.precip >= 0.1 || x.prob >= 60));
+    if (q) return { at: Math.max(q.ts, now), mm: round1(q.precip), prob: q.prob };
+    if (forecast.quarters?.length) return null;
+    const h = forecast.hours.find((x) => x.ts <= now && x.ts + HOUR > now);
+    return h && (h.precip >= 0.2 || h.rainProb >= 70) ? { at: now, mm: round1(h.precip), prob: h.rainProb } : null;
+}
+
 function buildSun(forecast) {
     const { days, offsetSec } = forecast;
     const today = days.find((d) => localDay(d.ts + 12 * HOUR, offsetSec) === localDay(Date.now(), offsetSec));
@@ -371,6 +391,7 @@ export async function getWeatherDetails() {
         storm: barometer ? buildStorm(forecast, barometer) : null,
         outfits: buildOutfits(forecast),
         airing: buildAiring(forecast, sensors),
+        rainSoon: buildRainSoon(forecast),
         sun: buildSun(forecast),
     };
 }

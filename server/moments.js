@@ -6,6 +6,7 @@ import * as broadlinkService from './broadlinkService.js';
 import * as journal from './journal.js';
 import { getHueScenes } from './hue.js';
 import { executeActions } from './actions.js';
+import { bus } from './events.js';
 
 const findScene = async (pattern) => {
     const scenes = await getHueScenes();
@@ -66,5 +67,6 @@ export const run = async (id) => {
     const results = await executeActions(await moment.actions(), `moment « ${moment.label} »`);
     const failed = results.filter((r) => r.status === 'error');
     journal.log({ kind: 'system', title: `Moment « ${moment.label} »${failed.length ? ' (incomplet)' : ''}`, data: { moment: id } });
+    bus.emit('moment', { id });
     return { ok: failed.length === 0, results };
 };

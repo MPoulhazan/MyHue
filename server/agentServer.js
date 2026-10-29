@@ -12,6 +12,7 @@ import * as presence from './presence.js';
 import * as thermostat from './thermostat.js';
 import * as flexd from './flexd.js';
 import * as briefing from './briefing.js';
+import * as lightSignals from './lightSignals.js';
 import * as circadian from './circadian.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
@@ -59,6 +60,7 @@ app.listen(PORT, () => {
     thermostat.start(getSensors);
     flexd.start();
     briefing.start();
+    lightSignals.start();
     circadian.start();
     broadlinkService.discover().catch((err) => console.warn('⚠️  Broadlink:', err.message));
     zigbeeService.start().catch((err) => console.warn('⚠️  Zigbee:', err.message));

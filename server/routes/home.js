@@ -17,6 +17,7 @@ import * as presence from '../presence.js';
 import * as thermostat from '../thermostat.js';
 import * as flexd from '../flexd.js';
 import * as briefing from '../briefing.js';
+import * as lightSignals from '../lightSignals.js';
 import * as circadian from '../circadian.js';
 
 export const router = express.Router();
@@ -76,6 +77,26 @@ router.post('/api/thermostat/override', (req, res) => {
 });
 
 router.delete('/api/thermostat/override', (_req, res) => res.json(thermostat.clearOverride()));
+
+// --- Lampes qui informent ---
+
+router.get('/api/signals', (_req, res) => res.json(lightSignals.getStatus()));
+
+router.put('/api/signals', (req, res) => {
+    try {
+        res.json(lightSignals.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.post('/api/signals/test', async (req, res) => {
+    try {
+        res.json(await lightSignals.test(req.body?.kind));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
 
 // --- Briefing du matin ---
 
