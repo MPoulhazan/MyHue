@@ -4,6 +4,7 @@
 import express from 'express';
 import * as castService from '../castService.js';
 import * as automations from '../automations.js';
+import * as circadian from '../circadian.js';
 import * as broadlinkService from '../broadlinkService.js';
 import { parseIntent } from '../intentParser.js';
 import { runGroqAgent, needsClaude, buildEscalation } from '../groqAgent.js';
@@ -110,6 +111,7 @@ router.post('/api/agent', async (req, res) => {
                     sensors,
                     rules: automations.getForAgent(),
                     heating: heatingState,
+                    circadian: await circadian.getStatus().catch(() => null),
                     outdoor: await getOutdoorWeather(),
                     recentEvents: recentEvents(),
                 },
