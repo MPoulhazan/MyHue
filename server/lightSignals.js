@@ -99,17 +99,17 @@ export const pulse = async (kinds, source = 'départ') => {
             await put({ alert: 'none' });
         }
     } finally {
-        // Retour à l'état d'avant, couleur comprise
-        const restore = { transitiontime: 4 };
-        if (before.on) {
-            Object.assign(restore, { on: true, bri: before.bri });
-            if (before.colormode === 'ct' && before.ct) restore.ct = before.ct;
-            else if (before.colormode === 'hs' && before.hue != null) Object.assign(restore, { hue: before.hue, sat: before.sat });
-            else if (before.xy) restore.xy = before.xy;
-        } else {
-            restore.on = false;
-        }
+        // Retour à l'état d'avant, couleur comprise. Une lampe éteinte ne prend pas de couleur :
+        // on remet d'abord couleur et luminosité, puis on éteint, sinon elle se rallumerait en bleu
+        const restore = { on: true, bri: before.bri, transitiontime: before.on ? 4 : 0 };
+        if (before.colormode === 'ct' && before.ct) restore.ct = before.ct;
+        else if (before.colormode === 'hs' && before.hue != null) Object.assign(restore, { hue: before.hue, sat: before.sat });
+        else if (before.xy) restore.xy = before.xy;
         await put(restore);
+        if (!before.on) {
+            await sleep(400);
+            await put({ on: false, transitiontime: 4 });
+        }
     }
     const what = kinds.map((k) => (k === 'rain' ? 'pluie dans 30 min' : 'tempête en approche')).join(' et ');
     journal.log({ kind: 'system', title: `${light.name} a prévenu : ${what} (${source})`, data: { light: id, kinds } });
