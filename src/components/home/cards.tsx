@@ -89,6 +89,14 @@ const MODES: { id: string; label: string }[] = [
     { id: 'auto', label: 'Auto' },
 ];
 
+// Modes rares, proposés dans les réglages fins de l'écran Climat
+export const EXTRA_MODES: { id: string; label: string }[] = [
+    { id: 'dry', label: 'Sec' },
+    { id: 'fan', label: 'Ventilation' },
+];
+
+const modeName = (id: string) => [...MODES, ...EXTRA_MODES].find((m) => m.id === id)?.label ?? id;
+
 export function ClimateCard({ home, onSchedule }: { home: ReturnType<typeof useHome>; onSchedule: () => void }) {
     const h = home.heating;
     const t = home.thermostat;
@@ -107,13 +115,14 @@ export function ClimateCard({ home, onSchedule }: { home: ReturnType<typeof useH
             : t.untilLabel
                 ? `${t.why} ${fmtTarget(t.target)}° jusqu'à ${t.untilLabel}`
                 : `${t.why} ${fmtTarget(t.target)}°`;
-    const modeLabel = !h?.power ? 'Arrêt' : MODES.find((m) => m.id === h.mode)?.label ?? h.mode;
+    // Un mode rare (sec, ventilation) n'a pas de bouton ici : la pastille le dit
+    const extraMode = h?.power && !MODES.some((m) => m.id === h.mode);
 
     return (
         <section className="card climate" aria-label="Climat">
             <div className="card-head">
                 <span>Climat · {room?.name ?? 'Salon'}</span>
-                <span className={`pill ${h?.power ? 'cool' : ''}`}>{modeLabel}</span>
+                {extraMode && <span className="pill cool">{modeName(h!.mode)}</span>}
             </div>
             <div>
                 <div className="big-temp">{fmt(room?.props.temperature)}°</div>

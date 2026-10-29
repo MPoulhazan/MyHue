@@ -28,7 +28,7 @@ const SETTINGS: Destination = { to: '/settings', label: 'Réglages', icon: 'sett
 const PHONE_AGENT: Destination = { to: '/agent', label: 'Agent', icon: 'agent' };
 
 /** Écrans rangés sous Réglages (anciennes pages comprises). */
-const SETTINGS_PAGES = ['/rules', '/google-home', '/heating', '/wakeword'];
+const SETTINGS_PAGES = ['/rules', '/google-home', '/remote', '/wakeword'];
 
 // Tablette murale : retour à l'accueil après ce délai sans toucher
 const IDLE_MS = 2 * 60_000;

@@ -7,15 +7,37 @@
 .temp-chart svg { width: 100%; height: 160px; }
 .temp-chart figcaption { display: flex; justify-content: space-between; font-size: 13px; }
 
-.climate-more { flex-direction: row; align-items: center; justify-content: space-between; color: var(--h-text); text-decoration: none; }
-.climate-more > span { display: flex; flex-direction: column; gap: 4px; }
-.climate-more strong { font-size: 17px; }
-.climate-more .muted { font-size: 14px; }
-.climate-more:hover { background: var(--h-surface-2); }
+/* Thermomètres de la maison : toucher une ligne affiche sa courbe */
+.thermo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.thermo-list button { width: 100%; min-height: 48px; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 14px; border: none; border-radius: 14px; background: transparent; font-size: 15px; text-align: left; }
+.thermo-list button:hover { background: var(--h-surface-2); }
+.thermo-list button.active { background: var(--h-cool-dim); }
+.thermo-list strong { font-weight: 500; font-size: 16px; }
+
+/* Réglages fins, repliés par défaut */
+.fine-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin: -8px; padding: 8px; border: none; border-radius: 16px; background: transparent; text-align: left; }
+.fine-head:hover { background: var(--h-surface-2); }
+.fine-head > span { display: flex; flex-direction: column; gap: 4px; }
+.fine-head strong { font-size: 17px; }
+.fine-head .muted { font-size: 14px; }
+.fine-head svg { flex: none; color: var(--h-muted); transform: rotate(90deg); transition: transform 0.2s; }
+.fine.open .fine-head svg { transform: rotate(-90deg); }
+.fine-note { margin: 0; font-size: 14px; }
+.fine-group { display: flex; flex-direction: column; gap: 10px; }
+.fine-label { font-size: 12px; color: var(--h-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.fine .chips button { min-height: 48px; padding: 0 18px; font-size: 15px; }
+.fine .chips button:disabled { opacity: 0.4; cursor: default; }
 
 @media (max-width: 760px) {
     .home:has(.climate-layout) { padding: 20px 16px; }
     .climate-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .climate-side { gap: 16px; }
     .temp-chart svg { height: 110px; }
+}
+
+/* Tablette en paysage : la colonne de droite défile si les réglages fins sont ouverts */
+@media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
+    .climate-layout { flex: 1; min-height: 0; }
+    .climate-layout > * { max-height: 100%; }
+    .climate-side { overflow-y: auto; }
 }

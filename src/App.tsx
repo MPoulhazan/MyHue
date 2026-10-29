@@ -4,7 +4,7 @@ import { Agent } from './pages/Agent';
 import Music from './pages/Music';
 import { GoogleHome } from './pages/GoogleHome';
 import { Rules } from './pages/Rules';
-import { Heating } from './pages/Heating';
+import { Remote } from './pages/Remote';
 import { Dashboard } from './pages/Dashboard';
 import { Lights } from './pages/Lights';
 import { Climate } from './pages/Climate';
@@ -28,7 +28,7 @@ function App() {
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/rules" element={legacy(<Rules />)} />
                     <Route path="/google-home" element={legacy(<GoogleHome />)} />
-                    <Route path="/heating" element={legacy(<Heating />)} />
+                    <Route path="/remote" element={<Remote />} />
                     <Route path="/wakeword" element={legacy(<WakewordRecorder />)} />
                 </Route>
             </Routes>

@@ -52,6 +52,8 @@ export interface Heating {
     power: boolean;
     mode: string;
     temperature: number;
+    fanSpeed?: string;
+    vaneVertical?: string;
     lastUpdated?: string | null;
 }
 

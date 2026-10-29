@@ -7,7 +7,7 @@ import './Settings.css';
 const ENTRIES: { to: string; icon: IconName; label: string; hint: string }[] = [
     { to: '/rules', icon: 'rules', label: 'Automatismes', hint: 'Alertes et réactions automatiques' },
     { to: '/google-home', icon: 'cast', label: 'Capteurs et enceintes', hint: 'Capteurs Zigbee, appareils Cast' },
-    { to: '/heating', icon: 'heating', label: 'Chauffage avancé', hint: 'Ventilation, volet, télécommande' },
+    { to: '/remote', icon: 'heating', label: 'Télécommande infrarouge', hint: 'Émetteur Broadlink, vérifier les trames' },
     { to: '/wakeword', icon: 'agent', label: 'Mot d’activation', hint: 'Enregistrer des exemples de voix' },
 ];
 

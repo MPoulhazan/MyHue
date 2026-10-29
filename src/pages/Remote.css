@@ -1,0 +1,14 @@
+/* Écran Télécommande infrarouge (Réglages) */
+
+.remote { max-width: 640px; }
+.remote-text { margin: 0; font-size: 15px; line-height: 1.5; color: var(--h-muted); }
+.remote .pill-btn { align-self: flex-start; }
+.remote .pill-btn:disabled { opacity: 0.5; cursor: default; }
+.remote-result { margin: 0; padding: 12px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; }
+.remote-result.ok { background: #24331a; color: var(--h-accent); }
+.remote-result.warn { background: #3a2a12; color: var(--h-light-text); }
+
+@media (max-width: 760px) {
+    .home:has(.remote) { padding: 20px 16px; }
+    .remote .pill-btn { align-self: stretch; }
+}
