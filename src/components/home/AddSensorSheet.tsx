@@ -39,7 +39,7 @@ const guessType = (d: Device) => {
 
 // Automatismes proposés pour une porte (les alertes pile/silence sont déjà globales)
 const DOOR_AUTOMATIONS = [
-    { id: 'window_pause_heating', label: 'Mettre le chauffage en pause quand elle reste ouverte 2 min', outsideOnly: true },
+    { id: 'window_pause_heating', label: 'Couper le chauffage si elle reste ouverte 15 min en hiver, maison vide', outsideOnly: true },
     { id: 'door_left_open', label: 'Me prévenir si elle reste ouverte 10 min', outsideOnly: false },
     { id: 'door_night', label: 'Me prévenir si elle s’ouvre la nuit', outsideOnly: false },
 ];

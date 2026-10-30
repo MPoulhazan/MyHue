@@ -65,7 +65,7 @@ export const summarize = (a) => {
     else what = `${who} : ${PROP_LABELS[t.prop] || t.prop} ${OP_LABELS[t.operator] || t.operator} ${t.value}`;
     if (t.forMinutes) what += ` depuis ${t.forMinutes} min`;
     const when = (a.conditions || [])
-        .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : ''))
+        .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : c.type === 'away' ? 'personne à la maison' : c.type === 'cold_outside' ? `moins de ${c.below}° dehors` : ''))
         .filter(Boolean);
     const does = a.actions
         .map((x) => ({ notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison', moment: `moment ${x.id}` })[x.type])
@@ -75,18 +75,21 @@ export const summarize = (a) => {
 
 // --- Modèles prêts à l'emploi ---
 
+// Arrêter la thermopompe l'use : seulement pour un vrai courant d'air en hiver, maison vide
+const WINTER_DRAFT_CONDITIONS = [{ type: 'heating', power: true }, { type: 'away' }, { type: 'cold_outside', below: 5 }];
+
 export const TEMPLATES = {
     window_pause_heating: {
-        label: 'Fenêtre ouverte → pause chauffage',
-        description: 'Porte ou fenêtre ouverte plus de 2 min : la thermopompe se met en pause, puis reprend à la fermeture.',
+        label: 'Courant d’air en hiver → chauffage coupé',
+        description: 'Personne à la maison, moins de 5° dehors et une porte ou fenêtre ouverte plus de 15 min : la thermopompe s’arrête avec une alerte, puis reprend à la fermeture.',
         sensorType: 'door',
-        build: ({ did, minutes = 2 }) => ({
-            name: `${sensorRegistry.find(did)?.name || 'Ouverture'} → pause chauffage`,
+        build: ({ did, minutes = 15 }) => ({
+            name: `${sensorRegistry.find(did)?.name || 'Ouverture'} → chauffage coupé`,
             trigger: { type: 'sensor', did, sensorType: 'door', prop: 'isOpen', operator: 'is_true', forMinutes: minutes },
-            conditions: [{ type: 'heating', power: true }],
+            conditions: WINTER_DRAFT_CONDITIONS,
             actions: [
                 { type: 'heating_pause' },
-                { type: 'notify', message: '{sensor} ouverte depuis {elapsed} min : thermopompe en pause.', buttons: ['heating_resume'] },
+                { type: 'notify', level: 'alert', message: '🥶 {sensor} ouverte depuis {elapsed} min, personne à la maison et froid dehors : thermopompe coupée.', buttons: ['heating_resume'] },
             ],
             onRelease: [{ type: 'heating_resume' }],
             cooldownMinutes: 0,
@@ -274,6 +277,15 @@ const load = () => {
 
 // Alertes de sécurité présentes d'office, même sur une installation plus ancienne (désactivables)
 const ensureSafety = () => {
+    // Les anciennes pauses (2 min, sans condition) coupaient la clim à chaque aération
+    let upgraded = false;
+    for (const a of automations) {
+        if (a.template !== 'window_pause_heating' || a.conditions.some((c) => c.type === 'away')) continue;
+        const fresh = TEMPLATES.window_pause_heating.build({ did: a.trigger.did });
+        Object.assign(a, { name: fresh.name, trigger: { ...a.trigger, forMinutes: 15 }, conditions: fresh.conditions, actions: fresh.actions });
+        upgraded = true;
+    }
+    if (upgraded) save();
     if (automations.some((a) => a.template === 'water_leak')) return;
     automations.push(normalize({ ...TEMPLATES.water_leak.build(), template: 'water_leak' }));
     save();
@@ -375,8 +387,30 @@ const isDark = async () => {
     return darkCache.dark;
 };
 
+// Absent : HA Companion ne voit personne, ou absence forcée sur le thermostat
+const isAway = async () => {
+    const presence = await import('./presence.js');
+    if (presence.anyoneHome() === false) return true;
+    const thermostat = await import('./thermostat.js');
+    return Boolean(thermostat.getStatus().away);
+};
+
+// Température extérieure Open-Meteo (en cache 15 min) ; inconnue = on ne coupe pas
+const isColdOutside = async (below) => {
+    try {
+        const { getForecast } = await import('./weather.js');
+        const temp = (await getForecast()).current?.temperature_2m;
+        return typeof temp === 'number' && temp < below;
+    } catch {
+        return false;
+    }
+};
+
 const conditionsMet = async (a) => {
     if (a.conditions.some((c) => c.type === 'dark') && !(await isDark())) return false;
+    if (a.conditions.some((c) => c.type === 'away') && !(await isAway())) return false;
+    const cold = a.conditions.find((c) => c.type === 'cold_outside');
+    if (cold && !(await isColdOutside(cold.below))) return false;
     return a.conditions.every((c) => {
         if (c.type === 'time') {
             const now = localMinutes();

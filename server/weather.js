@@ -35,7 +35,7 @@ const CURRENT = [
 ];
 
 let forecastCache = { at: 0, value: null };
-async function getForecast() {
+export async function getForecast() {
     if (Date.now() - forecastCache.at < 15 * 60 * 1000 && forecastCache.value) return forecastCache.value;
     const { lat, lon } = await getLocation();
     const { data } = await axios.get('https://api.open-meteo.com/v1/forecast', {
