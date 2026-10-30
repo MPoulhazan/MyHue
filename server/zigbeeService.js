@@ -23,6 +23,18 @@ const devices = {};
 let lastJoinEvent = null; // { ieee, friendlyName, ts }
 let permitJoinActive = false;
 
+// État du pont zigbee2mqtt (bridge/state, retenu) : null tant qu'inconnu.
+// Hors ligne quand la clé USB décroche : z2m s'arrête et ne relaie plus rien.
+let bridgeOnline = null;
+let bridgeSince = null;
+
+const setBridge = (online) => {
+    if (online === bridgeOnline) return;
+    bridgeOnline = online;
+    bridgeSince = Date.now();
+    emitter.emit('bridge', online);
+};
+
 // history[friendlyName] = [{ ts, temperature, humidity, pressure, battery }, ...]
 const history = {};
 const MAX_HISTORY_POINTS = 500; // ~24h at 5min intervals
@@ -49,15 +61,25 @@ function subscribeToZ2m() {
         mqttClient.on('connect', () => {
             console.log('[Zigbee] Client MQTT connecté');
             running = true;
+            emitter.emit('bridge', bridgeOnline);
             mqttClient.subscribe('zigbee2mqtt/#');
             resolve();
         });
 
         mqttClient.on('close', () => {
+            if (running) emitter.emit('bridge', bridgeOnline);
             running = false;
         });
 
         mqttClient.on('message', (topic, payload) => {
+            // {"state":"online"} en z2m 2.x, texte brut "online" en 1.x
+            if (topic === 'zigbee2mqtt/bridge/state') {
+                const text = payload.toString();
+                try {
+                    setBridge((text.startsWith('{') ? JSON.parse(text).state : text) === 'online');
+                } catch { /* JSON non parsable */ }
+                return;
+            }
             try {
                 const msg = JSON.parse(payload.toString());
                 const parts = topic.split('/');
@@ -105,9 +127,19 @@ function subscribeToZ2m() {
                     return;
                 }
 
-                // zigbee2mqtt/bridge/response/permit_join -> confirmation z2m
+                // zigbee2mqtt/bridge/info (retenu) -> appairage ouvert ou non, fin du délai comprise
+                if (topic === 'zigbee2mqtt/bridge/info') {
+                    permitJoinActive = msg.permit_join === true;
+                    return;
+                }
+
+                // zigbee2mqtt/bridge/response/permit_join -> confirmation z2m ({"data":{"time":120},"status":"ok"})
                 if (topic === 'zigbee2mqtt/bridge/response/permit_join') {
-                    permitJoinActive = msg.data?.value === true;
+                    if (msg.status !== 'ok') {
+                        console.warn(`[Zigbee] Permit join refusé: ${msg.error}`);
+                        return;
+                    }
+                    permitJoinActive = (msg.data?.time ?? 0) > 0;
                     console.log(`[Zigbee] Permit join: ${permitJoinActive ? 'actif' : 'inactif'}`);
                     return;
                 }
@@ -239,21 +271,24 @@ export function getHistory(nameOrIeee) {
     return [];
 }
 
+/** Une publication vers un pont arrêté se perd sans erreur : on refuse avant. */
+function ensureBridge() {
+    if (!mqttClient || !running) throw new Error('MyHue ne joint pas le broker MQTT (Mosquitto)');
+    if (bridgeOnline === false) {
+        throw new Error('zigbee2mqtt est arrêté : vérifie que la clé Zigbee est bien branchée, puis redémarre zigbee2mqtt dans Home Assistant');
+    }
+}
+
+// z2m 2.x : seul « time » compte (0 referme), l'ancien « value » est refusé
 export async function permitJoin(seconds = 60) {
-    if (!mqttClient) throw new Error('Service non démarré');
-    mqttClient.publish(
-        'zigbee2mqtt/bridge/request/permit_join',
-        JSON.stringify({ value: true, time: seconds }),
-    );
+    ensureBridge();
+    mqttClient.publish('zigbee2mqtt/bridge/request/permit_join', JSON.stringify({ time: seconds }));
     console.log(`[Zigbee] Appairage autorisé pendant ${seconds}s`);
 }
 
 export async function disallowJoin() {
-    if (!mqttClient) throw new Error('Service non démarré');
-    mqttClient.publish(
-        'zigbee2mqtt/bridge/request/permit_join',
-        JSON.stringify({ value: false }),
-    );
+    ensureBridge();
+    mqttClient.publish('zigbee2mqtt/bridge/request/permit_join', JSON.stringify({ time: 0 }));
     console.log('[Zigbee] Appairage désactivé');
 }
 
@@ -299,6 +334,13 @@ export function seedState(name, state, lastSeen) {
 
 export function isRunning() {
     return running;
+}
+
+export const isConfigured = () => Boolean(MQTT_URL);
+
+/** mqtt : MyHue joint le broker ; bridge : zigbee2mqtt tourne (null tant qu'inconnu). */
+export function getBridgeStatus() {
+    return { mqtt: running, bridge: bridgeOnline, since: bridgeSince };
 }
 
 export function getLastJoinEvent() {

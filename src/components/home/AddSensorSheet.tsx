@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Icon } from '../Icon';
+import { useHomeData } from '../../hooks/useHome';
 
 interface Device {
     ieeeAddr: string;
@@ -52,6 +53,9 @@ const STEPS: { id: Step; label: string }[] = [
 ];
 
 export function AddSensorSheet({ rooms, onClose }: { rooms: string[]; onClose: () => void }) {
+    const home = useHomeData();
+    // Pont arrêté : la demande d'appairage se perdrait sans erreur
+    const zigbeeDown = home.health.find((s) => s.id === 'zigbee' && !s.ok);
     const [step, setStep] = useState<Step>('intro');
     const [waiting, setWaiting] = useState<Device[]>([]); // déjà appairés, pas encore nommés
     const [device, setDevice] = useState<Device | null>(null);
@@ -83,6 +87,12 @@ export function AddSensorSheet({ rooms, onClose }: { rooms: string[]; onClose: (
         const poll = setInterval(async () => {
             try {
                 const { data } = await axios.get('/api/zigbee/pairing-status');
+                if (!data.bridge.mqtt || data.bridge.bridge === false) {
+                    setError('zigbee2mqtt s’est arrêté pendant l’appairage : vérifie la clé Zigbee, puis recommence.');
+                    setStep('intro');
+                    home.loadHealth();
+                    return;
+                }
                 const fresh = (data.newDevices as Device[]).find((d) => !known.has(d.ieeeAddr));
                 if (fresh) pick(fresh);
             } catch { /* on réessaie au prochain tour */ }
@@ -100,8 +110,11 @@ export function AddSensorSheet({ rooms, onClose }: { rooms: string[]; onClose: (
             await axios.post('/api/zigbee/permit-join', { seconds: PAIRING_SECONDS });
             setSecondsLeft(PAIRING_SECONDS);
             setStep('pairing');
-        } catch {
-            setError('Impossible d’ouvrir l’appairage : zigbee2mqtt est-il démarré dans Home Assistant ?');
+        } catch (err) {
+            setError(axios.isAxiosError(err) && err.response?.data?.error
+                ? `Impossible d’ouvrir l’appairage : ${err.response.data.error}.`
+                : 'Impossible d’ouvrir l’appairage : MyHue ne répond pas.');
+            home.loadHealth();
         }
     };
 
@@ -166,7 +179,8 @@ export function AddSensorSheet({ rooms, onClose }: { rooms: string[]; onClose: (
                 {step === 'intro' && (
                     <div className="step-body">
                         <p className="lead">Garde le capteur à portée de main, pile en place. MyHue va ouvrir le réseau Zigbee pendant 2 minutes.</p>
-                        <button type="button" className="primary-btn" onClick={startPairing}>Démarrer l’appairage</button>
+                        {zigbeeDown && !error && <div className="warn-line">{zigbeeDown.hint}</div>}
+                        <button type="button" className="primary-btn" disabled={Boolean(zigbeeDown)} onClick={startPairing}>Démarrer l’appairage</button>
                         {waiting.length > 0 && (
                             <div className="waiting">
                                 <h3 className="sub-title">Déjà appairés, pas encore nommés</h3>

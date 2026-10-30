@@ -84,6 +84,15 @@ export interface Sensor {
     props: { temperature: number | null; humidity: number | null; pressure: number | null; battery: number | null; isOpen: boolean | null; leak?: boolean | null };
 }
 
+/** Service dont dépend la maison (pont Hue, Zigbee, Home Assistant...), vu par le serveur. */
+export interface ServiceHealth {
+    id: string;
+    label: string;
+    ok: boolean;
+    since: string;
+    hint: string | null;
+}
+
 export interface Weather {
     condition: string;
     temperature: number | null;
@@ -160,6 +169,7 @@ export function useHome() {
     // hue : null tant que le pont n'a pas encore répondu (chargement, pas une panne)
     const [online, setOnline] = useState<{ hue: boolean | null; zigbee: boolean }>({ hue: null, zigbee: false });
     const [sensors, setSensors] = useState<Sensor[]>([]);
+    const [health, setHealth] = useState<ServiceHealth[]>([]);
     const [weather, setWeather] = useState<Weather | null>(null);
     const [moments, setMoments] = useState<Moment[]>([]);
     const [thermostat, setThermostat] = useState<ThermostatStatus | null>(null);
@@ -303,6 +313,22 @@ export function useHome() {
         es.onerror = () => setOnline((o) => ({ ...o, zigbee: false }));
         return () => es.close();
     }, []);
+
+    // --- Santé des services : un service en panne s'affiche sur tous les écrans ---
+    const loadHealth = useCallback(() => {
+        axios.get('/api/health').then(({ data }) => setHealth(data.services)).catch(() => {
+            // Serveur muet : plus rien n'est à jour à l'écran
+            setHealth((h) => (h.some((s) => s.id === 'myhue') ? h : [{
+                id: 'myhue', label: 'Serveur MyHue', ok: false, since: new Date().toISOString(),
+                hint: 'L’écran ne joint plus MyHue : l’état affiché n’est plus à jour.',
+            }]));
+        });
+    }, []);
+    useEffect(() => {
+        loadHealth();
+        const t = setInterval(loadHealth, 20_000);
+        return () => clearInterval(t);
+    }, [loadHealth]);
 
     // --- Journal de la maison (portes, clim, automatismes, compagnon) ---
     // Les échanges avec l'agent restent locaux : ils sont déjà affichés par askAgent
@@ -456,7 +482,7 @@ export function useHome() {
     }), [log, sensors]);
 
     return {
-        lights, rooms, roomScenes, climate, door, heating, log: namedLog, online, sensors, weather, moments, thermostat, conversation, thinking,
+        lights, rooms, roomScenes, climate, door, heating, log: namedLog, online, sensors, health, loadHealth, weather, moments, thermostat, conversation, thinking,
         push, clearConversation, setLevel, setColor, applyAmbiance, activateScene, controlHeating, syncHeating, askAgent, runMoment, updateThermostat, overrideTarget, cast,
     };
 }

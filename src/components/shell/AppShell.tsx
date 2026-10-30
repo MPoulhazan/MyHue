@@ -8,6 +8,7 @@ import { AgentBar, AgentFab, AgentSheet } from '../agent/Agent';
 import { Icon } from '../Icon';
 import type { IconName } from '../Icon';
 import { MiniPlayer } from './MiniPlayer';
+import { ServiceAlert } from './ServiceAlert';
 import './AppShell.css';
 
 // ── Structure commune : rail à gauche (tablette), onglets en bas (téléphone) ──
@@ -114,6 +115,7 @@ export function AppShell() {
                 )}
 
                 <div className="shell-main">
+                    <ServiceAlert services={home.health} />
                     <div className="shell-page">
                         {backToSettings && (
                             <Link to="/settings" className="shell-back">

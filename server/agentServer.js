@@ -16,6 +16,7 @@ import * as lightSignals from './lightSignals.js';
 import * as circadian from './circadian.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
+import * as health from './health.js';
 import { installAuth, TOKEN, PUBLIC_PORT } from './auth.js';
 import { installWakewordRoutes } from './wakewordSamples.js';
 import { hueProxy } from './hue.js';
@@ -64,6 +65,7 @@ app.listen(PORT, () => {
     circadian.start();
     broadlinkService.discover().catch((err) => console.warn('⚠️  Broadlink:', err.message));
     zigbeeService.start().catch((err) => console.warn('⚠️  Zigbee:', err.message));
+    health.start();
 });
 
 // Port réservé au proxy local (Tailscale) : loopback seulement, token exigé

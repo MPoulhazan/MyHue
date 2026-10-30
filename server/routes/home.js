@@ -19,6 +19,7 @@ import * as flexd from '../flexd.js';
 import * as briefing from '../briefing.js';
 import * as lightSignals from '../lightSignals.js';
 import * as circadian from '../circadian.js';
+import * as health from '../health.js';
 
 export const router = express.Router();
 
@@ -325,6 +326,7 @@ router.get('/api/zigbee/pairing-status', (_req, res) => {
     res.json({
         permitJoinActive: zigbeeService.isPermitJoinActive(),
         lastJoin: zigbeeService.getLastJoinEvent(),
+        bridge: zigbeeService.getBridgeStatus(),
         newDevices: unregisteredDevices(),
     });
 });
@@ -335,7 +337,7 @@ router.post('/api/zigbee/permit-join', async (req, res) => {
         await zigbeeService.permitJoin(seconds);
         res.json({ ok: true, seconds });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(503).json({ error: err.message });
     }
 });
 
@@ -438,6 +440,12 @@ router.get('/api/weather/details', async (_req, res) => {
         console.warn('[Météo] Détails indisponibles:', err.message);
         res.status(503).json({ error: 'Météo indisponible' });
     }
+});
+
+// --- Santé des services (bandeau d'alerte de l'interface) ---
+
+router.get('/api/health', (_req, res) => {
+    res.json({ services: health.getHealth() });
 });
 
 // --- Home Assistant ---
