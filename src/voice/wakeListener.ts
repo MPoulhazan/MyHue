@@ -3,8 +3,15 @@
 import * as ort from 'onnxruntime-web/wasm';
 import { WakeWordModel, SAMPLE_RATE, CHUNK } from './wakeWord';
 
-// 0.5 (défaut openWakeWord) ratait trop de « Hey Jarvis » dits à distance
-const THRESHOLD = 0.3;
+// Seuil de score et nombre de blocs de 80 ms consécutifs au-dessus.
+// « Forte » (0.3) capte « Hey Jarvis » de loin mais réagit au moindre bruit ;
+// 0.5 est le défaut openWakeWord ; « Faible » exige en plus 2 blocs d'affilée.
+export type Sensitivity = 'low' | 'normal' | 'high';
+export const SENSITIVITIES: Record<Sensitivity, { label: string; threshold: number; frames: number }> = {
+    low: { label: 'Faible', threshold: 0.7, frames: 2 },
+    normal: { label: 'Normale', threshold: 0.5, frames: 1 },
+    high: { label: 'Forte', threshold: 0.3, frames: 1 },
+};
 const COOLDOWN_MS = 2000;
 const MAX_QUEUE = 6; // au-delà, l'inférence est trop lente : on jette les plus anciens
 
@@ -58,8 +65,12 @@ export class WakeListener {
     // Diagnostic (?voicedebug) : blocs reçus, niveau micro et meilleur score récent
     stats = { chunks: 0, level: 0, score: 0, mic: '', dropped: 0 };
 
-    constructor(onWake: () => void) {
+    private hits = 0; // blocs consécutifs au-dessus du seuil
+    sensitivity: Sensitivity;
+
+    constructor(onWake: () => void, sensitivity: Sensitivity = 'normal') {
         this.onWake = onWake;
+        this.sensitivity = sensitivity;
     }
 
     // Renvoie false si le navigateur attend un geste (politique autoplay)
@@ -124,8 +135,11 @@ export class WakeListener {
                 }
                 const score = await model.process(this.queue.shift()!);
                 this.stats.score = Math.max(score, this.stats.score * 0.98);
-                if (score >= THRESHOLD && Date.now() - this.lastHit > COOLDOWN_MS) {
+                const { threshold, frames } = SENSITIVITIES[this.sensitivity];
+                this.hits = score >= threshold ? this.hits + 1 : 0;
+                if (this.hits >= frames && Date.now() - this.lastHit > COOLDOWN_MS) {
                     this.lastHit = Date.now();
+                    this.hits = 0;
                     model.reset();
                     this.queue = [];
                     this.onWake();

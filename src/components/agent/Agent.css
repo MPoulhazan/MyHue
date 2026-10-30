@@ -115,3 +115,9 @@
     .agent-empty .chips { gap: 8px; }
     .agent-empty .chips button { min-height: 44px; padding: 0 16px; font-size: 15px; }
 }
+
+/* Sensibilité du mot d'activation, sous l'interrupteur */
+.wake-sensitivity { margin-top: 14px; gap: 8px; }
+.wake-sensitivity > legend { margin-bottom: 8px; font-size: 14px; }
+.wake-sensitivity .chips button { min-height: 44px; padding: 0 18px; font-size: 15px; }
+.wake-sensitivity > span.muted { font-size: 13px; font-weight: 400; }

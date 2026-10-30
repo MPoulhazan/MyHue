@@ -2,12 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { AgentTurn } from '../../hooks/useHome';
 import { useVoice } from '../../hooks/useVoice';
+import type { Sensitivity } from '../../voice/wakeListener';
 import { Icon } from '../Icon';
 import './Agent.css';
 
 // ── Agent : une barre (texte + voix) et le fil de la conversation ────────────
 
 type Voice = ReturnType<typeof useVoice>;
+
+// Libellés seulement : wakeListener charge onnxruntime, on ne l'importe pas ici
+const SENSITIVITY_CHOICES: { id: Sensitivity; label: string }[] = [
+    { id: 'low', label: 'Faible' },
+    { id: 'normal', label: 'Normale' },
+    { id: 'high', label: 'Forte' },
+];
 
 const VOICE_PLACEHOLDER = {
     listening: 'J’écoute…',
@@ -166,6 +174,18 @@ export function AgentSheet({ voice, conversation, thinking, onAsk, onClear, onCl
                         <span />
                     </button>
                 </div>
+                {voice.wakeEnabled && voice.supported && (
+                    <fieldset className="field wake-sensitivity">
+                        <legend>Sensibilité</legend>
+                        <div className="chips">
+                            {SENSITIVITY_CHOICES.map((c) => (
+                                <button key={c.id} type="button" className={voice.sensitivity === c.id ? 'active' : ''}
+                                    aria-pressed={voice.sensitivity === c.id} onClick={() => voice.setSensitivity(c.id)}>{c.label}</button>
+                            ))}
+                        </div>
+                        <span className="muted">Se déclenche pour un rien : baisse. Ne t’entend pas de loin : monte.</span>
+                    </fieldset>
+                )}
             </motion.div>
         </div>
     );

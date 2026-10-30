@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { WakeListener } from '../voice/wakeListener';
+import type { WakeListener, Sensitivity } from '../voice/wakeListener';
 
 // Conversation vocale : (mot d'activation) → bip → reconnaissance (Web Speech)
 // → agent → réponse lue à voix haute (speechSynthesis).
@@ -24,6 +24,17 @@ interface Recognition {
 }
 type SpeechWindow = { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
 const SR = (window as SpeechWindow).SpeechRecognition || (window as SpeechWindow).webkitSpeechRecognition;
+
+// Sensibilité par appareil : chaque micro capte différemment
+const SENSITIVITY_KEY = 'myhue.wakeword.sensitivity';
+const readSensitivity = (): Sensitivity => {
+    try {
+        const v = localStorage.getItem(SENSITIVITY_KEY);
+        return v === 'low' || v === 'high' ? v : 'normal';
+    } catch {
+        return 'normal';
+    }
+};
 
 const readWakePref = () => {
     try {
@@ -133,6 +144,8 @@ const recognize = (trace: (step: string) => void) =>
 export function useVoice(onCommand: (text: string) => Promise<string | undefined>) {
     const [state, setState] = useState<VoiceState>('idle');
     const [wakeEnabled, setWakeEnabledState] = useState(readWakePref);
+    const [sensitivity, setSensitivityState] = useState<Sensitivity>(readSensitivity);
+    const sensitivityRef = useRef(sensitivity);
     const [wakeStatus, setWakeStatus] = useState<WakeStatus>('off');
     const [wakeError, setWakeError] = useState<string | null>(null);
     const [voiceError, setVoiceError] = useState<string | null>(null);
@@ -183,6 +196,18 @@ export function useVoice(onCommand: (text: string) => Promise<string | undefined
         setWakeEnabledState(on);
     }, []);
 
+    // Appliquée tout de suite à l'écoute en cours, sans recharger le modèle
+    const setSensitivity = useCallback((level: Sensitivity) => {
+        try {
+            localStorage.setItem(SENSITIVITY_KEY, level);
+        } catch {
+            // préférence non mémorisée
+        }
+        sensitivityRef.current = level;
+        if (listenerRef.current) listenerRef.current.sensitivity = level;
+        setSensitivityState(level);
+    }, []);
+
     useEffect(() => {
         if (!wakeEnabled || !supported) {
             setWakeStatus('off');
@@ -205,7 +230,7 @@ export function useVoice(onCommand: (text: string) => Promise<string | undefined
                 listener = new WakeListener(() => {
                     beep();
                     converse();
-                });
+                }, sensitivityRef.current);
                 listenerRef.current = listener;
                 const running = await listener.start();
                 if (cancelled) return;
@@ -236,6 +261,8 @@ export function useVoice(onCommand: (text: string) => Promise<string | undefined
         secure,
         wakeEnabled,
         setWakeEnabled,
+        sensitivity,
+        setSensitivity,
         wakeStatus,
         wakeError,
         voiceError,
