@@ -160,18 +160,10 @@ const regulate = async () => {
     const setpoint = Math.max(16, Math.min(31, Math.round(target) + config.offset));
     const canSend = now - lastCommandAt >= MIN_COMMAND_GAP_MS;
 
-    if (error < -1.5) {
-        // Bien trop chaud même consigne au plus bas : on coupe
-        if (heating.power && canSend) await send({ power: false });
-        lastStatus = { state: 'idle', text: `${room.name} ${fmt(temp)}° pour ${fmt(target)}° (${why}) : chauffage coupé, trop chaud` };
-        return;
-    }
+    // Jamais d'arrêt/relance automatique : les cycles usent la thermopompe. Trop chaud, la
+    // consigne descend (jusqu'à 16°) ; éteinte, elle reste éteinte jusqu'à ce qu'on la rallume.
     if (!heating.power) {
-        if (error > 0.3 && canSend) await send({ power: true, mode: 'heat', temperature: setpoint });
-        lastStatus = {
-            state: error > 0.3 ? 'heating' : 'idle',
-            text: `${room.name} ${fmt(temp)}° pour ${fmt(target)}° (${why})${error > 0.3 ? ` : chauffage relancé à ${setpoint}°` : ''}`,
-        };
+        lastStatus = { state: 'off', text: `${room.name} ${fmt(temp)}° pour ${fmt(target)}° (${why}) : thermopompe éteinte, régulation en pause` };
         return;
     }
     if (heating.temperature !== setpoint && canSend) await send({ temperature: setpoint });
