@@ -16,10 +16,23 @@ import { getSensors, getOutdoorWeather } from '../sensors.js';
 import { getHomeState, recentEvents } from '../homeState.js';
 import { executeActions } from '../actions.js';
 import { groqClient, GROQ_API_KEY, GROQ_MODEL } from '../llm.js';
+import * as learned from '../learnedCommands.js';
 
 export { GROQ_MODEL };
 
 export const router = express.Router();
+
+const MAX_RETRY_WAIT_S = 5;
+
+// Groq renvoie retry-after en secondes ; à défaut, la limite par minute se libère vite
+const retryAfterSeconds = (response) => {
+    const header = Number(response?.headers?.['retry-after']);
+    return Number.isFinite(header) && header > 0 ? Math.ceil(header) : 2;
+};
+
+// Ordre exécuté sans erreur : le client joue un son au lieu de lire la réponse
+const isSilent = (actions = [], actionResults = []) =>
+    actions.length > 0 && actionResults.every((r) => r.status === 'ok');
 
 // Seules les demandes qui ont agi sur la maison vont au journal
 const logAgent = (message, actionResults = []) => {
@@ -38,6 +51,13 @@ router.get('/api/agent/status', async (_req, res) => {
         castDevices: castDevices.length,
         devices: castDevices,
     });
+});
+
+// Commandes apprises de Groq, pour vérifier ou oublier une mauvaise
+router.get('/api/agent/learned', (_req, res) => res.json(learned.list()));
+router.delete('/api/agent/learned', (req, res) => {
+    const phrase = String(req.query.phrase || '');
+    res.json({ ok: learned.forget(phrase) });
 });
 
 router.post('/api/agent', async (req, res) => {
@@ -59,6 +79,7 @@ router.post('/api/agent', async (req, res) => {
             scenes,
             sensors,
             heating: heatingState,
+            cast: { devices: castService.getDevices(), nowPlaying: castService.getNowPlaying() },
         });
         if (intent) {
             const actionResults = await executeActions(intent.actions);
@@ -70,6 +91,25 @@ router.post('/api/agent', async (req, res) => {
                 actionResults,
                 tier: 'local',
                 intent: intent.intent,
+                silent: isSilent(intent.actions, actionResults),
+            });
+        }
+
+        // Niveau 0 bis : phrase déjà résolue par Groq auparavant
+        const known = learned.lookup(message);
+        if (known) {
+            const actionResults = await executeActions(known.actions);
+            const failed = actionResults.find((r) => r.status === 'error');
+            // Une scène ou une lampe disparue : on oublie, Groq réapprendra
+            if (failed) learned.forget(message);
+            else learned.markUsed(message);
+            logAgent(message, actionResults);
+            return res.json({
+                message: failed ? `Échec : ${failed.error}` : known.message,
+                actions: known.actions,
+                actionResults,
+                tier: 'learned',
+                silent: isSilent(known.actions, actionResults),
             });
         }
 
@@ -91,51 +131,70 @@ router.post('/api/agent', async (req, res) => {
         }
 
         const historyMessages = Array.isArray(history)
-            ? history.slice(-8).map((item) => ({
+            ? history.slice(-4).map((item) => ({
                   role: item.role === 'assistant' ? 'assistant' : 'user',
-                  content: String(item.content || ''),
+                  content: String(item.content || '').slice(0, 300),
               }))
             : [];
 
-        let result;
-        try {
-            result = await runGroqAgent({
+        const callGroq = async () =>
+            runGroqAgent({
                 client: groqClient,
                 model: GROQ_MODEL,
                 message,
                 history: historyMessages,
                 context: {
                     hue: context,
-                    scenes: scenes.map(({ id, name, group }) => ({ id, name, group })),
+                    scenes,
                     cast: castService.getDevices(),
                     sensors,
                     rules: automations.getForAgent(),
                     heating: heatingState,
                     circadian: await circadian.getStatus().catch(() => null),
                     outdoor: await getOutdoorWeather(),
-                    recentEvents: recentEvents(),
+                    recentEvents: recentEvents(5),
                 },
                 executeActions,
             });
+
+        let result;
+        try {
+            result = await callGroq();
         } catch (error) {
-            // Quota gratuit Groq épuisé : on propose Claude plutôt qu'une erreur
-            if (error?.response?.status === 429) {
+            if (error?.response?.status !== 429) throw error;
+            // Limite par minute de Groq : une seule relance si l'attente est courte
+            const wait = retryAfterSeconds(error.response);
+            if (wait > MAX_RETRY_WAIT_S) {
                 return res.json({
-                    message: 'Quota Groq atteint pour le moment, je passe la main à Claude.',
+                    message: `Trop de demandes d'un coup, réessaie dans ${wait} secondes.`,
                     actions: [],
                     actionResults: [],
-                    tier: 'claude',
-                    escalation: buildEscalation('quota Groq atteint', message),
+                    tier: 'llm',
                 });
             }
-            throw error;
+            await new Promise((r) => setTimeout(r, wait * 1000));
+            result = await callGroq().catch((retryError) => {
+                if (retryError?.response?.status === 429) return null;
+                throw retryError;
+            });
+            if (!result) {
+                return res.json({
+                    message: 'Trop de demandes d’un coup, réessaie dans une minute.',
+                    actions: [],
+                    actionResults: [],
+                    tier: 'llm',
+                });
+            }
         }
 
         logAgent(message, result.actionResults);
+        const silent = isSilent(result.actions, result.actionResults);
+        if (silent) learned.learn(message, result.actions, result.message);
         res.json({
             ...result,
             model: GROQ_MODEL,
             tier: result.escalation ? 'claude' : 'llm',
+            silent,
         });
     } catch (error) {
         const message =

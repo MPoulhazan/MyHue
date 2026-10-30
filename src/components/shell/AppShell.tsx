@@ -87,7 +87,7 @@ export function AppShell() {
     const ask = async (message: string) => {
         const answer = await home.askAgent(message);
         if (answer && !agentOpenRef.current) {
-            setReply(answer);
+            setReply(answer.text);
             window.clearTimeout(replyTimer.current);
             replyTimer.current = window.setTimeout(() => setReply(null), 10_000);
         }

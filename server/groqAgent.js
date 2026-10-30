@@ -8,7 +8,13 @@ import { TEMPLATES } from './automations.js';
 
 const AUTOMATION_TEMPLATES = Object.keys(TEMPLATES);
 
-const MAX_ROUNDS = 3;
+// Le palier gratuit de Groq plafonne à 8 000 tokens/minute : contexte et réponse au plus court
+const MAX_TOKENS = 500;
+
+// gpt-oss appelle un outil par tour : un second tour seulement pour « fais ceci et cela ».
+// Deux tours (~6 000 tokens) tiennent dans la minute, trois non.
+const COMPOUND = /\b(et|puis|ensuite|aussi)\b|,/;
+const maxRounds = (message) => (COMPOUND.test(String(message).toLowerCase()) ? 2 : 1);
 
 // Demandes hors périmètre MyHue : inutile de dépenser un appel Groq
 const CLAUDE_ONLY =
@@ -236,14 +242,47 @@ export const toolCallToActions = (name, args) => {
     }
 };
 
+const compact = (obj) =>
+    Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== null && v !== undefined));
+
+// Contexte réduit à ce qui sert au modèle : chaque token compte contre le quota par minute
+export const slimContext = ({ hue, scenes = [], cast = [], sensors = [], ...rest }) => {
+    const groupIds = new Set((hue?.groups ?? []).map((g) => g.id));
+    return {
+        lights: (hue?.lights ?? []).map((l) =>
+            compact({ id: l.id, name: l.name, on: l.on, bri: l.on ? l.bri : null, unreachable: l.reachable ? null : true }),
+        ),
+        // Un groupe vide (zone « Kitchen ») attire le modèle et n'allume rien
+        groups: (hue?.groups ?? [])
+            .filter((g) => g.lights?.length)
+            .map((g) => ({ id: g.id, name: g.name, type: g.type, lights: g.lights, any_on: g.any_on })),
+        // [id, nom, groupe] : ~50 scènes, les clés répétées coûtaient cher.
+        // Les scènes d'un groupe supprimé ne s'activent plus.
+        scenes: scenes
+            .filter((s) => s.group === '0' || groupIds.has(String(s.group)))
+            .map(({ id, name, group }) => [id, name, group]),
+        cast: cast.map((d) => d.name),
+        sensors: sensors.map((s) =>
+            compact({
+                did: s.did,
+                name: s.name,
+                type: s.type,
+                offline: s.isOnline === false ? true : null,
+                ...compact(s.props ?? {}),
+            }),
+        ),
+        ...rest,
+    };
+};
+
 export const buildSystemPrompt = (ctx) => `Tu es l'assistant de la maison MyHue. Tu pilotes les lampes Philips Hue, les appareils Google Cast, la thermopompe Mitsubishi et les alertes de capteurs Zigbee/Aqara, uniquement via les outils fournis.
 
 Règles :
 - Réponds toujours en français, en une ou deux phrases courtes (la réponse peut être lue à voix haute).
-- Utilise exactement les IDs du contexte (lampes, groupes, scènes, capteurs, règles).
+- Utilise exactement les IDs du contexte (lampes, groupes, scènes, capteurs, règles). Chaque scène est [id, nom, id du groupe].
 - Une question sur l'état de la maison (capteurs, lampes allumées, clim, règles) se répond directement depuis le contexte, sans outil.
 - Pour une demande hors maison ou qui demande une vraie réflexion, appelle escalate_to_claude et rien d'autre.
-- Après exécution des outils, confirme ce qui a été fait ; signale clairement un échec.
+- Appelle directement les outils nécessaires ; une fois tout fait, ne réponds rien de plus.
 
 Contexte maison (JSON) :
 ${JSON.stringify(ctx)}
@@ -259,7 +298,29 @@ const parseArgs = (raw) => {
     }
 };
 
-// Boucle d'outils. Renvoie { message, actions, actionResults, escalation? }
+// Ce qui a été fait, pour l'historique affiché (la réussite n'est pas lue à voix haute)
+const DONE_LABELS = {
+    control_lights: 'lumières',
+    activate_scene: 'scène',
+    cast_youtube: 'musique lancée',
+    cast_control: 'lecture',
+    cast_volume: 'volume',
+    set_heating: 'chauffage',
+    create_notification_rule: 'alerte créée',
+    create_automation: 'automatisme créé',
+    set_circadian: 'lumière du soleil',
+    delete_notification_rule: 'alerte supprimée',
+};
+
+export const confirmationFor = (toolNames, actionResults) => {
+    const failed = actionResults.find((r) => r.status === 'error');
+    if (failed) return `Échec : ${failed.error}`;
+    const labels = [...new Set(toolNames.map((n) => DONE_LABELS[n] || n))];
+    return `C'est fait : ${labels.join(', ')}.`;
+};
+
+// Un seul appel LLM : le modèle choisit les outils, la confirmation est construite ici.
+// Renvoie { message, actions, actionResults, escalation? }
 export const runGroqAgent = async ({
     client,
     model,
@@ -269,27 +330,31 @@ export const runGroqAgent = async ({
     executeActions,
 }) => {
     const messages = [
-        { role: 'system', content: buildSystemPrompt(context) },
+        { role: 'system', content: buildSystemPrompt(slimContext(context)) },
         ...history,
         { role: 'user', content: message },
     ];
     const actions = [];
     const actionResults = [];
+    const toolNames = [];
 
-    for (let round = 0; round < MAX_ROUNDS; round++) {
+    for (let round = 0; round < maxRounds(message); round++) {
         const { data } = await client.post('/chat/completions', {
             model,
             messages,
             tools: TOOLS,
-            // Dernier tour : on force une réponse texte
-            tool_choice: round === MAX_ROUNDS - 1 ? 'none' : 'auto',
+            tool_choice: 'auto',
+            parallel_tool_calls: true,
             temperature: 0.2,
-            max_tokens: 800,
+            reasoning_effort: 'low',
+            max_tokens: MAX_TOKENS,
         });
         const reply = data?.choices?.[0]?.message ?? {};
         const calls = reply.tool_calls ?? [];
 
+        // Rien de plus à faire : réponse du modèle, ou confirmation de ce qui a été fait
         if (!calls.length) {
+            if (actions.length) break;
             return { message: reply.content?.trim() || 'Ok.', actions, actionResults };
         }
 
@@ -308,22 +373,22 @@ export const runGroqAgent = async ({
 
         messages.push({ role: 'assistant', content: reply.content ?? null, tool_calls: calls });
         for (const call of calls) {
-            const callActions = toolCallToActions(
-                call.function.name,
-                parseArgs(call.function.arguments),
-            );
+            const callActions = toolCallToActions(call.function.name, parseArgs(call.function.arguments));
             const results = await executeActions(callActions);
             actions.push(...callActions);
             actionResults.push(...results);
+            toolNames.push(call.function.name);
             messages.push({
                 role: 'tool',
                 tool_call_id: call.id,
-                content: JSON.stringify(
-                    results.map(({ status, error, result }) => ({ status, error, result })),
-                ),
+                content: JSON.stringify(results.map(({ status, error }) => ({ status, error }))),
             });
         }
     }
 
-    return { message: 'Ok.', actions, actionResults };
+    return {
+        message: confirmationFor(toolNames, actionResults),
+        actions,
+        actionResults,
+    };
 };

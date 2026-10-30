@@ -16,7 +16,17 @@ const COMPLEX =
 
 const ON = /\b(allume[rz]?|allumes)\b/;
 const OFF = /\b(etein[st]|eteindre|eteignez|coupe[rz]?)\b/;
+// Québec : « ouvre la lumière », « ferme les lampes », seulement avec le mot lumière/lampe
+const LIGHT_WORD = /\b(lumieres?|lampes?)\b/;
+const LIGHTS_PLURAL = /\b(les|toutes les) (lumieres|lampes)\b/;
+const QC_ON = /\b(ouvre[rsz]?|ouvrir)\b/;
+const QC_OFF = /\b(ferme[rsz]?|fermer)\b/;
+const DIM_UP = /\b(monte[rz]?|augmente[rz]?|plus fort)\b/;
+const DIM_DOWN = /\b(baisse[rz]?|diminue[rz]?|tamise[rz]?|moins fort)\b/;
+const DIM_STEP = 64; // un quart de la plage Hue
 const ALL = /\b(tout|toutes?|partout|la maison)\b/;
+const MUSIC_WORD = /\b(musique|son|volume|pause|reprends?|reprendre|chanson)\b/;
+const VOLUME_STEP = 10;
 const SCENE_WORD = /\b(scene|ambiance|lance[rz]?|active[rz]?)\b/;
 const HEATING_WORD = /\b(chauffage|clim|climatisation|pompe a chaleur|chauffe)\b/;
 const QUESTION = /\b(quelle?|combien|c est quoi)\b/;
@@ -175,8 +185,10 @@ const parseScene = (text, scenes, groups) => {
 };
 
 const parseLights = (text, lights, groups) => {
-    const isOff = OFF.test(text);
-    const isAll = ALL.test(text);
+    const qc = LIGHT_WORD.test(text);
+    const isOff = OFF.test(text) || (qc && QC_OFF.test(text));
+    // « ferme les lumières » sans pièce = toute la maison
+    const isAll = ALL.test(text) || LIGHTS_PLURAL.test(text);
     const found = findEntities(text, [...groups, ...lights]);
     const { residual } = found;
     // Une pièce l'emporte sur une lampe du même nom (pièce "Cuisine" vs lampe "Cuisine")
@@ -184,14 +196,26 @@ const parseLights = (text, lights, groups) => {
     const matches = found.matches.filter((m) => groups.includes(m) || !groupNames.has(normalize(m.name)));
     const bri = parseBrightness(residual);
     const color = parseColor(residual);
-    const isOn = ON.test(text) || bri !== null || color !== null;
-    if (!isOff && !isOn) return null;
+    const isOn = ON.test(text) || (qc && QC_ON.test(text)) || bri !== null || color !== null;
+    // « baisse la lumière du salon » : pas relatif, appliqué par le pont Hue
+    const step = isOff || isOn ? 0 : DIM_UP.test(text) ? 1 : DIM_DOWN.test(text) ? -1 : 0;
+    if (!isOff && !isOn && !step) return null;
 
     if (!matches.length) {
         if (!isAll) return null;
         if (isOff) return { intent: 'lights', actions: [{ type: 'toggle_all', on: false }], message: 'Tout est éteint.' };
-        if (bri === null && !color) return { intent: 'lights', actions: [{ type: 'toggle_all', on: true }], message: 'Tout est allumé.' };
+        if (bri === null && !color && !step) return { intent: 'lights', actions: [{ type: 'toggle_all', on: true }], message: 'Tout est allumé.' };
         matches.push({ id: '0', name: 'Toute la maison', lights: [] });
+    }
+
+    if (step) {
+        const actions = matches.map((m) => ({
+            type: m.id === '0' || groups.includes(m) ? 'set_group_state' : 'set_light_state',
+            id: m.id,
+            state: { bri_inc: step * DIM_STEP },
+        }));
+        const names = list([...new Set(matches.map((m) => m.name))]);
+        return { intent: 'lights', actions, message: `${names} : ${step > 0 ? 'plus fort' : 'moins fort'}.` };
     }
 
     const state = { on: !isOff };
@@ -216,15 +240,55 @@ const parseLights = (text, lights, groups) => {
     return { intent: 'lights', actions, message };
 };
 
+// Pause, reprise, arrêt et volume. Enceinte citée, sinon celle qui joue.
+const parseMusic = (text, { devices = [], nowPlaying = null } = {}) => {
+    const { matches } = findEntities(text, devices);
+    const playing = nowPlaying && devices.find((d) => d.id === nowPlaying.deviceId);
+    const device = matches[0] || playing;
+    if (!device) return null;
+    const name = device.name;
+    const control = (command, message) => ({
+        intent: 'music',
+        actions: [{ type: 'cast_control', deviceName: name, command }],
+        message,
+    });
+    const volume = (pct) => ({
+        intent: 'music',
+        actions: [{ type: 'cast_volume', deviceName: name, level: Math.max(0, Math.min(100, pct)) / 100 }],
+        message: `Volume ${name} à ${Math.max(0, Math.min(100, pct))} %.`,
+    });
+
+    if (/\b(son|volume)\b/.test(text)) {
+        const pct = text.match(/\b(\d{1,3}) ?(%|pour ?cent)?\b/);
+        if (pct) return volume(Number(pct[1]));
+        // Relatif : seulement si on connaît le volume actuel de cette enceinte
+        const current = device === playing ? nowPlaying.volume : null;
+        if (current == null) return null;
+        if (DIM_UP.test(text)) return volume(current + VOLUME_STEP);
+        if (DIM_DOWN.test(text)) return volume(current - VOLUME_STEP);
+        return null;
+    }
+    if (/\bpause\b/.test(text)) return control('pause', `Pause sur ${name}.`);
+    if (/\b(reprends?|reprendre|relance[rz]?)\b/.test(text)) return control('play', `Lecture sur ${name}.`);
+    if (/\b(arrete[rz]?|stop|coupe[rz]?)\b/.test(text) && /\b(musique|chanson)\b/.test(text)) {
+        return control('stop', `Musique arrêtée sur ${name}.`);
+    }
+    return null;
+};
+
+/** Tournure à délai, condition ou enchaînement : jamais traitée ni apprise localement. */
+export const isComplex = (rawText) => COMPLEX.test(normalize(rawText));
+
 export const parseIntent = (rawText, context = {}) => {
     const text = normalize(rawText);
     if (!text || text.split(' ').length > 14 || COMPLEX.test(text)) return null;
 
-    const { lights = [], groups = [], scenes = [], sensors = [], heating = null } = context;
+    const { lights = [], groups = [], scenes = [], sensors = [], heating = null, cast } = context;
     const roomGroups = groups.filter((g) => ['Room', 'Zone', 'LightGroup'].includes(g.type));
 
     if (HEATING_WORD.test(text)) return parseHeating(text, heating);
     if (STATE_QUESTION.test(text)) return null;
+    if (MUSIC_WORD.test(text)) return parseMusic(text, cast);
     return (
         parseSensorQuery(text, sensors) ||
         parseScene(text, scenes, roomGroups) ||

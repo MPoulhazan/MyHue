@@ -51,6 +51,12 @@ export interface AgentTurn {
     escalation?: string;
 }
 
+/** Réponse de l'agent ; silent = ordre exécuté sans erreur, rien à lire à voix haute. */
+export interface AgentAnswer {
+    text: string;
+    silent: boolean;
+}
+
 // Échanges renvoyés à l'agent pour qu'il suive la conversation
 const AGENT_MEMORY = 10;
 
@@ -447,8 +453,8 @@ export function useHome() {
     const cast = useCast(push);
 
     // --- Agent ---
-    // Renvoie la réponse de l'agent (lue à voix haute quand la demande est vocale)
-    const askAgent = useCallback(async (message: string): Promise<string | undefined> => {
+    // Renvoie la réponse de l'agent. En vocal : lue à voix haute, ou un simple son si l'ordre a réussi (silent)
+    const askAgent = useCallback(async (message: string): Promise<AgentAnswer | undefined> => {
         const history = conversationRef.current.slice(-AGENT_MEMORY).map(({ role, content }) => ({ role, content }));
         const say = (role: AgentTurn['role'], content: string, escalation?: string) =>
             setConversation((c) => [...c, { id: ++logSeq, role, content, escalation }]);
@@ -462,11 +468,11 @@ export function useHome() {
             say('assistant', reply, data.escalation?.url);
             setTimeout(loadLights, 600);
             setTimeout(cast.refresh, 1500); // l'agent a peut-être lancé ou coupé la musique
-            return reply;
+            return { text: reply, silent: Boolean(data.silent) };
         } catch {
             push('Agent indisponible', '#FF3B5C');
             say('assistant', 'Je n’arrive pas à joindre l’agent. Réessaie dans un instant.');
-            return 'Agent indisponible.';
+            return { text: 'Agent indisponible.', silent: false };
         } finally {
             setThinking(false);
         }

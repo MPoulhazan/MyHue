@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { WakeListener, Sensitivity } from '../voice/wakeListener';
+import type { AgentAnswer } from './useHome';
 
 // Conversation vocale : (mot d'activation) → bip → reconnaissance (Web Speech)
 // → agent → réponse lue à voix haute (speechSynthesis).
@@ -60,6 +61,34 @@ const beep = () => {
         // pas de son, tant pis
     }
 };
+
+/** Ordre exécuté : deux notes douces qui montent (do, mi), au lieu d'une phrase lue. */
+const chime = () =>
+    new Promise<void>((resolve) => {
+        try {
+            const ctx = new AudioContext();
+            const t0 = ctx.currentTime;
+            [1047, 1319].forEach((freq, i) => {
+                const start = t0 + i * 0.11;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.0001, start);
+                gain.gain.exponentialRampToValueAtTime(0.12, start + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.45);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(start);
+                osc.stop(start + 0.5);
+            });
+            setTimeout(() => {
+                ctx.close();
+                resolve();
+            }, 650);
+        } catch {
+            resolve(); // pas de son, tant pis
+        }
+    });
 
 // Chrome charge la liste des voix en différé : vide au premier appel
 const loadVoices = () =>
@@ -141,7 +170,7 @@ const recognize = (trace: (step: string) => void) =>
         }
     });
 
-export function useVoice(onCommand: (text: string) => Promise<string | undefined>) {
+export function useVoice(onCommand: (text: string) => Promise<AgentAnswer | undefined>) {
     const [state, setState] = useState<VoiceState>('idle');
     const [wakeEnabled, setWakeEnabledState] = useState(readWakePref);
     const [sensitivity, setSensitivityState] = useState<Sensitivity>(readSensitivity);
@@ -173,9 +202,11 @@ export function useVoice(onCommand: (text: string) => Promise<string | undefined
             if (text) {
                 setState('thinking');
                 const reply = await onCommandRef.current(text);
-                if (reply) {
+                // Réussite : un son. La voix ne sert qu'aux réponses et aux problèmes.
+                if (reply?.silent) await chime();
+                else if (reply) {
                     setState('speaking');
-                    await speak(reply);
+                    await speak(reply.text);
                 }
             }
         } finally {
