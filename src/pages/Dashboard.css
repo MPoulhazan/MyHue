@@ -129,6 +129,9 @@ a.weather-pill:hover { background: var(--h-surface-2); }
 .house-status { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; }
 .house-icon { width: 32px; height: 32px; flex: none; border-radius: 999px; background: #2f3a1a; color: var(--h-accent); display: inline-flex; align-items: center; justify-content: center; }
 .house-status.alert .house-icon { background: #3a2a12; color: var(--h-light); }
+.house-status.leak { color: #FF3B5C; }
+.house-status.leak .house-icon { background: #3d1620; color: #FF3B5C; }
+.house-list .leak { color: #FF3B5C; font-weight: 700; }
 .house-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
 .house-list li { display: flex; justify-content: space-between; gap: 12px; }
 .house-list li span:last-child { text-align: right; }

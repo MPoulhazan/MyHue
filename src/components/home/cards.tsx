@@ -189,20 +189,34 @@ const fmtTarget = (n: number | null | undefined) => (n == null ? '--' : String(n
 export function HouseCard({ sensors, onAdd }: { sensors: Sensor[]; onAdd: () => void }) {
     const doors = sensors.filter((s) => s.type === 'door');
     const open = doors.filter((s) => s.props.isOpen);
+    const leaks = sensors.filter((s) => s.type === 'water_leak');
+    const wet = leaks.filter((s) => s.props.leak);
     const batteries = sensors.map((s) => s.props.battery).filter((b): b is number => b != null);
     const lowest = batteries.length ? Math.min(...batteries) : null;
     const offline = sensors.filter((s) => !s.isOnline);
+    const since = (s: Sensor) => (s.lastUpdated ? ` · ${hhmm(new Date(s.lastUpdated))}` : '');
+
+    // Une fuite passe avant une porte ouverte
+    const status = wet.length
+        ? { cls: 'leak', icon: 'drop' as const, text: `Fuite d’eau : ${wet.map((s) => s.room || s.name).join(', ')}` }
+        : open.length
+            ? { cls: 'alert', icon: 'door' as const, text: `${open.map((s) => s.name).join(', ')} ouverte${open.length > 1 ? 's' : ''}` }
+            : { cls: '', icon: 'check' as const, text: leaks.length ? 'Tout est fermé et au sec' : 'Tout est fermé' };
 
     return (
         <section className="card house" aria-label="Maison">
-            <div className={`house-status ${open.length ? 'alert' : ''}`}>
-                <span className="house-icon"><Icon name={open.length ? 'door' : 'check'} size={18} strokeWidth={2.2} /></span>
-                <span>{open.length ? `${open.map((s) => s.name).join(', ')} ouverte${open.length > 1 ? 's' : ''}` : 'Tout est fermé'}</span>
+            <div className={`house-status ${status.cls}`}>
+                <span className="house-icon"><Icon name={status.icon} size={18} strokeWidth={2.2} /></span>
+                <span>{status.text}</span>
             </div>
             <ul className="house-list">
+                {leaks.map((s) => (
+                    <li key={s.did}><span>{s.name}</span><span className={s.props.leak ? 'leak' : 'muted'}>
+                        {s.props.leak ? 'FUITE !' : s.props.leak === false ? 'au sec' : 'en attente du capteur'}{since(s)}</span></li>
+                ))}
                 {doors.map((s) => (
                     <li key={s.did}><span>{s.name}</span><span className={s.props.isOpen ? 'warn' : 'muted'}>
-                        {s.props.isOpen ? 'ouverte' : 'fermée'}{s.lastUpdated ? ` · ${hhmm(new Date(s.lastUpdated))}` : ''}</span></li>
+                        {s.props.isOpen ? 'ouverte' : 'fermée'}{since(s)}</span></li>
                 ))}
                 {lowest != null && <li><span>Piles</span><span className={lowest < 20 ? 'warn' : 'muted'}>{lowest} % au plus bas</span></li>}
                 {offline.length > 0 && <li><span>Hors ligne</span><span className="warn">{offline.map((s) => s.name).join(', ')}</span></li>}
