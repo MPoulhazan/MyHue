@@ -29,6 +29,11 @@ zigbeeService.emitter.on('change', ({ ieee, key, value, prev }) => {
         });
         return;
     }
+    // Fuite : réaction immédiate des automatismes, sans attendre le passage des 30 s
+    if (key === 'water_leak') {
+        bus.emit('sensor', { sensor, prop: 'leak', value: Boolean(value), prev: Boolean(prev), ts });
+        return;
+    }
     if (['temperature', 'humidity', 'pressure', 'battery', 'occupancy'].includes(key)) {
         bus.emit('sensor', { sensor, prop: key, value, prev, ts });
     }

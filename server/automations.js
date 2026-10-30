@@ -14,12 +14,15 @@ import * as journal from './journal.js';
 import * as notifier from './notifier.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as sensorRegistry from './sensorRegistry.js';
+import * as alarm from './alarm.js';
 import { bus } from './events.js';
 
 const FILE = dataFile('automations.json');
 const LEGACY_FILE = dataFile('rules.json');
 const TICK_MS = 30_000;
 const TZ = process.env.TZ || 'America/Toronto';
+// Capteur sans nouvelle depuis le démarrage : son silence compte à partir d'ici
+const STARTED_AT = Date.now();
 
 let automations = [];
 let getSensorsFn = null;
@@ -52,7 +55,7 @@ const OP_LABELS = { gt: '>', lt: '<', gte: '≥', lte: '≤', eq: '=', neq: '≠
 
 const sensorLabel = (trigger) => {
     if (trigger.did !== '*') return sensorRegistry.find(trigger.did)?.name || trigger.did;
-    return trigger.sensorType === 'door' ? 'toute porte' : 'tout capteur';
+    return trigger.sensorType === 'door' ? 'toute porte' : trigger.sensorType === 'water_leak' ? 'tout détecteur de fuite' : 'tout capteur';
 };
 
 /** Résumé lisible d'un automatisme, pour l'interface, Telegram et l'agent. */
@@ -62,13 +65,14 @@ export const summarize = (a) => {
     const who = t.type === 'sensor' ? sensorLabel(t) : '';
     if (t.type === 'presence') what = t.state === 'away' ? 'plus personne à la maison' : 'quelqu’un rentre';
     else if (t.prop === 'isOpen') what = t.operator === 'is_false' ? `${who} fermée` : `${who} ouverte`;
+    else if (t.prop === 'leak') what = `${who} mouillé`;
     else what = `${who} : ${PROP_LABELS[t.prop] || t.prop} ${OP_LABELS[t.operator] || t.operator} ${t.value}`;
     if (t.forMinutes) what += ` depuis ${t.forMinutes} min`;
     const when = (a.conditions || [])
         .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : c.type === 'draught' ? `la pièce perd ${c.drop}° ou ${c.orMinutes} min sous ${c.below}° dehors` : ''))
         .filter(Boolean);
     const does = a.actions
-        .map((x) => ({ notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison', moment: `moment ${x.id}` })[x.type])
+        .map((x) => ({ notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison', alarm: 'alarme lampes + enceintes', moment: `moment ${x.id}` })[x.type])
         .filter(Boolean);
     return `Si ${what}${when.length ? ` (${when.join(', ')})` : ''} → ${does.join(' + ')}`;
 };
@@ -148,16 +152,31 @@ export const TEMPLATES = {
     },
     water_leak: {
         label: 'Fuite d’eau',
-        description: 'Alerte immédiate, répétée toutes les 15 min tant que le détecteur est mouillé.',
+        description: 'Alerte immédiate, répétée toutes les 15 min tant que le détecteur est mouillé : Telegram, lampes Hue en rouge et annonce sur les enceintes.',
         sensorType: 'water_leak',
         build: ({ did = '*' } = {}) => ({
             name: 'Fuite d’eau',
             trigger: { type: 'sensor', did, sensorType: 'water_leak', prop: 'leak', operator: 'is_true', forMinutes: 0 },
             conditions: [],
-            actions: [{ type: 'notify', level: 'alert', message: '💧 FUITE D’EAU détectée : {sensor}. Va vérifier tout de suite.' }],
-            onRelease: [{ type: 'notify', message: '✅ {sensor} est de nouveau sec.' }],
+            actions: [
+                { type: 'notify', level: 'alert', message: '💧 FUITE D’EAU détectée : {sensor}. Va vérifier tout de suite.', buttons: ['leak_fixed', 'leak_false'] },
+                { type: 'alarm', speech: 'Attention : fuite d’eau détectée, {sensor}. Va vérifier tout de suite.' },
+            ],
+            onRelease: [{ type: 'alarm_clear' }, { type: 'notify', message: '✅ {sensor} est de nouveau sec.' }],
             repeatMinutes: 15,
             cooldownMinutes: 0,
+        }),
+    },
+    leak_sensor_silent: {
+        label: 'Détecteur de fuite muet',
+        description: 'Prévient si un détecteur de fuite n’envoie plus rien depuis 3 h : il donne signe de vie toutes les heures, muet il ne protège plus.',
+        sensorType: 'water_leak',
+        build: ({ hours = 3 } = {}) => ({
+            name: 'Détecteur de fuite muet',
+            trigger: { type: 'sensor', did: '*', sensorType: 'water_leak', prop: 'silentHours', operator: 'gt', value: hours, forMinutes: 0 },
+            conditions: [],
+            actions: [{ type: 'notify', level: 'alert', message: '📡 {sensor} n’a rien envoyé depuis {value} h : la fuite d’eau n’est plus surveillée. Pile, ou capteur hors de portée de la clé Zigbee ?' }],
+            cooldownMinutes: 12 * 60,
         }),
     },
     low_battery: {
@@ -286,10 +305,19 @@ const ensureSafety = () => {
         Object.assign(a, { name: fresh.name, trigger: fresh.trigger, conditions: fresh.conditions, actions: fresh.actions });
         upgraded = true;
     }
+    // L'alerte fuite d'avant ne faisait que notifier : alarme dans la maison et boutons en plus
+    for (const a of automations) {
+        if (a.template !== 'water_leak' || a.actions.some((x) => x.type === 'alarm')) continue;
+        const fresh = TEMPLATES.water_leak.build({ did: a.trigger.did });
+        Object.assign(a, { actions: fresh.actions, onRelease: fresh.onRelease });
+        upgraded = true;
+    }
+    for (const id of ['water_leak', 'leak_sensor_silent']) {
+        if (automations.some((a) => a.template === id)) continue;
+        automations.push(normalize({ ...TEMPLATES[id].build(), template: id }));
+        upgraded = true;
+    }
     if (upgraded) save();
-    if (automations.some((a) => a.template === 'water_leak')) return;
-    automations.push(normalize({ ...TEMPLATES.water_leak.build(), template: 'water_leak' }));
-    save();
 };
 
 // --- CRUD (API, agent) ---
@@ -436,14 +464,23 @@ const conditionsMet = async (a, ctx = {}) => {
 
 const sensorValue = (sensor, prop) => {
     if (prop === 'silentHours') {
-        if (!sensor.lastUpdated) return null;
-        return Math.floor((Date.now() - Date.parse(sensor.lastUpdated)) / 3_600_000);
+        const last = sensor.lastUpdated ? Date.parse(sensor.lastUpdated) : STARTED_AT;
+        return Math.floor((Date.now() - last) / 3_600_000);
     }
     return sensor.props?.[prop] ?? null;
 };
 
 const render = (template, vars) =>
     template.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? String(vars[k]) : `{${k}}`));
+
+/** Alerte prise en charge : plus de rappel ni d'alarme jusqu'à ce que le capteur repasse au repos. */
+const acknowledge = async (a, vars, how) => {
+    const rt = runtime.get(`${a.id}|${vars.did}`);
+    if (rt) rt.acked = true;
+    await alarm.clear(vars.did);
+    journal.log({ kind: 'automation', title: `${vars.sensor} : ${how}`, data: { automationId: a.id, did: vars.did } });
+    return `Alerte « ${vars.sensor} » : ${how}. Plus de rappel, les lampes reprennent leur état.`;
+};
 
 // Boutons Telegram disponibles pour une notification
 const BUTTONS = {
@@ -463,6 +500,14 @@ const BUTTONS = {
             return `Thermopompe relancée (${broadlinkService.describeState(result)}).`;
         },
     }),
+    leak_fixed: (a, vars) => ({
+        label: '✅ C’est réglé',
+        run: async () => acknowledge(a, vars, 'réglée'),
+    }),
+    leak_false: (a, vars) => ({
+        label: '🙅 Fausse alerte',
+        run: async () => acknowledge(a, vars, 'fausse alerte'),
+    }),
     snooze_1h: (a) => ({
         label: '🔕 Ignorer 1 h',
         run: async () => {
@@ -481,7 +526,7 @@ const runActions = async (a, actions, vars) => {
                     journal.log({ kind: 'automation', title: text, data: { automationId: a.id, did: vars.did, level: action.level || 'info' } });
                     await notifier.notify({
                         text,
-                        buttons: (action.buttons || []).map((b) => BUTTONS[b]?.(a)).filter(Boolean),
+                        buttons: (action.buttons || []).map((b) => BUTTONS[b]?.(a, vars)).filter(Boolean),
                     });
                     break;
                 }
@@ -504,6 +549,12 @@ const runActions = async (a, actions, vars) => {
                     journal.log({ kind: 'automation', title: `${vars.sensor} refermée : thermopompe relancée.`, data: { automationId: a.id } });
                     break;
                 }
+                case 'alarm':
+                    await alarm.raise(vars.did, action.speech && render(action.speech, vars));
+                    break;
+                case 'alarm_clear':
+                    await alarm.clear(vars.did);
+                    break;
                 case 'moment': {
                     const moments = await import('./moments.js');
                     await moments.run(action.id);
@@ -551,13 +602,14 @@ const evaluate = async () => {
                     if (rt.fired && a.onRelease.length) await runActions(a, a.onRelease, vars);
                     rt.since = null;
                     rt.fired = false;
+                    rt.acked = false;
                     continue;
                 }
 
                 rt.since ??= now;
                 const elapsed = (now - rt.since) / 60_000;
                 if (elapsed < a.trigger.forMinutes) continue;
-                const repeatDue = rt.fired && a.repeatMinutes && now - rt.lastFiredAt >= a.repeatMinutes * 60_000;
+                const repeatDue = rt.fired && !rt.acked && a.repeatMinutes && now - rt.lastFiredAt >= a.repeatMinutes * 60_000;
                 if (rt.fired && !repeatDue) continue;
                 if (!rt.fired && a.lastTriggeredAt && now - Date.parse(a.lastTriggeredAt) < a.cooldownMinutes * 60_000) continue;
                 if (a.snoozedUntil && now < a.snoozedUntil) continue;

@@ -43,6 +43,24 @@ export const ensureHueConfigured = () => {
     }
 };
 
+/**
+ * Remet une lampe dans un état relevé avant (lampes-signal, alarme fuite), couleur comprise.
+ * Une lampe éteinte ne prend pas de couleur : on remet d'abord couleur et luminosité,
+ * puis on éteint, sinon elle se rallumerait dans la couleur du signal.
+ */
+export const restoreLight = async (id, before) => {
+    const put = (state) => hueClient.put(`/lights/${id}/state`, state);
+    const restore = { on: true, alert: 'none', bri: before.bri, transitiontime: before.on ? 4 : 0 };
+    if (before.colormode === 'ct' && before.ct) restore.ct = before.ct;
+    else if (before.colormode === 'hs' && before.hue != null) Object.assign(restore, { hue: before.hue, sat: before.sat });
+    else if (before.xy) restore.xy = before.xy;
+    await put(restore);
+    if (!before.on) {
+        await new Promise((r) => setTimeout(r, 400));
+        await put({ on: false, transitiontime: 4 });
+    }
+};
+
 export const getHueContext = async () => {
     ensureHueConfigured();
     const [lightsResponse, groupsResponse] = await Promise.all([

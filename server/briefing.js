@@ -151,6 +151,31 @@ const speak = async (message) => {
     });
 };
 
+/**
+ * Annonce sur plusieurs enceintes (alarme) : volume monté le temps du message, puis remis.
+ * @param {string[]} speakers entités media_player
+ */
+export const announce = async (speakers, message, { volume = 0.7, holdMs = 20_000 } = {}) => {
+    const engine = await ttsEngine();
+    const players = (await haService.getStates('media_player')).filter((p) => speakers.includes(p.entity_id));
+    for (const p of players) {
+        await haService.callService('media_player', 'volume_set', { entity_id: p.entity_id, volume_level: volume }).catch(() => {});
+    }
+    await haService.callService('tts', 'speak', {
+        entity_id: engine,
+        media_player_entity_id: speakers,
+        message,
+        language: 'fr',
+        cache: false,
+    });
+    setTimeout(() => {
+        for (const p of players) {
+            if (p.attributes.volume_level == null) continue;
+            haService.callService('media_player', 'volume_set', { entity_id: p.entity_id, volume_level: p.attributes.volume_level }).catch(() => {});
+        }
+    }, holdMs);
+};
+
 export const preview = async () => composeBriefing(await getWeatherDetails(), flexd.getStatus(), localParts().day);
 
 /** Dit le briefing tout de suite. */
