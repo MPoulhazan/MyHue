@@ -50,13 +50,38 @@ const beep = () => {
     }
 };
 
+// Chrome charge la liste des voix en différé : vide au premier appel
+const loadVoices = () =>
+    new Promise<SpeechSynthesisVoice[]>((resolve) => {
+        const synth = window.speechSynthesis;
+        const now = synth.getVoices();
+        if (now.length) return resolve(now);
+        const done = () => resolve(synth.getVoices());
+        synth.addEventListener('voiceschanged', done, { once: true });
+        setTimeout(done, 1500);
+    });
+
+/** Meilleure voix française : neuronale ou en ligne d'abord, les voix système basiques en dernier. */
+const pickVoice = (voices: SpeechSynthesisVoice[]) => {
+    const score = (v: SpeechSynthesisVoice) =>
+        (/natural|neural|online|premium|enhanced|wavenet/i.test(v.name) ? 4 : 0) +
+        (/google/i.test(v.name) ? 2 : 0) +
+        (!v.localService ? 1 : 0) +
+        (v.lang === 'fr-CA' || v.lang === 'fr-FR' ? 1 : 0);
+    return voices.filter((v) => v.lang.startsWith('fr')).sort((a, b) => score(b) - score(a))[0];
+};
+
 const speak = (text: string) =>
     new Promise<void>((resolve) => {
         const synth = window.speechSynthesis;
         if (!synth || !text) return resolve();
+        resolve(loadVoices().then((voices) => say(synth, text, pickVoice(voices))));
+    });
+
+const say = (synth: SpeechSynthesis, text: string, voice?: SpeechSynthesisVoice) =>
+    new Promise<void>((resolve) => {
         const utter = new SpeechSynthesisUtterance(text.replace(/https?:\/\/\S+/g, ''));
-        utter.lang = 'fr-FR';
-        const voice = synth.getVoices().find((v) => v.lang.startsWith('fr'));
+        utter.lang = voice?.lang ?? 'fr-FR';
         if (voice) utter.voice = voice;
         utter.onend = () => resolve();
         utter.onerror = () => resolve();
