@@ -5,6 +5,7 @@
 import * as castService from './castService.js';
 import * as automations from './automations.js';
 import * as thermostat from './thermostat.js';
+import * as broadlinkService from './broadlinkService.js';
 import * as circadian from './circadian.js';
 import { hueClient, ensureHueConfigured, clamp, rgbToXy, getHueScenes } from './hue.js';
 import { getYtDlpAudioUrl } from './ytdlp.js';
@@ -153,6 +154,12 @@ const runAction = async (action, source) => {
 
         // Thermopompe
         case 'set_heating': {
+            if (action.alreadyDone) {
+                const patch = Object.fromEntries(
+                    ['power', 'mode', 'temperature', 'fanSpeed', 'vaneVertical'].filter((k) => action[k] !== undefined).map((k) => [k, action[k]]),
+                );
+                return { action, result: broadlinkService.markState(patch, source) };
+            }
             const result = await thermostat.userCommand(action, source);
             return { action, result };
         }

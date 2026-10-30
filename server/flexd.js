@@ -208,6 +208,8 @@ const tick = async () => {
     const p = config.enabled ? phaseAt(config.events, Date.now(), config.preheatMinutes, config.skipped) : null;
     const d = decide(config.applied, p, broadlinkService.getState(), config, thermostat.isEnabled());
     if (!d) return;
+    // État douteux : une trame rallumerait peut-être la clim, on retente au prochain tour
+    if (d.patch && broadlinkService.isUncertain()) return;
     if (d.patch) await broadlinkService.applyPatch({ temperature: d.patch.temperature }, 'Flex D');
     if (d.log) journal.log({ kind: 'heating', title: d.log, data: {} });
     config.applied = d.applied;

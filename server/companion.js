@@ -82,6 +82,19 @@ const extremeSince = (did, prop, ms, pick) => {
     return values.length ? pick(...values) : null;
 };
 
+/** Plus forte baisse de température d'une pièce depuis `ts` (porte ouverte → courant d'air). */
+export const dropSince = (ts) => {
+    let worst = 0;
+    for (const [did, buf] of buffers) {
+        const temps = buf.filter((s) => s.temperature != null);
+        if (!temps.length) continue;
+        const ms = Date.now() - ts;
+        const peak = Math.max(...[valueAgo(did, 'temperature', ms), extremeSince(did, 'temperature', ms, Math.max)].filter((v) => v != null));
+        worst = Math.max(worst, peak - temps[temps.length - 1].temperature);
+    }
+    return round1(worst);
+};
+
 // --- Contexte commun aux détecteurs ---
 
 const localMinutes = () => {
@@ -148,13 +161,17 @@ const DETECTORS = {
             const gap = h.mode === 'heat' ? h.temperature - now : now - h.temperature;
             const progress = h.mode === 'heat' ? now - before : before - now;
             if (gap < 1 || progress > 0.3) continue;
+            // La pièce part dans le mauvais sens : plus probablement éteinte à la télécommande
+            const wrongWay = progress <= -0.3;
             out.push({
                 key: `heating_ineffective:${s.did}`,
                 detector: 'heating_ineffective',
                 level: 'alert',
-                text: `🤔 La thermopompe est en ${h.mode === 'heat' ? 'chauffage' : 'clim'} à ${h.temperature}° depuis ${Math.round(runningMin)} min, mais ${s.name} reste à ${fmt(now)}°. La commande infrarouge est peut-être passée à côté.`,
+                text: wrongWay
+                    ? `🤔 La thermopompe devrait ${h.mode === 'heat' ? 'chauffer' : 'refroidir'} à ${h.temperature}°, mais ${s.name} est passé de ${fmt(before)}° à ${fmt(now)}° en ${Math.round(window)} min. Éteinte à la télécommande ? Je ne lui envoie plus rien en attendant.`
+                    : `🤔 La thermopompe est en ${h.mode === 'heat' ? 'chauffage' : 'clim'} à ${h.temperature}° depuis ${Math.round(runningMin)} min, mais ${s.name} reste à ${fmt(now)}°. Commande infrarouge passée à côté, ou éteinte à la télécommande ?`,
                 facts: { mode: h.mode, consigne: h.temperature, depuis_min: Math.round(runningMin), piece: s.name, temperature: round1(now), il_y_a: round1(before) },
-                buttons: ['resend'],
+                buttons: ['mark_off', 'resend'],
             });
         }
         return out;
@@ -284,6 +301,13 @@ const buttonsFor = (finding) => {
                 return 'Commande renvoyée à la thermopompe.';
             },
         },
+        mark_off: {
+            label: '📴 Oui, elle est éteinte',
+            run: async () => {
+                broadlinkService.markState({ power: false }, 'Telegram');
+                return 'Noté : thermopompe éteinte, rien ne lui a été envoyé.';
+            },
+        },
         heating_off: {
             label: '❄️ Couper la clim',
             run: async () => {
@@ -360,7 +384,21 @@ const run = async () => {
             outdoor: await getOutdoorWeather(),
         };
         for (const detect of Object.values(DETECTORS)) {
-            for (const finding of detect(ctx)) dispatch(finding);
+            for (const finding of detect(ctx)) {
+                if (finding.detector === 'heating_ineffective') broadlinkService.markUncertain('la pièce ne suit pas la consigne');
+                dispatch(finding);
+            }
+        }
+        // Doute levé tout seul si la pièce se remet à chauffer
+        if (broadlinkService.isUncertain() && ctx.heating.power && ctx.heating.mode === 'heat') {
+            const warming = ctx.climate.some((s) => {
+                const low = extremeSince(s.did, 'temperature', 45 * 60_000, Math.min);
+                return low != null && s.props.temperature - low >= 0.5;
+            });
+            if (warming) {
+                broadlinkService.clearUncertain();
+                journal.log({ kind: 'heating', title: 'Thermopompe : la pièce se réchauffe, elle tourne bien', data: {} });
+            }
         }
         await flushNight();
     } catch (err) {

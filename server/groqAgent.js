@@ -94,6 +94,7 @@ export const TOOLS = [
             temperature: { type: 'number', description: '16 à 31 °C' },
             fan_speed: { type: 'string', enum: ['auto', 'quiet', 'low', 'med', 'high'] },
             vane_vertical: { type: 'string', enum: ['auto', '1', '2', '3', '4', '5', 'swing'] },
+            already_done: { type: 'boolean', description: 'true si l’utilisateur l’a déjà fait à la télécommande (« je l’ai éteinte ») : MyHue met son état à jour sans rien envoyer' },
         },
     ),
     tool(
@@ -202,6 +203,7 @@ export const toolCallToActions = (name, args) => {
                     temperature: args.temperature,
                     fanSpeed: args.fan_speed,
                     vaneVertical: args.vane_vertical,
+                    alreadyDone: args.already_done,
                 },
             ];
         case 'create_notification_rule':

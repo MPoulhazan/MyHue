@@ -36,6 +36,16 @@ router.post('/api/heating/control', async (req, res) => {
     }
 });
 
+// Changée à la télécommande : on recopie l'état sans rien envoyer
+router.post('/api/heating/sync', (req, res) => {
+    const { power } = req.body || {};
+    if (typeof power !== 'boolean') return res.status(400).json({ error: 'power (booléen) attendu' });
+    // « Elle tourne bien » alors qu'on la croyait allumée : seul le doute est levé
+    if (power && broadlinkService.getState().power) broadlinkService.clearUncertain();
+    else broadlinkService.markState({ power });
+    res.json(broadlinkService.getStatus());
+});
+
 // Capte une trame de la vraie télécommande (pointer le Broadlink et appuyer dans les 20 s)
 router.post('/api/heating/learn', async (_req, res) => {
     try {

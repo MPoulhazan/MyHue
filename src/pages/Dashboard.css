@@ -293,3 +293,4 @@ a.weather-pill:hover { background: var(--h-surface-2); }
     .journal { flex: 1; min-height: 0; }
     .journal ul { flex: 1; min-height: 0; max-height: none; }
 }
+.warn-line .row-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }

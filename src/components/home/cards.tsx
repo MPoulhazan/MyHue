@@ -137,7 +137,16 @@ export function ClimateCard({ home, onSchedule }: { home: ReturnType<typeof useH
                 <div className="muted">Humidité {fmt(room?.props.humidity, 0)} % · {fmt(room?.props.pressure, 0)} hPa</div>
             </div>
             {openOutside.length > 0 && (
-                <div className="warn-line">{openOutside.map((s) => s.name).join(', ')} ouverte : chauffage en pause automatique</div>
+                <div className="warn-line">{openOutside.map((s) => s.name).join(', ')} ouverte : chauffage coupé si la pièce se refroidit</div>
+            )}
+            {h?.uncertain && (
+                <div className="warn-line">
+                    La pièce ne suit pas la consigne : éteinte à la télécommande ?
+                    <div className="row-actions">
+                        <button type="button" className="ghost-btn" onClick={() => home.syncHeating(false)}>Oui, éteinte</button>
+                        <button type="button" className="ghost-btn" onClick={() => home.syncHeating(true)}>Non, elle tourne</button>
+                    </div>
+                </div>
             )}
             <div className="stepper">
                 <button type="button" aria-label="Baisser la consigne" onClick={() => changeSetpoint(setpoint - step)}>−</button>
@@ -162,6 +171,11 @@ export function ClimateCard({ home, onSchedule }: { home: ReturnType<typeof useH
                 </button>
                 {smart && t?.status.text && <div className="foot-note">{t.status.text}</div>}
                 <div><span>Dernière commande</span><span>{h?.lastUpdated ? hhmm(new Date(h.lastUpdated)) : 'aucune'}</span></div>
+                {h && !h.uncertain && (
+                    <button type="button" className="foot-link" onClick={() => home.syncHeating(!h.power)}>
+                        <span>{h.power ? 'Éteinte à la télécommande ?' : 'Allumée à la télécommande ?'}</span><span>Corriger ›</span>
+                    </button>
+                )}
                 {!h?.connected && <div><span>Émetteur infrarouge</span><span className="warn">non connecté</span></div>}
             </div>
         </section>

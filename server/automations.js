@@ -65,7 +65,7 @@ export const summarize = (a) => {
     else what = `${who} : ${PROP_LABELS[t.prop] || t.prop} ${OP_LABELS[t.operator] || t.operator} ${t.value}`;
     if (t.forMinutes) what += ` depuis ${t.forMinutes} min`;
     const when = (a.conditions || [])
-        .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : c.type === 'away' ? 'personne à la maison' : c.type === 'cold_outside' ? `moins de ${c.below}° dehors` : ''))
+        .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : c.type === 'draught' ? `la pièce perd ${c.drop}° ou ${c.orMinutes} min sous ${c.below}° dehors` : ''))
         .filter(Boolean);
     const does = a.actions
         .map((x) => ({ notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison', moment: `moment ${x.id}` })[x.type])
@@ -75,21 +75,22 @@ export const summarize = (a) => {
 
 // --- Modèles prêts à l'emploi ---
 
-// Arrêter la thermopompe l'use : seulement pour un vrai courant d'air en hiver, maison vide
-const WINTER_DRAFT_CONDITIONS = [{ type: 'heating', power: true }, { type: 'away' }, { type: 'cold_outside', below: 5 }];
+// Courant d'air : la pièce perd 1° depuis l'ouverture, ou 30 min ouverte sous 5° dehors.
+// Mieux vaut couper à tort que chauffer les oiseaux toute une nuit.
+const DRAUGHT_CONDITIONS = [{ type: 'heating', power: true }, { type: 'draught', drop: 1, orMinutes: 30, below: 5 }];
 
 export const TEMPLATES = {
     window_pause_heating: {
-        label: 'Courant d’air en hiver → chauffage coupé',
-        description: 'Personne à la maison, moins de 5° dehors et une porte ou fenêtre ouverte plus de 15 min : la thermopompe s’arrête avec une alerte, puis reprend à la fermeture.',
+        label: 'Courant d’air → chauffage coupé',
+        description: 'Porte ou fenêtre ouverte et la pièce perd 1° (ou 30 min ouverte sous 5° dehors) : la thermopompe s’arrête avec une alerte, puis reprend à la fermeture.',
         sensorType: 'door',
-        build: ({ did, minutes = 15 }) => ({
+        build: ({ did, minutes = 3 }) => ({
             name: `${sensorRegistry.find(did)?.name || 'Ouverture'} → chauffage coupé`,
             trigger: { type: 'sensor', did, sensorType: 'door', prop: 'isOpen', operator: 'is_true', forMinutes: minutes },
-            conditions: WINTER_DRAFT_CONDITIONS,
+            conditions: DRAUGHT_CONDITIONS,
             actions: [
                 { type: 'heating_pause' },
-                { type: 'notify', level: 'alert', message: '🥶 {sensor} ouverte depuis {elapsed} min, personne à la maison et froid dehors : thermopompe coupée.', buttons: ['heating_resume'] },
+                { type: 'notify', level: 'alert', message: '🥶 {sensor} ouverte depuis {elapsed} min, {why} : thermopompe coupée, elle repartira à la fermeture.', buttons: ['heating_resume'] },
             ],
             onRelease: [{ type: 'heating_resume' }],
             cooldownMinutes: 0,
@@ -280,9 +281,9 @@ const ensureSafety = () => {
     // Les anciennes pauses (2 min, sans condition) coupaient la clim à chaque aération
     let upgraded = false;
     for (const a of automations) {
-        if (a.template !== 'window_pause_heating' || a.conditions.some((c) => c.type === 'away')) continue;
+        if (a.template !== 'window_pause_heating' || a.conditions.some((c) => c.type === 'draught')) continue;
         const fresh = TEMPLATES.window_pause_heating.build({ did: a.trigger.did });
-        Object.assign(a, { name: fresh.name, trigger: { ...a.trigger, forMinutes: 15 }, conditions: fresh.conditions, actions: fresh.actions });
+        Object.assign(a, { name: fresh.name, trigger: fresh.trigger, conditions: fresh.conditions, actions: fresh.actions });
         upgraded = true;
     }
     if (upgraded) save();
@@ -387,30 +388,40 @@ const isDark = async () => {
     return darkCache.dark;
 };
 
-// Absent : HA Companion ne voit personne, ou absence forcée sur le thermostat
-const isAway = async () => {
-    const presence = await import('./presence.js');
-    if (presence.anyoneHome() === false) return true;
-    const thermostat = await import('./thermostat.js');
-    return Boolean(thermostat.getStatus().away);
-};
-
-// Température extérieure Open-Meteo (en cache 15 min) ; inconnue = on ne coupe pas
-const isColdOutside = async (below) => {
+// Température extérieure Open-Meteo (en cache 15 min) ; null si inconnue
+const outsideTemp = async () => {
     try {
         const { getForecast } = await import('./weather.js');
         const temp = (await getForecast()).current?.temperature_2m;
-        return typeof temp === 'number' && temp < below;
+        return typeof temp === 'number' ? temp : null;
     } catch {
-        return false;
+        return null;
     }
 };
 
-const conditionsMet = async (a) => {
+const fmt1 = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
+
+/** Courant d'air depuis l'ouverture ? Renseigne ctx.why pour le message. */
+const isDraught = async (c, ctx) => {
+    if (!ctx.since) return false;
+    const { dropSince } = await import('./companion.js');
+    const drop = dropSince(ctx.since);
+    if (drop >= c.drop) {
+        ctx.why = `la pièce a perdu ${fmt1(drop)}°`;
+        return true;
+    }
+    if (ctx.elapsed < c.orMinutes) return false;
+    const outside = await outsideTemp();
+    if (outside == null || outside >= c.below) return false;
+    ctx.why = `il fait ${fmt1(outside)}° dehors`;
+    return true;
+};
+
+/** @param {{ since?: number, elapsed?: number, why?: string }} [ctx] ouverture en cours (déclencheur capteur) */
+const conditionsMet = async (a, ctx = {}) => {
     if (a.conditions.some((c) => c.type === 'dark') && !(await isDark())) return false;
-    if (a.conditions.some((c) => c.type === 'away') && !(await isAway())) return false;
-    const cold = a.conditions.find((c) => c.type === 'cold_outside');
-    if (cold && !(await isColdOutside(cold.below))) return false;
+    const draught = a.conditions.find((c) => c.type === 'draught');
+    if (draught && !(await isDraught(draught, ctx))) return false;
     return a.conditions.every((c) => {
         if (c.type === 'time') {
             const now = localMinutes();
@@ -550,7 +561,8 @@ const evaluate = async () => {
                 if (rt.fired && !repeatDue) continue;
                 if (!rt.fired && a.lastTriggeredAt && now - Date.parse(a.lastTriggeredAt) < a.cooldownMinutes * 60_000) continue;
                 if (a.snoozedUntil && now < a.snoozedUntil) continue;
-                if (!(await conditionsMet(a))) continue;
+                const ctx = { since: rt.since, elapsed };
+                if (!(await conditionsMet(a, ctx))) continue;
 
                 console.log(`⚙️  Automatisme déclenché: "${a.name}" (${sensor.name})`);
                 rt.fired = true;
@@ -558,7 +570,7 @@ const evaluate = async () => {
                 a.lastTriggeredAt = new Date(now).toISOString();
                 a.triggerCount++;
                 save();
-                await runActions(a, a.actions, { ...vars, elapsed: Math.round(elapsed) });
+                await runActions(a, a.actions, { ...vars, elapsed: Math.round(elapsed), why: ctx.why });
             }
         }
     } catch (err) {

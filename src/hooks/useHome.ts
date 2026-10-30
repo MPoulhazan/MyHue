@@ -69,6 +69,8 @@ export interface Heating {
     fanSpeed?: string;
     vaneVertical?: string;
     lastUpdated?: string | null;
+    /** La pièce ne suit pas : peut-être éteinte à la télécommande */
+    uncertain?: { since: number; reason: string } | null;
 }
 
 export interface Sensor {
@@ -355,11 +357,16 @@ export function useHome() {
     }, [push, loadLights]);
 
     // --- Chauffage ---
-    useEffect(() => {
+    const loadHeating = useCallback(() => {
         axios.get('/api/heating/status').then(({ data }) =>
-            setHeating({ connected: data.connected, ...data.state }),
+            setHeating({ connected: data.connected, ...data.state, uncertain: data.uncertain }),
         ).catch(() => {});
     }, []);
+    useEffect(() => {
+        loadHeating();
+        const t = setInterval(loadHeating, 60_000);
+        return () => clearInterval(t);
+    }, [loadHeating]);
 
     // --- Thermostat intelligent ---
     const loadThermostat = useCallback(() => {
@@ -396,6 +403,17 @@ export function useHome() {
             loadThermostat(); // « arrêt » ou « froid » désactivent le thermostat
         } catch {
             push('Clim · commande échouée', '#FF3B5C');
+        }
+    }, [push, loadThermostat]);
+
+    // Changée à la télécommande : MyHue recopie l'état sans rien envoyer
+    const syncHeating = useCallback(async (power: boolean) => {
+        try {
+            const { data } = await axios.post('/api/heating/sync', { power });
+            setHeating({ connected: data.connected, ...data.state, uncertain: data.uncertain });
+            loadThermostat();
+        } catch {
+            push('Clim · mise à jour refusée', '#FF3B5C');
         }
     }, [push, loadThermostat]);
 
@@ -439,7 +457,7 @@ export function useHome() {
 
     return {
         lights, rooms, roomScenes, climate, door, heating, log: namedLog, online, sensors, weather, moments, thermostat, conversation, thinking,
-        push, clearConversation, setLevel, setColor, applyAmbiance, activateScene, controlHeating, askAgent, runMoment, updateThermostat, overrideTarget, cast,
+        push, clearConversation, setLevel, setColor, applyAmbiance, activateScene, controlHeating, syncHeating, askAgent, runMoment, updateThermostat, overrideTarget, cast,
     };
 }
 

@@ -140,6 +140,10 @@ const regulate = async () => {
         lastStatus = { state: 'paused', text: 'Porte extérieure ouverte : régulation en pause' };
         return;
     }
+    if (broadlinkService.isUncertain()) {
+        lastStatus = { state: 'paused', text: 'Thermopompe peut-être éteinte à la télécommande : régulation en pause' };
+        return;
+    }
 
     const temp = room.props.temperature;
     const error = target - temp; // > 0 : trop froid

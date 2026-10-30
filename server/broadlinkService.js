@@ -90,10 +90,41 @@ export const isConnected = () => device !== null;
 
 export const getState = () => ({ ...currentState });
 
+// --- État douteux ---
+// L'infrarouge ne renvoie rien : éteinte à la télécommande, MyHue la croit encore allumée.
+// Chaque trame porte l'état complet (marche comprise) : changer la consigne la rallumerait.
+// Tant que l'état est douteux, thermostat et Flex D n'envoient plus rien.
+
+let uncertain = null; // { since, reason }
+
+export const markUncertain = (reason) => {
+    if (uncertain) return;
+    uncertain = { since: Date.now(), reason };
+    journal.log({ kind: 'heating', title: `Thermopompe : état incertain (${reason})`, data: {} });
+};
+export const clearUncertain = () => {
+    uncertain = null;
+};
+export const isUncertain = () => uncertain !== null;
+
+/** L'utilisateur a changé la thermopompe lui-même (télécommande) : on recopie sans rien envoyer. */
+export const markState = (patch = {}, source = 'interface') => {
+    currentState = { ...currentState, ...patch, lastUpdated: new Date().toISOString() };
+    saveState(currentState);
+    uncertain = null;
+    journal.log({
+        kind: 'heating',
+        title: `Thermopompe : ${describeState(currentState)} (réglée à la télécommande)`,
+        data: { state: currentState, source, synced: true },
+    });
+    return currentState;
+};
+
 export const getStatus = () => ({
     connected: isConnected(),
     deviceIp: device?.host?.address || null,
     state: { ...currentState },
+    uncertain,
 });
 
 export const sendCommand = async (newState) => {
@@ -200,6 +231,7 @@ export const applyPatch = async (patch = {}, source = 'interface') => {
         vaneVertical: patch.vaneVertical || cur.vaneVertical,
     };
     const result = isConnected() ? await sendCommand(newState) : sendCommandDryRun(newState);
+    uncertain = null; // la clim vient de recevoir l'état complet : on sait de nouveau où elle en est
     journal.log({
         kind: 'heating',
         title: `Thermopompe : ${describeState(result)}`,
