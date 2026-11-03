@@ -13,6 +13,14 @@ const STARS: [number, number, number][] = [
     [60, 10, 1], [68, 5, 1.4], [76, 90, 0.8], [81, 7, 1], [89, 14, 0.8], [96, 5, 1.2], [97, 93, 0.9], [5, 93, 0.8], [15, 60, 0.7],
 ];
 
+const issDay = (ts: number) => {
+    const d = new Date(ts);
+    const days = Math.round((new Date(d.toDateString()).getTime() - new Date(new Date().toDateString()).getTime()) / 86_400_000);
+    if (days === 0) return d.getHours() < 12 ? 'ce matin' : 'ce soir';
+    if (days === 1) return 'demain';
+    return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' });
+};
+
 const eventDay = (e: SkyEvent) => {
     const d = new Date(e.ts);
     return { day: d.getDate(), month: MONTHS[d.getMonth()] };
@@ -79,6 +87,17 @@ function NightColumn({ sky }: { sky: Sky }) {
                         <span className="muted">Planètes : </span>
                         {sky.planets.map((p, i) => (
                             <span key={p.id}>{i > 0 && ' · '}{p.name} {p.dir}{p.from != null && p.from > hours[0].ts ? ` dès ${hOnly(p.from)}` : ''}</span>
+                        ))}
+                    </span>
+                </p>
+            )}
+            {sky.iss && sky.iss.length > 0 && (
+                <p className="sky-planets">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="9" width="6" height="6" rx="1" /><path d="M2 6h5v12H2zM17 6h5v12h-5zM7 12h2M15 12h2" /></svg>
+                    <span>
+                        <span className="muted">Station spatiale : </span>
+                        {sky.iss.slice(0, 2).map((p, i) => (
+                            <span key={p.start}>{i > 0 && ' · '}{issDay(p.start)} {hm(p.start)}, du {p.from} vers le {p.to}, {p.durationMin} min{p.maxEl >= 30 ? ` (${p.brightness})` : ''}</span>
                         ))}
                     </span>
                 </p>

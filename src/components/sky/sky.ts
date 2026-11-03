@@ -15,6 +15,7 @@ export interface Aurora {
     window: { from: number; to: number } | null;
     series: { ts: number; kp: number }[];
 }
+export interface IssPass { start: number; end: number; durationMin: number; maxEl: number; peakTs: number; from: string; to: string; brightness: string }
 export interface Sky {
     updatedAt: number;
     moon: {
@@ -26,7 +27,8 @@ export interface Sky {
     planets: Planet[];
     aurora: Aurora | null;
     events: SkyEvent[];
-    highlight: { kind: 'aurora' | 'eclipse' | 'shower' | 'planet' | 'moon'; title: string; text: string };
+    iss: IssPass[] | null;
+    highlight: { kind: 'aurora' | 'eclipse' | 'iss' | 'shower' | 'planet' | 'moon'; title: string; text: string };
 }
 
 export function useSky() {

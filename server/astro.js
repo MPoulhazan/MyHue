@@ -6,6 +6,7 @@
 import axios from 'axios';
 import * as A from 'astronomy-engine';
 import { getForecast, getLocation } from './weather.js';
+import { getPasses } from './iss.js';
 
 const HOUR = 3600_000;
 const DAY = 24 * HOUR;
@@ -273,10 +274,19 @@ function buildEclipses(now, obs, limitDays = 400) {
 
 const daysUntil = (ts, now) => Math.round((ts - now) / DAY);
 
+/** Passage de l'ISS assez haut (≥ 30°) dans les 18 prochaines heures, ou null. */
+export const issSoon = (iss, now = Date.now()) => (iss || []).find((p) => p.end > now && p.start - now < 18 * HOUR && p.maxEl >= 30) || null;
+
 /** Ce que la home met en avant, par ordre d'importance. */
-export function pickHighlight({ aurora, events, planets, moon }, now = Date.now()) {
+export function pickHighlight({ aurora, events, planets, moon, iss, offsetSec = 0 }, now = Date.now()) {
     if (aurora?.level === 'alert') return { kind: 'aurora', title: aurora.label, text: `Kp ${aurora.maxTonight} prévu, regarde plein nord, loin des lampadaires.` };
     const soon = (e, d) => e.ts - now < d * DAY;
+    const pass = issSoon(iss, now);
+    if (pass && !events.some((e) => e.type === 'eclipse' && soon(e, 1))) {
+        const at = new Date(pass.start + offsetSec * 1000);
+        const hh = `${at.getUTCHours()} h ${String(at.getUTCMinutes()).padStart(2, '0')}`;
+        return { kind: 'iss', title: `Station spatiale à ${hh}`, text: `${pass.brightness.charAt(0).toUpperCase()}${pass.brightness.slice(1)}, du ${pass.from} vers le ${pass.to}, pendant ${pass.durationMin} min. Un point lumineux qui file sans clignoter.` };
+    }
     const eclipse = events.find((e) => e.type === 'eclipse' && soon(e, 7));
     if (eclipse) return { kind: 'eclipse', title: eclipse.title, text: eclipse.label };
     const shower = events.find((e) => e.type === 'shower' && soon(e, 30));
@@ -327,6 +337,15 @@ export function skySpeech(sky, now = Date.now()) {
     if (a?.level === 'alert') parts.push(`Bonne nouvelle : aurores possibles, Kp ${kpWord(a.maxTonight)} prévu.`);
     else if (a?.level === 'cloudy') parts.push(`Aurores possibles avec un Kp de ${kpWord(a.maxTonight)}, mais les nuages risquent de les cacher.`);
     else if (a) parts.push('Pas d’aurores en vue.');
+    const pass = (sky.iss || []).find((p) => p.end > now);
+    if (pass) {
+        const d = Math.floor((pass.start + off * 1000) / DAY) - Math.floor((now + off * 1000) / DAY);
+        const am = new Date(pass.start + off * 1000).getUTCHours() < 12;
+        const day = d === 0 ? (am ? 'ce matin' : 'ce soir') : d === 1 ? (am ? 'demain matin' : 'demain soir') : `dans ${d} jours`;
+        const at = new Date(pass.start + off * 1000);
+        const min = at.getUTCMinutes();
+        parts.push(`La station spatiale passera ${day} à ${sayH(pass.start, off)}${min ? ` ${min}` : ''}, du ${pass.from} vers le ${pass.to}.`);
+    }
     const e = sky.events.find((x) => x.type !== 'fullmoon') || sky.events[0];
     if (e) {
         const d = daysUntil(e.ts, now);
@@ -352,6 +371,12 @@ export function skyBriefingLine(sky, now = Date.now()) {
     }
     const full = sky.events.find((e) => e.type === 'fullmoon' && tonight(e));
     if (full) return `Pleine lune ce soir, la ${full.title.replace(/^Lune/, 'lune')}.`;
+    const pass = issSoon(sky.iss, now);
+    if (pass) {
+        const at = new Date(pass.start + off * 1000);
+        const min = at.getUTCMinutes();
+        return `Ce soir, la station spatiale passe à ${sayH(pass.start, off)}${min ? ` ${min}` : ''}, du ${pass.from} vers le ${pass.to}.`;
+    }
     return null;
 }
 
@@ -371,10 +396,11 @@ let skyCache = { at: 0, value: null };
 export async function getSky() {
     if (skyCache.value && Date.now() - skyCache.at < 10 * 60_000) return skyCache.value;
     const now = Date.now();
-    const [loc, forecast, kp] = await Promise.all([
-        getLocation(),
+    const loc = await getLocation();
+    const [forecast, kp, iss] = await Promise.all([
         getForecast().catch((err) => { console.warn('[Ciel] Prévision indisponible :', err.message); return null; }),
         getKp().catch((err) => { console.warn('[Ciel] Indice Kp indisponible :', err.message); return null; }),
+        getPasses(loc.lat, loc.lon, now, 10).catch((err) => { console.warn('[Ciel] Passages ISS indisponibles :', err.message); return null; }),
     ]);
     const offsetSec = forecast?.offsetSec ?? -new Date().getTimezoneOffset() * 60;
     const obs = new A.Observer(loc.lat, loc.lon, 0);
@@ -398,6 +424,7 @@ export async function getSky() {
         planets,
         aurora,
         events,
+        iss: iss ? iss.filter((p) => p.end > now).slice(0, 4) : null,
     };
     value.highlight = pickHighlight(value, now);
     skyCache = { at: now, value };
