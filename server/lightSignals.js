@@ -15,8 +15,8 @@ import { getWeatherDetails } from './weather.js';
 
 const FILE = dataFile('signals.json');
 const TZ = process.env.TZ || 'America/Toronto';
-// Couleurs en xy (gamut C) : bleu pluie, ambre tempête
-const COLORS = { rain: [0.167, 0.04], storm: [0.56, 0.41] };
+// Couleurs en xy (gamut C) : bleu pluie, ambre tempête, vert aurore
+const COLORS = { rain: [0.167, 0.04], storm: [0.56, 0.41], aurora: [0.17, 0.7] };
 const BREATHE_MS = 15_000; // durée d'une « respiration » Hue (alert lselect)
 
 const DEFAULTS = {
@@ -101,7 +101,8 @@ export const pulse = async (kinds, source = 'départ') => {
     } finally {
         await restoreLight(id, before);
     }
-    const what = kinds.map((k) => (k === 'rain' ? 'pluie dans 30 min' : 'tempête en approche')).join(' et ');
+    const LABELS = { rain: 'pluie dans 30 min', storm: 'tempête en approche', aurora: 'aurores possibles' };
+    const what = kinds.map((k) => LABELS[k]).join(' et ');
     journal.log({ kind: 'system', title: `${light.name} a prévenu : ${what} (${source})`, data: { light: id, kinds } });
     return { light: { id, name: light.name }, kinds };
 };

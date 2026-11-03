@@ -549,11 +549,11 @@ function SignalTile() {
         setS({ ...s, ...patch });
         axios.put('/api/signals', patch).then(({ data }) => setS(data)).catch(() => setMsg('Réglage refusé.'));
     };
-    const tryIt = (kind: 'rain' | 'storm') => {
+    const tryIt = (kind: 'rain' | 'storm' | 'aurora') => {
         setBusy(kind);
         setMsg(null);
         axios.post('/api/signals/test', { kind })
-            .then(({ data }) => setMsg(`${data.light.name} a ${kind === 'rain' ? 'respiré en bleu' : 'respiré en ambre'}, puis a repris son état.`))
+            .then(({ data }) => setMsg(`${data.light.name} a respiré en ${{ rain: 'bleu', storm: 'ambre', aurora: 'vert' }[kind]}, puis a repris son état.`))
             .catch(() => setMsg('La lampe n’a pas répondu.'))
             .finally(() => setBusy(null));
     };
@@ -581,6 +581,7 @@ function SignalTile() {
             <span className="wx-brief-actions">
                 <button type="button" className="ghost-btn" onClick={() => tryIt('rain')} disabled={busy != null}>{busy === 'rain' ? 'En cours…' : 'Essayer la pluie'}</button>
                 <button type="button" className="ghost-btn" onClick={() => tryIt('storm')} disabled={busy != null}>{busy === 'storm' ? 'En cours…' : 'Essayer la tempête'}</button>
+                <button type="button" className="ghost-btn" onClick={() => tryIt('aurora')} disabled={busy != null}>{busy === 'aurora' ? 'En cours…' : 'Essayer l’aurore'}</button>
             </span>
             {msg && <span className="muted">{msg}</span>}
         </section>

@@ -58,12 +58,12 @@ export function compass(az) {
     return ['au nord', 'au nord-est', 'à l’est', 'au sud-est', 'au sud', 'au sud-ouest', 'à l’ouest', 'au nord-ouest'][Math.round(az / 45) % 8];
 }
 
-/** Début de « cette nuit » (17 h locale) : la nuit en cours avant 7 h, sinon celle qui vient. */
+/** Début de « cette nuit » (17 h locale) : la nuit en cours avant 5 h, sinon celle qui vient (briefing de 6 h compris). */
 export function nightStart(now, offsetSec) {
     const local = now + offsetSec * 1000;
     const dayStart = Math.floor(local / DAY) * DAY;
     let start = dayStart + 17 * HOUR - offsetSec * 1000;
-    if (new Date(local).getUTCHours() < 7) start -= DAY;
+    if (new Date(local).getUTCHours() < 5) start -= DAY;
     return start;
 }
 
@@ -291,6 +291,70 @@ export function pickHighlight({ aurora, events, planets, moon }, now = Date.now(
     return { kind: 'moon', title: moon.nextFull.name, text: 'Prochaine pleine lune.' };
 }
 
+// --- Phrases (Jarvis, briefing, Telegram) ---
+
+const sayH = (ts, offsetSec) => {
+    const h = new Date(ts + offsetSec * 1000).getUTCHours();
+    return h === 0 ? 'minuit' : h === 12 ? 'midi' : `${h} heures`;
+};
+const pctWord = (f) => `${Math.round(f * 100)} pour cent`;
+const kpWord = (kp) => String(Math.round(kp * 10) / 10).replace('.', ',');
+
+/** Une question sur le ciel (et pas une commande de lampe). */
+export function isSkyQuestion(text) {
+    const t = String(text || '').toLowerCase();
+    // Mots entiers, accents compris (\b ignore les lettres accentuées)
+    const word = (alt) => new RegExp(`(?<!\\p{L})(?:${alt})(?!\\p{L})`, 'u');
+    if (word('allume|allumer|éteins|eteins|éteindre|mets|met|baisse|monte|joue|lance').test(t)) return false;
+    const topic = word('ciel|lune|aurores?|boréales?|boreales?|étoiles? filantes?|etoiles? filantes?|planètes?|planetes?|éclipses?|eclipses?|astronomie|perséides|géminides|léonides').test(t);
+    const ask = t.includes('?') || word("qu['’]?est[- ]ce|quoi|quel|quelle|quand|y a|y aura|voit|voir|visible|ce soir|cette nuit|phase").test(t);
+    return topic && ask;
+}
+
+/** Réponse parlée complète : lune, conditions de la nuit, planètes, aurores, prochain événement. */
+export function skySpeech(sky, now = Date.now()) {
+    const off = sky.offsetSec ?? 0;
+    const parts = [];
+    const m = sky.moon;
+    const next = m.up ? `elle se couche vers ${sayH(m.set, off)}` : `elle se lève vers ${sayH(m.rise, off)}`;
+    const phase = /^(Pleine|Nouvelle) lune$/.test(m.name) ? `C'est la ${m.name.toLowerCase()}` : `La lune est en ${m.name.toLowerCase()}`;
+    parts.push(`${phase}, éclairée à ${pctWord(m.fraction)}, ${(m.up ? m.set : m.rise) ? next : 'toute la nuit'}.`);
+    const w = sky.night.window;
+    if (w) parts.push(`Cette nuit, le meilleur moment pour observer, c'est de ${sayH(w.from, off)} à ${sayH(w.to, off)}.`);
+    else parts.push('Cette nuit, le ciel sera trop couvert pour observer.');
+    if (sky.planets.length) parts.push(`Planètes visibles : ${sky.planets.slice(0, 3).map((p) => `${p.name} ${p.dir}`).join(', ')}.`);
+    const a = sky.aurora;
+    if (a?.level === 'alert') parts.push(`Bonne nouvelle : aurores possibles, Kp ${kpWord(a.maxTonight)} prévu.`);
+    else if (a?.level === 'cloudy') parts.push(`Aurores possibles avec un Kp de ${kpWord(a.maxTonight)}, mais les nuages risquent de les cacher.`);
+    else if (a) parts.push('Pas d’aurores en vue.');
+    const e = sky.events.find((x) => x.type !== 'fullmoon') || sky.events[0];
+    if (e) {
+        const d = daysUntil(e.ts, now);
+        const when = d <= 0 ? 'cette nuit' : d === 1 ? 'demain' : `dans ${d} jours`;
+        parts.push(`Prochain rendez-vous : ${e.title} ${when}${e.type === 'shower' ? `, ${e.label.toLowerCase()}` : ''}.`);
+    }
+    return parts.join(' ');
+}
+
+/** Ligne du briefing du matin, seulement les jours où le ciel vaut le détour (sinon null). */
+export function skyBriefingLine(sky, now = Date.now()) {
+    const off = sky.offsetSec ?? 0;
+    const a = sky.aurora;
+    if (a?.level === 'alert') {
+        return `Ce soir, aurores boréales possibles${a.window ? ` entre ${sayH(a.window.from, off)} et ${sayH(a.window.to, off)}` : ''} : regarde plein nord.`;
+    }
+    const tonight = (e) => e.ts - now < 20 * HOUR;
+    const eclipse = sky.events.find((e) => e.type === 'eclipse' && tonight(e));
+    if (eclipse) return `Aujourd'hui, ${eclipse.title.charAt(0).toLowerCase()}${eclipse.title.slice(1)}, visible d'ici.`;
+    const shower = sky.events.find((e) => e.type === 'shower' && tonight(e));
+    if (shower && shower.level !== 'poor') {
+        return `Cette nuit, pic des ${shower.title}${sky.night.window ? '' : ', mais le ciel sera couvert'}.`;
+    }
+    const full = sky.events.find((e) => e.type === 'fullmoon' && tonight(e));
+    if (full) return `Pleine lune ce soir, la ${full.title.replace(/^Lune/, 'lune')}.`;
+    return null;
+}
+
 // --- Aurores (NOAA, cache 30 min) ---
 
 let kpCache = { at: 0, value: null };
@@ -327,6 +391,7 @@ export async function getSky() {
     ].sort((a, b) => a.ts - b.ts).slice(0, 4);
     const value = {
         updatedAt: now,
+        offsetSec,
         moon,
         sun: { set: riseSet(A.Body.Sun, obs, -1, new Date(start - 4 * HOUR), 1), rise: riseSet(A.Body.Sun, obs, +1, new Date(start), 1) },
         night: { hours: hours.map(({ moonFraction: _f, ...h }) => h), window, quality: skyQuality(window) },

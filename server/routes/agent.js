@@ -13,6 +13,7 @@ import { isValidToken } from '../auth.js';
 import { hueBaseUrl, getHueContext, getHueScenes } from '../hue.js';
 import * as journal from '../journal.js';
 import { getSensors, getOutdoorWeather } from '../sensors.js';
+import { getSky, isSkyQuestion, skySpeech } from '../astro.js';
 import { getHomeState, recentEvents } from '../homeState.js';
 import { executeActions } from '../actions.js';
 import { groqClient, GROQ_API_KEY, GROQ_MODEL } from '../llm.js';
@@ -66,6 +67,14 @@ router.post('/api/agent', async (req, res) => {
 
         if (!message || typeof message !== 'string') {
             return res.status(400).json({ error: 'Message is required.' });
+        }
+
+        // Niveau 0 : question sur le ciel, répondue par le calcul local (sans LLM)
+        if (isSkyQuestion(message)) {
+            const sky = await getSky().catch(() => null);
+            if (sky) {
+                return res.json({ message: skySpeech(sky), actions: [], actionResults: [], tier: 'local', intent: 'sky' });
+            }
         }
 
         const context = await getHueContext();

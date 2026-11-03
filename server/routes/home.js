@@ -13,6 +13,7 @@ import * as journal from '../journal.js';
 import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
 import { getWeatherDetails } from '../weather.js';
 import { getSky } from '../astro.js';
+import * as skyAlerts from '../skyAlerts.js';
 import * as moments from '../moments.js';
 import * as presence from '../presence.js';
 import * as thermostat from '../thermostat.js';
@@ -444,6 +445,9 @@ router.get('/api/weather/details', async (_req, res) => {
 });
 
 // --- Ciel de la nuit (lune, planètes, étoiles filantes, aurores) ---
+
+router.get('/api/sky/alerts', (_req, res) => res.json(skyAlerts.getStatus()));
+router.put('/api/sky/alerts', (req, res) => res.json(skyAlerts.update(req.body || {})));
 
 router.get('/api/sky', async (_req, res) => {
     try {

@@ -13,6 +13,7 @@ import * as journal from './journal.js';
 import * as presence from './presence.js';
 import * as flexd from './flexd.js';
 import { getWeatherDetails } from './weather.js';
+import { getSky, skyBriefingLine } from './astro.js';
 
 const FILE = dataFile('briefing.json');
 const TZ = process.env.TZ || 'America/Toronto';
@@ -75,8 +76,9 @@ const deg = (n) => (Math.round(n) < 0 ? `moins ${-Math.round(n)}` : String(Math.
  * @param {object} w   getWeatherDetails()
  * @param {object} [flex]  flexd.getStatus()
  * @param {string} today  jour local AAAA-MM-JJ (pour la pointe du jour)
+ * @param {string[]} [extras]  phrases ajoutées avant la fin (le ciel du soir, par exemple)
  */
-export const composeBriefing = (w, flex, today, dayOf = (ts) => localParts(ts).day) => {
+export const composeBriefing = (w, flex, today, dayOf = (ts) => localParts(ts).day, extras = []) => {
     const parts = [];
     const c = w.current;
     parts.push(`Bonjour ! Il fait ${deg(c.temp)} degrés dehors, ressenti ${deg(c.feels)}.`);
@@ -106,6 +108,7 @@ export const composeBriefing = (w, flex, today, dayOf = (ts) => localParts(ts).d
         parts.push(`Pointe Flex D aujourd'hui de ${sayHour(e.start)} à ${sayHour(e.end)} : évite la sécheuse, le lave-vaisselle et le four.`);
     }
 
+    parts.push(...extras.filter(Boolean));
     parts.push('Bonne journée !');
     return parts.join(' ');
 };
@@ -176,7 +179,11 @@ export const announce = async (speakers, message, { volume = 0.7, holdMs = 20_00
     }, holdMs);
 };
 
-export const preview = async () => composeBriefing(await getWeatherDetails(), flexd.getStatus(), localParts().day);
+export const preview = async () => {
+    const sky = await getSky().catch(() => null);
+    const skyLine = sky ? skyBriefingLine(sky) : null;
+    return composeBriefing(await getWeatherDetails(), flexd.getStatus(), localParts().day, undefined, [skyLine]);
+};
 
 /** Dit le briefing tout de suite. */
 export const play = async (source = 'interface') => {

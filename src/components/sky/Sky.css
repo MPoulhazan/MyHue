@@ -116,3 +116,7 @@
     .home-side:has(.sky-card) .journal { min-height: 240px; }
     .home-side .sky-card { flex: none; }
 }
+
+.sky-alerts { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--h-muted); }
+.sky-alerts label { display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer; }
+.sky-alerts input { width: 18px; height: 18px; accent-color: #7cf2c4; margin: 0; }

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import axios from 'axios';
 import { MoonCanvas } from './MoonCanvas';
 import { hOnly, hm, pct } from './sky';
 import type { Sky, SkyEvent } from './sky';
@@ -118,6 +119,27 @@ function AheadColumn({ sky }: { sky: Sky }) {
                     </div>
                 </div>
             )}
+            <AuroraSettings />
+        </div>
+    );
+}
+
+/** Réglages des alertes aurores (message Telegram, lampe qui respire en vert). */
+function AuroraSettings() {
+    const [s, setS] = useState<{ auroraAlerts: boolean; auroraLamp: boolean } | null>(null);
+    useEffect(() => {
+        axios.get('/api/sky/alerts').then(({ data }) => setS(data)).catch(() => {});
+    }, []);
+    if (!s) return null;
+    const toggle = (key: 'auroraAlerts' | 'auroraLamp') => {
+        const next = { ...s, [key]: !s[key] };
+        setS(next);
+        axios.put('/api/sky/alerts', { [key]: next[key] }).then(({ data }) => setS(data)).catch(() => setS(s));
+    };
+    return (
+        <div className="sky-alerts" role="group" aria-label="Alertes aurores">
+            <label><input type="checkbox" checked={s.auroraAlerts} onChange={() => toggle('auroraAlerts')} />Me prévenir sur Telegram</label>
+            <label><input type="checkbox" checked={s.auroraLamp} onChange={() => toggle('auroraLamp')} />La lampe-signal respire en vert</label>
         </div>
     );
 }
