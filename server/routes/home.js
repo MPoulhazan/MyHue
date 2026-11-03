@@ -12,6 +12,7 @@ import * as haService from '../haService.js';
 import * as journal from '../journal.js';
 import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
 import { getWeatherDetails } from '../weather.js';
+import { getSky } from '../astro.js';
 import * as moments from '../moments.js';
 import * as presence from '../presence.js';
 import * as thermostat from '../thermostat.js';
@@ -439,6 +440,17 @@ router.get('/api/weather/details', async (_req, res) => {
     } catch (err) {
         console.warn('[Météo] Détails indisponibles:', err.message);
         res.status(503).json({ error: 'Météo indisponible' });
+    }
+});
+
+// --- Ciel de la nuit (lune, planètes, étoiles filantes, aurores) ---
+
+router.get('/api/sky', async (_req, res) => {
+    try {
+        res.json(await getSky());
+    } catch (err) {
+        console.warn('[Ciel] Indisponible:', err.message);
+        res.status(503).json({ error: 'Ciel indisponible' });
     }
 });
 

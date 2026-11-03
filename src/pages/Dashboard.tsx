@@ -9,6 +9,7 @@ import type { IconName } from '../components/Icon';
 import { AddSensorSheet } from '../components/home/AddSensorSheet';
 import { NightMode } from '../components/home/NightMode';
 import { PhoneHome } from '../components/phone/PhoneHome';
+import { SkyCard } from '../components/sky/SkyCard';
 import { ScheduleSheet } from '../components/home/ScheduleSheet';
 import { ClimateCard, HouseCard, HueStatus, Journal, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import './Dashboard.css';
@@ -133,6 +134,7 @@ export function Dashboard() {
 
                 <aside className="home-side">
                     <HouseCard sensors={home.sensors} onAdd={() => setAdding(true)} />
+                    <SkyCard />
                     <Journal log={home.log} />
                 </aside>
             </div>

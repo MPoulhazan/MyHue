@@ -15,7 +15,7 @@ const OUTINGS = (process.env.WEATHER_OUTINGS || '8,17').split(',').map(Number).s
 // --- Position (Home Assistant) et prévision (cache 15 min) ---
 
 let location = null;
-async function getLocation() {
+export async function getLocation() {
     if (location) return location;
     const lat = Number(process.env.WEATHER_LAT);
     const lon = Number(process.env.WEATHER_LON);
@@ -27,7 +27,7 @@ async function getLocation() {
 const HOURLY = [
     'temperature_2m', 'apparent_temperature', 'relative_humidity_2m', 'dew_point_2m',
     'precipitation_probability', 'precipitation', 'snowfall', 'weather_code',
-    'pressure_msl', 'wind_speed_10m', 'wind_gusts_10m', 'wind_direction_10m', 'uv_index', 'cape',
+    'pressure_msl', 'wind_speed_10m', 'wind_gusts_10m', 'wind_direction_10m', 'uv_index', 'cape', 'cloud_cover',
 ];
 const CURRENT = [
     'temperature_2m', 'apparent_temperature', 'relative_humidity_2m', 'dew_point_2m',
@@ -72,6 +72,7 @@ export async function getForecast() {
         windDir: h.wind_direction_10m[i],
         uv: h.uv_index[i] ?? 0,
         cape: h.cape[i] ?? 0,
+        cloud: h.cloud_cover?.[i] ?? null,
     }));
     const q = data.minutely_15;
     const quarters = q

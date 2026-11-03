@@ -153,6 +153,9 @@ button.wx-tile:hover { background: var(--h-surface-2); }
 
 /* Tablette en paysage : la colonne de droite défile si besoin */
 @media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
+    /* Avec le bandeau du ciel, la page défile : la mise en page garde la hauteur de l'écran et le ciel suit dessous */
+    .home:has(.sky-banner) { height: auto; }
+    .home:has(.sky-banner) .wx-layout { flex: none; height: calc(100dvh - 140px); }
     .wx-layout { flex: 1; min-height: 0; }
     .wx-layout > * { max-height: 100%; }
     .wx-side { overflow-y: auto; }

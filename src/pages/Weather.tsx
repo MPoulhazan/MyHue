@@ -3,6 +3,8 @@ import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Icon } from '../components/Icon';
+import { SkyBanner } from '../components/sky/SkyBanner';
+import { useSky } from '../components/sky/sky';
 import './Dashboard.css';
 import './Weather.css';
 
@@ -332,6 +334,7 @@ export function Weather() {
     const [day, setDay] = useState<'today' | 'tomorrow' | null>(null);
     const [moment, setMoment] = useState<'out' | 'back' | null>(null);
     const [sheet, setSheet] = useState(false);
+    const sky = useSky();
 
     useEffect(() => {
         const load = () => axios.get('/api/weather/details')
@@ -473,6 +476,8 @@ export function Weather() {
                     </aside>
                 </div>
             )}
+
+            {sky && <SkyBanner sky={sky} />}
 
             <AnimatePresence>
                 {sheet && b && <BarometerSheet key="baro" b={b} storm={storm} updatedAt={data?.updatedAt ?? 0} onClose={() => setSheet(false)} />}

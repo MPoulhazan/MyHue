@@ -1,0 +1,118 @@
+/* Ciel de la nuit : bandeau de l'écran Météo et carte de la home */
+
+.moon-canvas { display: block; flex: none; border-radius: 999px; }
+
+.sky-pill { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px; background: var(--h-surface-2); color: var(--h-text); white-space: nowrap; }
+.sky-pill.q-good { background: #2f3a1a; color: var(--h-accent); }
+.sky-pill.q-fair { background: #3a2f18; color: var(--h-light-text); }
+.sky-pill.q-bad { background: var(--h-surface-2); color: var(--h-muted); }
+.sky-pill.aurora { background: #173a30; color: #8ff5cd; }
+.sky-pill.dots { font-weight: 600; }
+.sky-pill.dots > span { display: inline-flex; gap: 3px; }
+.sky-pill.dots i { width: 6px; height: 6px; border-radius: 999px; background: var(--h-line-2); }
+.sky-pill.dots i.on { background: var(--h-accent); }
+
+/* ── Bandeau ── */
+.sky-banner { position: relative; overflow: hidden; border-radius: 28px; background: #15181c; padding: 32px; display: grid; grid-template-columns: 250px minmax(0, 1fr) 300px; gap: 36px; scroll-margin-top: 16px; }
+.sky-banner.aurora { box-shadow: 0 0 0 1px #24493d; }
+.sky-stars { position: absolute; inset: 0; pointer-events: none; }
+.sky-stars i { position: absolute; border-radius: 999px; background: #ededE6; }
+.sky-col { position: relative; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.sky-head { font-size: 15px; font-weight: 600; color: var(--h-muted); }
+.sky-aurora-line { position: relative; grid-column: 1 / -1; margin: 0; padding: 14px 18px; border-radius: 18px; background: #173a30; color: #c9ffe9; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 15px; }
+.sky-aurora-line strong { color: #8ff5cd; }
+
+.sky-moon .moon-canvas { margin: -4px 0 -2px -6px; box-shadow: -18px 0 60px -10px rgba(239, 230, 207, 0.16); }
+.sky-moon-text { display: flex; flex-direction: column; gap: 4px; }
+.sky-moon-text strong { font-size: 22px; font-weight: 800; }
+.sky-moon-text .muted, .sky-moon p { font-size: 14px; line-height: 1.45; margin: 0; }
+.sky-fullname { color: var(--h-light-text); }
+
+.sky-night-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sky-track { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.sky-grid { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 6px; }
+.sky-clouds { height: 150px; align-items: end; }
+.sky-hour { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; padding-top: 6px; border-radius: 10px; }
+.sky-hour.best { background: rgba(200, 245, 96, 0.07); box-shadow: inset 0 0 0 1px rgba(200, 245, 96, 0.35); }
+.sky-cloud-val { font-size: 11px; color: var(--h-muted); }
+.sky-cloud-bar { display: block; width: 70%; max-height: 105px; min-height: 2px; border-radius: 6px 6px 2px 2px; background: #4a5160; }
+.sky-hour.best .sky-cloud-bar { background: #6b7a4a; }
+.sky-band { display: block; height: 14px; border-radius: 4px; }
+.sky-band.s-day { background: #4a3a1c; }
+.sky-band.s-twilight { background: #2c3a5c; }
+.sky-band.s-night { background: #07090c; box-shadow: inset 0 0 0 1px #2a2d33; }
+.sky-moonline { margin-top: -2px; }
+.sky-moonline span { display: block; height: 4px; border-radius: 3px; }
+.sky-moonline span.up { background: #efe6cf; }
+.sky-labels span { text-align: center; font-size: 12px; color: var(--h-muted); }
+.sky-legend { display: flex; gap: 8px 20px; flex-wrap: wrap; font-size: 12px; color: var(--h-muted); }
+.sky-legend > span { display: inline-flex; gap: 8px; align-items: center; }
+.sky-legend i { width: 14px; height: 8px; border-radius: 3px; }
+.sky-legend .k-cloud { background: #4a5160; }
+.sky-legend .k-twilight { background: #2c3a5c; }
+.sky-legend .k-night { background: #07090c; box-shadow: inset 0 0 0 1px var(--h-line-2); }
+.sky-legend .k-moon { height: 4px; background: #efe6cf; }
+.sky-legend .sky-sun { margin-left: auto; }
+.sky-planets { margin: 0; display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.45; }
+.sky-planets svg { flex: none; margin-top: 2px; color: var(--h-muted); }
+
+.sky-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.sky-events li { display: flex; gap: 14px; align-items: center; padding: 12px; border-radius: 18px; background: #1f2327; }
+.sky-date { width: 48px; height: 52px; flex: none; border-radius: 14px; background: #2a2e33; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+.sky-date b { font-size: 20px; font-weight: 800; }
+.sky-date span { font-size: 11px; font-weight: 700; color: var(--h-muted); margin-top: 3px; }
+.sky-event-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sky-event-text strong { font-size: 15px; }
+.sky-tag { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--h-surface-2); color: var(--h-muted); }
+.sky-tag.t-excellent, .sky-tag.t-good { background: #2f3a1a; color: var(--h-accent); }
+.sky-tag.t-fair { background: #3a2f18; color: var(--h-light-text); }
+.sky-tag.t-moon { background: #3a2f18; color: var(--h-light-text); }
+
+.sky-kp { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.sky-kp-head { display: flex; justify-content: space-between; font-size: 13px; }
+.sky-kp-bars { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; align-items: end; height: 40px; }
+.sky-kp-bars span { display: block; border-radius: 3px; background: var(--h-line-2); }
+.sky-kp-bars span.mid { background: #2f8f71; }
+.sky-kp-bars span.hi { background: #7cf2c4; }
+.sky-kp-days { display: grid; font-size: 11px; color: var(--h-muted); }
+
+/* ── Carte de la home ── */
+.sky-card.aurora { box-shadow: 0 0 0 1px #24493d; }
+.sky-card-moon { display: flex; gap: 16px; align-items: center; }
+.sky-card-moon > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 14px; }
+.sky-card-moon strong { font-size: 18px; font-weight: 700; }
+.sky-highlight { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 18px; background: var(--h-surface-2); }
+.sky-highlight strong { font-size: 15px; }
+.sky-highlight span { font-size: 13px; color: var(--h-muted); line-height: 1.4; }
+.sky-highlight.k-aurora { background: #173a30; }
+.sky-highlight.k-aurora strong { color: #8ff5cd; }
+.sky-highlight.k-aurora span { color: #c9ffe9; }
+.sky-more { margin: -4px -10px -10px; text-decoration: none; }
+
+@media (max-width: 1180px) {
+    .sky-banner { grid-template-columns: 220px minmax(0, 1fr); }
+    .sky-ahead { grid-column: 1 / -1; }
+    .sky-events { flex-direction: row; flex-wrap: wrap; }
+    .sky-events li { flex: 1 1 220px; }
+}
+
+@media (max-width: 760px) {
+    .sky-banner { grid-template-columns: minmax(0, 1fr); padding: 20px; gap: 24px; border-radius: 24px; }
+    .sky-moon { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+    .sky-moon .sky-head, .sky-moon p { flex-basis: 100%; }
+    .sky-moon .moon-canvas { width: 110px !important; height: 110px !important; margin: 0; }
+    .sky-moon-text { flex: 1; min-width: 0; }
+    .sky-grid { gap: 3px; }
+    .sky-cloud-val { display: none; }
+    .sky-clouds { height: 110px; }
+    .sky-cloud-bar { max-height: 96px; }
+    .sky-labels span { font-size: 10px; }
+    .sky-legend .sky-sun { margin-left: 0; }
+}
+
+/* Tablette en paysage : la colonne de droite défile plutôt que d'écraser le journal */
+@media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
+    .home-side:has(.sky-card) { overflow-y: auto; }
+    .home-side:has(.sky-card) .journal { min-height: 240px; }
+    .home-side .sky-card { flex: none; }
+}
