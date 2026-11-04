@@ -10,6 +10,7 @@ import * as journal from './journal.js';
 import * as presence from './presence.js';
 import * as thermostat from './thermostat.js';
 import * as circadian from './circadian.js';
+import * as cooper from './cooper.js';
 import { getSensors, getOutdoorWeather } from './sensors.js';
 
 const TZ = process.env.TZ || 'America/Toronto';
@@ -40,6 +41,8 @@ export const getHomeState = async () => {
         thermostat: (({ enabled, target, why, status }) => ({ enabled, target, why, status: status.text }))(thermostat.getStatus()),
         outdoor,
         people: presence.getPeople(),
+        // Repas du chien (boîte de croquettes) : status done/upcoming/soon/due/late/missed
+        cooper: (({ enabled, meals, line }) => ({ enabled, meals, summary: line }))(cooper.getView()),
         recentEvents: recentEvents(),
     };
 };

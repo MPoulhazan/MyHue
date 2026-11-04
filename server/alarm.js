@@ -81,3 +81,4 @@ export const clear = async (did) => {
 };
 
 export const isActive = (did) => active.has(did);
+export const anyActive = () => active.size > 0;

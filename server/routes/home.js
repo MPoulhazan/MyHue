@@ -21,6 +21,7 @@ import * as flexd from '../flexd.js';
 import * as briefing from '../briefing.js';
 import * as lightSignals from '../lightSignals.js';
 import * as circadian from '../circadian.js';
+import * as cooper from '../cooper.js';
 import * as health from '../health.js';
 
 export const router = express.Router();
@@ -106,6 +107,39 @@ router.put('/api/signals', (req, res) => {
 router.post('/api/signals/test', async (req, res) => {
     try {
         res.json(await lightSignals.test(req.body?.kind));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Repas de Cooper ---
+
+router.get('/api/cooper', (_req, res) => res.json(cooper.getView()));
+
+router.get('/api/cooper/settings', (_req, res) => res.json(cooper.getSettings()));
+
+router.put('/api/cooper/settings', (req, res) => {
+    try {
+        res.json(cooper.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.get('/api/cooper/history', (_req, res) => res.json(cooper.getHistory()));
+
+router.post('/api/cooper/fed', async (req, res) => {
+    try {
+        res.json(await cooper.markFed(req.body?.meal || null, 'écran'));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.post('/api/cooper/test', async (req, res) => {
+    try {
+        await cooper.test(req.body?.kind);
+        res.json({ ok: true });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

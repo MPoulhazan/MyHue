@@ -1,0 +1,34 @@
+/* Carte « Cooper parle » de l'accueil (maquette C) */
+
+.cooper-card { --cooper-ok: #2f3a1a; --cooper-alert: #ff5a4e; --cooper-alert-bg: #3a1a17; --cooper-alert-text: #ffc2bc; }
+
+.cooper-pill { font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+.cooper-pill.late { background: var(--cooper-alert-bg); color: var(--cooper-alert-text); }
+.cooper-pill.double { background: var(--h-light-dim); color: var(--h-light-text); }
+.cooper-pill.off { background: var(--h-surface-2); color: var(--h-muted); }
+
+.cooper-body { display: flex; gap: 14px; align-items: flex-end; }
+.cooper-photo { width: 64px; height: 64px; flex: none; border-radius: 999px; object-fit: cover; object-position: 50% 40%; }
+.cooper-photo.late { animation: cooper-blink 4s ease-in-out infinite; }
+
+.cooper-bubble { margin: 0; min-width: 0; padding: 14px 16px; border-radius: 20px 20px 20px 6px; background: var(--h-surface-2); font-size: 16px; font-weight: 600; line-height: 1.4; }
+.mood-fed .cooper-bubble { background: var(--cooper-ok); color: #e3f7b5; }
+.mood-late .cooper-bubble { background: var(--cooper-alert-bg); color: var(--cooper-alert-text); }
+.mood-double .cooper-bubble { background: var(--h-light-dim); color: var(--h-light-text); }
+
+.cooper-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--h-muted); font-variant-numeric: tabular-nums; }
+.cooper-meals { display: inline-flex; gap: 6px; }
+.cooper-meal { padding: 5px 10px; border-radius: 999px; background: var(--h-surface-2); font-weight: 700; }
+.cooper-meal.s-done { background: var(--cooper-ok); color: var(--h-accent); }
+.cooper-meal.s-late, .cooper-meal.s-missed { background: var(--cooper-alert-bg); color: var(--cooper-alert-text); }
+.cooper-done { min-height: 48px; padding: 0 20px; border: none; border-radius: 999px; background: var(--h-accent); color: var(--h-on-accent); font-size: 15px; font-weight: 700; cursor: pointer; }
+.cooper-done:disabled { opacity: 0.6; cursor: default; }
+
+/* Rouge ↔ blanc, comme la lampe du bar */
+@keyframes cooper-blink {
+    0%, 100% { box-shadow: 0 0 0 4px var(--cooper-alert), 0 0 28px 4px rgba(255, 90, 78, 0.45); }
+    50% { box-shadow: 0 0 0 4px #fff, 0 0 28px 4px rgba(255, 255, 255, 0.35); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .cooper-photo.late { animation: none; box-shadow: 0 0 0 4px var(--cooper-alert); }
+}

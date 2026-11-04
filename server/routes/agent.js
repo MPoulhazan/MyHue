@@ -14,6 +14,7 @@ import { hueBaseUrl, getHueContext, getHueScenes } from '../hue.js';
 import * as journal from '../journal.js';
 import { getSensors, getOutdoorWeather } from '../sensors.js';
 import { getSky, isSkyQuestion, skySpeech } from '../astro.js';
+import * as cooper from '../cooper.js';
 import { getHomeState, recentEvents } from '../homeState.js';
 import { executeActions } from '../actions.js';
 import { groqClient, GROQ_API_KEY, GROQ_MODEL } from '../llm.js';
@@ -75,6 +76,12 @@ router.post('/api/agent', async (req, res) => {
             if (sky) {
                 return res.json({ message: skySpeech(sky), actions: [], actionResults: [], tier: 'local', intent: 'sky' });
             }
+        }
+
+        // Niveau 0 : « Est-ce que Cooper a mangé ? », d'après la boîte de croquettes
+        if (cooper.isCooperQuestion(message)) {
+            const speech = cooper.cooperSpeech(cooper.getView());
+            return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'cooper' });
         }
 
         const context = await getHueContext();
