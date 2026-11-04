@@ -3,6 +3,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Icon } from '../Icon';
 import { useHomeData } from '../../hooks/useHome';
+import { RoomPicker } from './RoomPicker';
 
 interface Device {
     ieeeAddr: string;
@@ -229,15 +230,7 @@ export function AddSensorSheet({ rooms, onClose }: { rooms: string[]; onClose: (
                                 ))}
                             </div>
                         </fieldset>
-                        <fieldset className="field">
-                            <legend>Pièce</legend>
-                            <div className="chips">
-                                {rooms.map((r) => (
-                                    <button key={r} type="button" className={room === r ? 'active' : ''} aria-pressed={room === r}
-                                        onClick={() => setRoom(room === r ? null : r)}>{r}</button>
-                                ))}
-                            </div>
-                        </fieldset>
+                        <RoomPicker rooms={rooms} value={room} onChange={setRoom} />
                         {type === 'door' && (
                             <label className="check">
                                 <input type="checkbox" checked={outside} onChange={(e) => setOutside(e.target.checked)} />

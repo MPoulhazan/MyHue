@@ -59,7 +59,7 @@ export const upsert = ({ ieee, name, type, room, outside }) => {
         name,
         type,
         icon: ICON_MAP[type] || '📡',
-        room: room ?? previous.room ?? null,
+        room: room !== undefined ? room : previous.room ?? null, // null = retiré de sa pièce
         outside: outside ?? previous.outside ?? false,
     };
     if (idx >= 0) {

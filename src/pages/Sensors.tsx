@@ -6,6 +6,7 @@ import type { Sensor } from '../hooks/useHome';
 import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { AddSensorSheet } from '../components/home/AddSensorSheet';
+import { RoomPicker } from '../components/home/RoomPicker';
 import { fmt, hhmm } from '../components/home/cards';
 import './Dashboard.css';
 import './Settings.css';
@@ -172,15 +173,7 @@ function SensorSheet({ sensor, rooms, onClose }: { sensor: Sensor; rooms: string
                     <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60}
                         onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) save(); }} />
                 </label>
-                <fieldset className="field">
-                    <legend>Pièce</legend>
-                    <div className="chips">
-                        {rooms.map((r) => (
-                            <button key={r} type="button" className={room === r ? 'active' : ''} aria-pressed={room === r}
-                                onClick={() => setRoom(room === r ? null : r)}>{r}</button>
-                        ))}
-                    </div>
-                </fieldset>
+                <RoomPicker rooms={rooms} value={room} onChange={setRoom} />
                 <fieldset className="field">
                     <legend>Type</legend>
                     <div className="chips">

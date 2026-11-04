@@ -7,6 +7,7 @@ import { useIsPhone } from '../hooks/useIsPhone';
 import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { AddSensorSheet } from '../components/home/AddSensorSheet';
+import { OUTSIDE_ROOM } from '../components/home/RoomPicker';
 import { NightMode } from '../components/home/NightMode';
 import { PhoneHome } from '../components/phone/PhoneHome';
 import { SkyCard } from '../components/sky/SkyCard';
@@ -49,7 +50,8 @@ export function Dashboard() {
             map.get(l.room)!.push(l);
         }
         // Pièces sans lampe mais avec un capteur (ex. une chambre)
-        for (const s of home.sensors) if (s.room && !map.has(s.room)) map.set(s.room, []);
+        // « Extérieur » n'est pas une pièce : ces capteurs-là vivent dans la carte Maison
+        for (const s of home.sensors) if (s.room && s.room !== OUTSIDE_ROOM && !map.has(s.room)) map.set(s.room, []);
         return [...map.entries()];
     }, [home.rooms, home.lights, home.sensors]);
 
