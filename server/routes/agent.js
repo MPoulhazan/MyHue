@@ -15,6 +15,7 @@ import * as journal from '../journal.js';
 import { getSensors, getOutdoorWeather } from '../sensors.js';
 import { getSky, isSkyQuestion, skySpeech } from '../astro.js';
 import * as cooper from '../cooper.js';
+import * as mailbox from '../mailbox.js';
 import { getHomeState, recentEvents } from '../homeState.js';
 import { executeActions } from '../actions.js';
 import { groqClient, GROQ_API_KEY, GROQ_MODEL } from '../llm.js';
@@ -82,6 +83,12 @@ router.post('/api/agent', async (req, res) => {
         if (cooper.isCooperQuestion(message)) {
             const speech = cooper.cooperSpeech(cooper.getView());
             return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'cooper' });
+        }
+
+        // Niveau 0 : « Est-ce que le facteur est passé ? », d'après la boîte aux lettres
+        if (mailbox.isMailQuestion(message) && /?|est-ce|passé|arrivé|du courrier|y a/i.test(message)) {
+            const speech = mailbox.mailSpeech(mailbox.getView());
+            return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'mailbox' });
         }
 
         const context = await getHueContext();

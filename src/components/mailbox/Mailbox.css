@@ -1,0 +1,39 @@
+/* Carte « Okayyy ! Le courrier » de l'accueil, dans la veine de la carte Cooper */
+
+.mail-card { --mail-yellow: #ffcc1a; --mail-yellow-bg: #3a3112; --mail-yellow-text: #ffe58a; --mail-blue: #2f5bd8; --mail-ok: #2f3a1a; --mail-alert-bg: #3a1a17; --mail-alert-text: #ffc2bc; }
+
+.mail-pill { font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+.mail-pill.mail { background: var(--mail-yellow-bg); color: var(--mail-yellow-text); }
+.mail-pill.night { background: var(--mail-alert-bg); color: var(--mail-alert-text); }
+.mail-pill.off { background: var(--h-surface-2); color: var(--h-muted); }
+
+.mail-body { display: flex; gap: 14px; align-items: flex-end; }
+/* Le visiteur et sa main sur la portière jaune, recadrés dans l'image du film (804 × 492) */
+.mail-photo {
+    width: 64px; height: 64px; flex: none; border-radius: 999px;
+    background: url('/facteur.png') no-repeat; background-size: 132px auto; background-position: -50px -16px;
+    box-shadow: 0 0 0 3px var(--mail-blue);
+}
+.mail-photo.ring { animation: mail-ring 4s ease-in-out infinite; }
+
+.mail-bubble { margin: 0; min-width: 0; padding: 14px 16px; border-radius: 20px 20px 20px 6px; background: var(--h-surface-2); font-size: 16px; font-weight: 600; line-height: 1.4; }
+.mood-mail .mail-bubble { background: var(--mail-yellow-bg); color: var(--mail-yellow-text); }
+.mood-done .mail-bubble { background: var(--mail-ok); color: #e3f7b5; }
+.mood-night .mail-bubble { background: var(--mail-alert-bg); color: var(--mail-alert-text); }
+
+.mail-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--h-muted); font-variant-numeric: tabular-nums; }
+.mail-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.mail-chip { padding: 5px 10px; border-radius: 999px; background: var(--h-surface-2); font-weight: 700; }
+.mail-chip.s-mail { background: var(--mail-yellow-bg); color: var(--mail-yellow); }
+.mail-chip.s-done { background: var(--mail-ok); color: var(--h-accent); }
+.mail-btn { min-height: 48px; padding: 0 20px; border: none; border-radius: 999px; background: var(--mail-yellow); color: #1d1a0e; font-size: 15px; font-weight: 700; cursor: pointer; }
+.mail-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Jaune ↔ bleu La Poste, comme le bar qui reste jaune tant que le courrier attend */
+@keyframes mail-ring {
+    0%, 100% { box-shadow: 0 0 0 4px var(--mail-yellow), 0 0 24px 4px rgba(255, 204, 26, 0.45); }
+    50% { box-shadow: 0 0 0 4px var(--mail-blue), 0 0 24px 4px rgba(47, 91, 216, 0.35); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mail-photo.ring { animation: none; box-shadow: 0 0 0 4px var(--mail-yellow); }
+}

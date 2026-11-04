@@ -22,6 +22,7 @@ import * as briefing from '../briefing.js';
 import * as lightSignals from '../lightSignals.js';
 import * as circadian from '../circadian.js';
 import * as cooper from '../cooper.js';
+import * as mailbox from '../mailbox.js';
 import * as health from '../health.js';
 
 export const router = express.Router();
@@ -139,6 +140,41 @@ router.post('/api/cooper/fed', async (req, res) => {
 router.post('/api/cooper/test', async (req, res) => {
     try {
         await cooper.test(req.body?.kind);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Boîte aux lettres ---
+
+router.get('/api/mailbox', (_req, res) => res.json(mailbox.getView()));
+
+router.get('/api/mailbox/history', (_req, res) => res.json(mailbox.getHistory()));
+
+router.get('/api/mailbox/settings', (_req, res) => res.json(mailbox.getSettings()));
+
+router.put('/api/mailbox/settings', (req, res) => {
+    try {
+        res.json(mailbox.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.post('/api/mailbox/collected', async (_req, res) => {
+    try {
+        res.json(await mailbox.markCollected(Date.now(), 'écran'));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.post('/api/mailbox/night-ok', (_req, res) => res.json(mailbox.dismissNight()));
+
+router.post('/api/mailbox/test', async (_req, res) => {
+    try {
+        await mailbox.test();
         res.json({ ok: true });
     } catch (err) {
         res.status(400).json({ error: err.message });

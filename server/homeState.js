@@ -11,6 +11,7 @@ import * as presence from './presence.js';
 import * as thermostat from './thermostat.js';
 import * as circadian from './circadian.js';
 import * as cooper from './cooper.js';
+import * as mailbox from './mailbox.js';
 import { getSensors, getOutdoorWeather } from './sensors.js';
 
 const TZ = process.env.TZ || 'America/Toronto';
@@ -43,6 +44,8 @@ export const getHomeState = async () => {
         people: presence.getPeople(),
         // Repas du chien (boîte de croquettes) : status done/upcoming/soon/due/late/missed
         cooper: (({ enabled, meals, line }) => ({ enabled, meals, summary: line }))(cooper.getView()),
+        // Boîte aux lettres : waiting = courrier pas encore relevé (since = passage du facteur)
+        mailbox: (({ enabled, sensor, waiting, today, usual, mood }) => ({ enabled, hasSensor: Boolean(sensor), waiting, today, usualMinutes: usual, mood, summary: mailbox.mailSpeech(mailbox.getView()) }))(mailbox.getView()),
         recentEvents: recentEvents(),
     };
 };

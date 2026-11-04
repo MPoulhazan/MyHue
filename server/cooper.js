@@ -301,17 +301,30 @@ const endLamp = async ({ checkManual = false } = {}) => {
     }
 };
 
+// Autre signal sur le bar (boîte aux lettres) : il rend la lampe avant qu'on lise son état
+let lampYield = null;
+export const setLampYield = (fn) => (lampYield = fn);
+let taking = false;
+export const lampBusy = () => taking || Boolean(config.lamp);
+export const pickBarLight = () => pickLight();
+
 const takeLamp = async (mode) => {
     if (config.lamp) {
         config.lamp.mode = mode;
         return config.lamp;
     }
-    const id = await pickLight();
-    if (!id) throw new Error('Lampe du bar introuvable');
-    const { data } = await hueClient.get(`/lights/${id}`);
-    config.lamp = { id, name: data.name, before: data.state, mode, color: Boolean(data.state.xy) };
-    save();
-    return config.lamp;
+    taking = true;
+    try {
+        await lampYield?.().catch(() => {});
+        const id = await pickLight();
+        if (!id) throw new Error('Lampe du bar introuvable');
+        const { data } = await hueClient.get(`/lights/${id}`);
+        config.lamp = { id, name: data.name, before: data.state, mode, color: Boolean(data.state.xy) };
+        save();
+        return config.lamp;
+    } finally {
+        taking = false;
+    }
 };
 
 /** Rouge ↔ blanc, lentement, jusqu'à l'ouverture de la boîte, « C'est fait » ou au plus 1 h. */
