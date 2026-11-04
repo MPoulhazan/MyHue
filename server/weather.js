@@ -47,7 +47,7 @@ export async function getForecast() {
             current: CURRENT.join(','),
             daily: 'sunrise,sunset',
             // Pluie au quart d'heure pour « il va pleuvoir dans 30 min »
-            minutely_15: 'precipitation,precipitation_probability',
+            minutely_15: 'precipitation,precipitation_probability,weather_code',
             forecast_minutely_15: 12,
             timezone: 'auto',
             timeformat: 'unixtime',
@@ -76,7 +76,7 @@ export async function getForecast() {
     }));
     const q = data.minutely_15;
     const quarters = q
-        ? q.time.map((t, i) => ({ ts: t * 1000, precip: q.precipitation[i] ?? 0, prob: q.precipitation_probability?.[i] ?? 0 }))
+        ? q.time.map((t, i) => ({ ts: t * 1000, precip: q.precipitation[i] ?? 0, prob: q.precipitation_probability?.[i] ?? 0, code: q.weather_code?.[i] ?? null }))
         : [];
     const value = {
         offsetSec: data.utc_offset_seconds,
@@ -304,7 +304,7 @@ function buildOutfits(forecast) {
 
 function buildAiring(forecast, sensors) {
     const indoor = sensors.find((s) => !s.outside && s.props.temperature != null && s.props.humidity != null);
-    // Pour aérer : une porte balcon ou une fenêtre plutôt que la porte d'entrée
+    // Pour aérer : une porte de terrasse ou une fenêtre plutôt que la porte d'entrée
     const doors = sensors.filter((s) => s.type === 'door');
     const door = doors.find((s) => /balcon|fen[eê]tre|patio|terrasse/i.test(s.name)) || doors.find((s) => !/entr[ée]e/i.test(s.name)) || null;
     const c = forecast.current;
@@ -348,6 +348,26 @@ export function buildRainSoon(forecast, now = Date.now(), withinMin = 30) {
     if (forecast.quarters?.length) return null;
     const h = forecast.hours.find((x) => x.ts <= now && x.ts + HOUR > now);
     return h && (h.precip >= 0.2 || h.rainProb >= 70) ? { at: now, mm: round1(h.precip), prob: h.rainProb } : null;
+}
+
+// --- Grosse averse ou orage imminent ---
+
+// Averse forte : ≥ 1,5 mm en 15 min (≈ 6 mm/h) ; codes WMO 82 (averses violentes), 95-99 (orage)
+const DOWNPOUR_MM = 1.5;
+const isThunder = (code) => code >= 95;
+const isDownpour = (x) => isThunder(x.code) || x.code === 82;
+
+/**
+ * Grosse averse ou orage dans les `withinMin` minutes : { at, kind: 'storm'|'downpour', mm } ou null.
+ * La petite pluie ne compte pas : c'est pour rentrer le chien et les coussins, pas pour trois gouttes.
+ */
+export function buildDownpourSoon(forecast, now = Date.now(), withinMin = 45) {
+    const limit = now + withinMin * 60_000;
+    const q = (forecast.quarters || []).find((x) => x.ts + 15 * 60_000 > now && x.ts <= limit && (isDownpour(x) || x.precip >= DOWNPOUR_MM));
+    if (q) return { at: Math.max(q.ts, now), kind: isThunder(q.code) ? 'storm' : 'downpour', mm: round1(q.precip) };
+    // Les quarts d'heure ne couvrent que 3 h et ratent parfois l'orage : l'heure qui vient en renfort
+    const h = forecast.hours.find((x) => x.ts + HOUR > now && x.ts <= limit && (isDownpour(x) || x.precip >= 4 * DOWNPOUR_MM));
+    return h ? { at: Math.max(h.ts, now), kind: isThunder(h.code) ? 'storm' : 'downpour', mm: round1(h.precip) } : null;
 }
 
 function buildSun(forecast) {

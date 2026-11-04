@@ -69,7 +69,7 @@ export const summarize = (a) => {
     else what = `${who} : ${PROP_LABELS[t.prop] || t.prop} ${OP_LABELS[t.operator] || t.operator} ${t.value}`;
     if (t.forMinutes) what += ` depuis ${t.forMinutes} min`;
     const when = (a.conditions || [])
-        .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : c.type === 'draught' ? `la pièce perd ${c.drop}° ou ${c.orMinutes} min sous ${c.below}° dehors` : ''))
+        .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : c.type === 'cold_or_heating' ? `moins de ${c.below}° dehors ou clim allumée` : c.type === 'downpour' ? `grosse averse ou orage dans les ${c.withinMinutes} min` : c.type === 'draught' ? `la pièce perd ${c.drop}° ou ${c.orMinutes} min sous ${c.below}° dehors` : ''))
         .filter(Boolean);
     const does = a.actions
         .map((x) => ({ notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison', alarm: 'alarme lampes + enceintes', moment: `moment ${x.id}` })[x.type])
@@ -81,6 +81,8 @@ export const summarize = (a) => {
 
 // Courant d'air : la pièce perd 1° depuis l'ouverture, ou 30 min ouverte sous 5° dehors.
 // Mieux vaut couper à tort que chauffer les oiseaux toute une nuit.
+// « Porte oubliée » se tait au-dessus de cette température extérieure (sauf clim allumée)
+const COLD_BELOW = 12;
 const DRAUGHT_CONDITIONS = [{ type: 'heating', power: true }, { type: 'draught', drop: 1, orMinutes: 30, below: 5 }];
 
 export const TEMPLATES = {
@@ -102,14 +104,29 @@ export const TEMPLATES = {
     },
     door_left_open: {
         label: 'Porte oubliée',
-        description: 'Prévient quand une porte reste ouverte trop longtemps, puis toutes les 30 min.',
+        description: 'Prévient quand une porte reste ouverte 10 min alors qu’il fait moins de 12° dehors ou que la clim tourne, puis toutes les 30 min. Par beau temps, porte ouverte = silence.',
         sensorType: 'door',
-        build: ({ did = '*', minutes = 10 }) => ({
+        build: ({ did = '*', minutes = 10, below = COLD_BELOW }) => ({
             name: `${did === '*' ? 'Porte' : sensorRegistry.find(did)?.name || 'Porte'} oubliée`,
             trigger: { type: 'sensor', did, sensorType: 'door', prop: 'isOpen', operator: 'is_true', forMinutes: minutes },
-            conditions: [],
-            actions: [{ type: 'notify', message: '{sensor} est ouverte depuis {elapsed} min.', buttons: ['heating_off', 'snooze_1h'] }],
+            // Ouverte par beau temps, c'est voulu (le chien prend l'air) : on ne dit rien
+            conditions: [{ type: 'cold_or_heating', below }],
+            actions: [{ type: 'notify', message: '{sensor} est ouverte depuis {elapsed} min {why}.', buttons: ['door_wanted', 'heating_off'] }],
             repeatMinutes: 30,
+            cooldownMinutes: 0,
+        }),
+    },
+    door_downpour: {
+        label: 'Porte ouverte, orage en vue',
+        description: 'Porte ouverte et grosse averse ou orage dans les 45 min : un message pour fermer (la petite pluie ne compte pas).',
+        sensorType: 'door',
+        build: ({ did = '*', withinMinutes = 45 } = {}) => ({
+            name: `${did === '*' ? 'Porte' : sensorRegistry.find(did)?.name || 'Porte'} : orage en vue`,
+            trigger: { type: 'sensor', did, sensorType: 'door', prop: 'isOpen', operator: 'is_true', forMinutes: 0 },
+            conditions: [{ type: 'downpour', withinMinutes }],
+            actions: [{ type: 'notify', message: '{why}, et {sensor} est ouverte.', buttons: ['door_wanted'] }],
+            // Un autre orage plus tard, porte toujours ouverte : on prévient de nouveau
+            repeatMinutes: 120,
             cooldownMinutes: 0,
         }),
     },
@@ -272,6 +289,7 @@ const migrate = () => {
     for (const s of outside) {
         automations.push(normalize({ ...TEMPLATES.window_pause_heating.build({ did: s.ieee }), template: 'window_pause_heating' }));
         automations.push(normalize({ ...TEMPLATES.door_left_open.build({ did: s.ieee }), template: 'door_left_open' }));
+        automations.push(normalize({ ...TEMPLATES.door_downpour.build({ did: s.ieee }), template: 'door_downpour' }));
     }
     automations.push(normalize({ ...TEMPLATES.door_night.build({}), template: 'door_night', enabled: false }));
     automations.push(normalize({ ...TEMPLATES.low_battery.build(), template: 'low_battery' }));
@@ -310,6 +328,19 @@ const ensureSafety = () => {
         if (a.template !== 'water_leak' || a.actions.some((x) => x.type === 'alarm')) continue;
         const fresh = TEMPLATES.water_leak.build({ did: a.trigger.did });
         Object.assign(a, { actions: fresh.actions, onRelease: fresh.onRelease });
+        upgraded = true;
+    }
+    // L'ancienne « Porte oubliée » prévenait toute la journée par beau temps : silence s'il fait doux
+    for (const a of automations) {
+        if (a.template !== 'door_left_open' || a.conditions.some((c) => c.type === 'cold_or_heating')) continue;
+        const fresh = TEMPLATES.door_left_open.build({ did: a.trigger.did, minutes: a.trigger.forMinutes });
+        Object.assign(a, { conditions: fresh.conditions, actions: fresh.actions });
+        upgraded = true;
+    }
+    // Chaque porte surveillée prévient aussi d'un orage qui arrive pendant qu'elle est ouverte
+    for (const a of automations.filter((x) => x.template === 'door_left_open' && x.trigger.did !== '*')) {
+        if (automations.some((x) => x.template === 'door_downpour' && x.trigger.did === a.trigger.did)) continue;
+        automations.push(normalize({ ...TEMPLATES.door_downpour.build({ did: a.trigger.did }), template: 'door_downpour' }));
         upgraded = true;
     }
     for (const id of ['water_leak', 'leak_sensor_silent']) {
@@ -366,6 +397,19 @@ export const toggle = (id) => {
     a.enabled = !a.enabled;
     save();
     return { ...a, summary: summarize(a) };
+};
+
+/** Capteur renommé : les automatismes qui le visent prennent le nouveau nom (« Porte balcon oubliée » → « Porte terrasse oubliée »). */
+export const renameSensor = (did, from, to) => {
+    if (!from || !to || from === to) return 0;
+    let n = 0;
+    for (const a of automations) {
+        if (a.trigger.did !== did || !a.name.includes(from)) continue;
+        a.name = a.name.replace(from, to);
+        n++;
+    }
+    if (n) save();
+    return n;
 };
 
 export const snooze = (id, minutes) => {
@@ -445,9 +489,40 @@ const isDraught = async (c, ctx) => {
     return true;
 };
 
+/** Froid dehors ou clim qui tourne : une porte ouverte coûte quelque chose. */
+const isColdOrHeating = async (c, ctx) => {
+    if (broadlinkService.getState().power) {
+        ctx.why = 'et la clim tourne';
+        return true;
+    }
+    const outside = await outsideTemp();
+    if (outside == null || outside >= c.below) return false;
+    ctx.why = `et il fait ${fmt1(outside)}° dehors`;
+    return true;
+};
+
+/** Grosse averse ou orage imminent (Open-Meteo au quart d'heure). */
+const isDownpourSoon = async (c, ctx) => {
+    try {
+        const { getForecast, buildDownpourSoon } = await import('./weather.js');
+        const d = buildDownpourSoon(await getForecast(), Date.now(), c.withinMinutes);
+        if (!d) return false;
+        const inMin = Math.round((d.at - Date.now()) / 60_000);
+        const what = d.kind === 'storm' ? '⛈️ Orage' : '🌧️ Grosse averse';
+        ctx.why = inMin <= 5 ? `${what} en ce moment` : `${what} dans ${inMin} min`;
+        return true;
+    } catch {
+        return false; // météo injoignable : pas d'alerte au hasard
+    }
+};
+
 /** @param {{ since?: number, elapsed?: number, why?: string }} [ctx] ouverture en cours (déclencheur capteur) */
 const conditionsMet = async (a, ctx = {}) => {
     if (a.conditions.some((c) => c.type === 'dark') && !(await isDark())) return false;
+    const cold = a.conditions.find((c) => c.type === 'cold_or_heating');
+    if (cold && !(await isColdOrHeating(cold, ctx))) return false;
+    const downpour = a.conditions.find((c) => c.type === 'downpour');
+    if (downpour && !(await isDownpourSoon(downpour, ctx))) return false;
     const draught = a.conditions.find((c) => c.type === 'draught');
     if (draught && !(await isDraught(draught, ctx))) return false;
     return a.conditions.every((c) => {
@@ -507,6 +582,15 @@ const BUTTONS = {
     leak_false: (a, vars) => ({
         label: '🙅 Fausse alerte',
         run: async () => acknowledge(a, vars, 'fausse alerte'),
+    }),
+    door_wanted: (a, vars) => ({
+        label: '🐕 C’est voulu',
+        run: async () => {
+            const rt = runtime.get(`${a.id}|${vars.did}`);
+            if (rt) rt.acked = true;
+            journal.log({ kind: 'automation', title: `${vars.sensor} laissée ouverte exprès`, data: { automationId: a.id, did: vars.did } });
+            return `OK, plus de rappel tant que ${vars.sensor} reste ouverte.`;
+        },
     }),
     snooze_1h: (a) => ({
         label: '🔕 Ignorer 1 h',

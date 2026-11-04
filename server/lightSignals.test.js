@@ -29,10 +29,10 @@ test('inLeaveWindow : de 1 h 30 avant à 1 h après la sortie de 8 h', () => {
     assert.equal(inLeaveWindow(18 * 60, 8), false);
 });
 
-test('isEntrance : la porte d’entrée, pas la porte balcon', () => {
+test('isEntrance : la porte d’entrée, pas la porte terrasse', () => {
     assert.equal(isEntrance('Porte d\'entrée'), true);
     assert.equal(isEntrance('Porte entree'), true);
-    assert.equal(isEntrance('Porte balcon'), false);
+    assert.equal(isEntrance('Porte terrasse'), false);
 });
 
 test('buildRainSoon : premier quart d’heure pluvieux dans les 30 min', () => {

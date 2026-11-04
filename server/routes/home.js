@@ -246,7 +246,9 @@ router.post('/api/sensors/registry', (req, res) => {
     if (!ieee || !name || !type) {
         return res.status(400).json({ error: '"ieee", "name" et "type" sont requis' });
     }
+    const previousName = sensorRegistry.find(ieee)?.name;
     const entry = sensorRegistry.upsert({ ieee, name, type, room, outside });
+    automations.renameSensor(ieee, previousName, name);
     // Automatismes choisis dans l'assistant d'ajout
     const created = [];
     for (const template of Array.isArray(templates) ? templates : []) {

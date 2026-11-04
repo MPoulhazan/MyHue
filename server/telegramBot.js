@@ -138,7 +138,7 @@ bot.onText(/\/rules/, async (msg) => {
         const rules = response.data;
 
         if (rules.length === 0) {
-            bot.sendMessage(chatId, '📋 Aucun automatisme.\n\nDis-moi par exemple : "Préviens-moi si la porte du balcon reste ouverte 10 minutes"');
+            bot.sendMessage(chatId, '📋 Aucun automatisme.\n\nDis-moi par exemple : "Préviens-moi si la porte de la terrasse reste ouverte 10 minutes"');
             return;
         }
 
