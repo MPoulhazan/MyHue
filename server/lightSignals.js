@@ -67,7 +67,8 @@ const localMinutes = (ts) => {
 export const inLeaveWindow = (minutes, outHour, before = DEFAULTS.windowBeforeMin, after = DEFAULTS.windowAfterMin) =>
     minutes >= outHour * 60 - before && minutes <= outHour * 60 + after;
 
-export const isEntrance = (name) => /entr[ée]e|front|principale/i.test(name || '');
+import { isEntrance } from './sensorRegistry.js';
+export { isEntrance };
 
 // --- Hue ---
 

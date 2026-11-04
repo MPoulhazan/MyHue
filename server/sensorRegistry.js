@@ -81,5 +81,8 @@ export const remove = (ieee) => {
     return true;
 };
 
+/** Porte d'entrée (donne sur le palier) plutôt qu'une ouverture vers dehors. */
+export const isEntrance = (name) => /entr[ée]e|front|principale/i.test(name || '');
+
 /** Cherche une entrée par IEEE. */
 export const find = (ieee) => load().find((e) => e.ieee === ieee) || null;

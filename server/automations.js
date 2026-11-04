@@ -83,6 +83,7 @@ export const summarize = (a) => {
 // Mieux vaut couper à tort que chauffer les oiseaux toute une nuit.
 // « Porte oubliée » se tait au-dessus de cette température extérieure (sauf clim allumée)
 const COLD_BELOW = 12;
+const isEntranceDoor = (did) => did !== '*' && sensorRegistry.isEntrance(sensorRegistry.find(did)?.name);
 const DRAUGHT_CONDITIONS = [{ type: 'heating', power: true }, { type: 'draught', drop: 1, orMinutes: 30, below: 5 }];
 
 export const TEMPLATES = {
@@ -109,9 +110,10 @@ export const TEMPLATES = {
         build: ({ did = '*', minutes = 10, below = COLD_BELOW }) => ({
             name: `${did === '*' ? 'Porte' : sensorRegistry.find(did)?.name || 'Porte'} oubliée`,
             trigger: { type: 'sensor', did, sensorType: 'door', prop: 'isOpen', operator: 'is_true', forMinutes: minutes },
-            // Ouverte par beau temps, c'est voulu (le chien prend l'air) : on ne dit rien
-            conditions: [{ type: 'cold_or_heating', below }],
-            actions: [{ type: 'notify', message: '{sensor} est ouverte depuis {elapsed} min {why}.', buttons: ['door_wanted', 'heating_off'] }],
+            // Terrasse ouverte par beau temps, c'est voulu (le chien prend l'air) : on ne dit rien.
+            // La porte d'entrée, elle, prévient par tous les temps : c'est elle le vrai risque.
+            conditions: isEntranceDoor(did) ? [] : [{ type: 'cold_or_heating', below }],
+            actions: [{ type: 'notify', message: '{sensor} est ouverte depuis {elapsed} min{why}.', buttons: ['door_wanted', 'heating_off'] }],
             repeatMinutes: 30,
             cooldownMinutes: 0,
         }),
@@ -289,7 +291,7 @@ const migrate = () => {
     for (const s of outside) {
         automations.push(normalize({ ...TEMPLATES.window_pause_heating.build({ did: s.ieee }), template: 'window_pause_heating' }));
         automations.push(normalize({ ...TEMPLATES.door_left_open.build({ did: s.ieee }), template: 'door_left_open' }));
-        automations.push(normalize({ ...TEMPLATES.door_downpour.build({ did: s.ieee }), template: 'door_downpour' }));
+        if (!sensorRegistry.isEntrance(s.name)) automations.push(normalize({ ...TEMPLATES.door_downpour.build({ did: s.ieee }), template: 'door_downpour' }));
     }
     automations.push(normalize({ ...TEMPLATES.door_night.build({}), template: 'door_night', enabled: false }));
     automations.push(normalize({ ...TEMPLATES.low_battery.build(), template: 'low_battery' }));
@@ -332,13 +334,15 @@ const ensureSafety = () => {
     }
     // L'ancienne « Porte oubliée » prévenait toute la journée par beau temps : silence s'il fait doux
     for (const a of automations) {
-        if (a.template !== 'door_left_open' || a.conditions.some((c) => c.type === 'cold_or_heating')) continue;
+        if (a.template !== 'door_left_open') continue;
         const fresh = TEMPLATES.door_left_open.build({ did: a.trigger.did, minutes: a.trigger.forMinutes });
+        const hasCold = (cs) => cs.some((c) => c.type === 'cold_or_heating');
+        if (hasCold(a.conditions) === hasCold(fresh.conditions) && a.actions.some((x) => x.buttons?.includes('door_wanted'))) continue;
         Object.assign(a, { conditions: fresh.conditions, actions: fresh.actions });
         upgraded = true;
     }
-    // Chaque porte surveillée prévient aussi d'un orage qui arrive pendant qu'elle est ouverte
-    for (const a of automations.filter((x) => x.template === 'door_left_open' && x.trigger.did !== '*')) {
+    // Les portes vers l'extérieur (pas l'entrée, qui donne sur le palier) préviennent d'un orage pendant qu'elles sont ouvertes
+    for (const a of automations.filter((x) => x.template === 'door_left_open' && x.trigger.did !== '*' && !isEntranceDoor(x.trigger.did))) {
         if (automations.some((x) => x.template === 'door_downpour' && x.trigger.did === a.trigger.did)) continue;
         automations.push(normalize({ ...TEMPLATES.door_downpour.build({ did: a.trigger.did }), template: 'door_downpour' }));
         upgraded = true;
@@ -492,12 +496,12 @@ const isDraught = async (c, ctx) => {
 /** Froid dehors ou clim qui tourne : une porte ouverte coûte quelque chose. */
 const isColdOrHeating = async (c, ctx) => {
     if (broadlinkService.getState().power) {
-        ctx.why = 'et la clim tourne';
+        ctx.why = ' et la clim tourne';
         return true;
     }
     const outside = await outsideTemp();
     if (outside == null || outside >= c.below) return false;
-    ctx.why = `et il fait ${fmt1(outside)}° dehors`;
+    ctx.why = ` et il fait ${fmt1(outside)}° dehors`;
     return true;
 };
 
@@ -706,7 +710,7 @@ const evaluate = async () => {
                 a.lastTriggeredAt = new Date(now).toISOString();
                 a.triggerCount++;
                 save();
-                await runActions(a, a.actions, { ...vars, elapsed: Math.round(elapsed), why: ctx.why });
+                await runActions(a, a.actions, { ...vars, elapsed: Math.round(elapsed), why: ctx.why ?? '' });
             }
         }
     } catch (err) {
