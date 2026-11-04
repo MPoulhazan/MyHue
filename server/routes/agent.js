@@ -86,7 +86,7 @@ router.post('/api/agent', async (req, res) => {
         }
 
         // Niveau 0 : « Est-ce que le facteur est passé ? », d'après la boîte aux lettres
-        if (mailbox.isMailQuestion(message) && /?|est-ce|passé|arrivé|du courrier|y a/i.test(message)) {
+        if (mailbox.isMailQuestion(message) && /\?|est-ce|passé|arrivé|du courrier|y a/i.test(message)) {
             const speech = mailbox.mailSpeech(mailbox.getView());
             return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'mailbox' });
         }
