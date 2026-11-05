@@ -32,7 +32,7 @@ const ago = (ts: number, now: number) => {
     return s < 60 ? `il y a ${s} s` : `il y a ${Math.round(s / 60)} min`;
 };
 // « du Parc-La Fontaine / Roy » → « Parc-La Fontaine / Roy »
-const short = (name: string) => name.replace(/^(du|de la|des|de l’|de)s+/i, '');
+const short = (name: string) => name.replace(/^(du|de la|des|de l’|de)\s+/i, '');
 const level = (n: number) => (n <= 0 ? 'no' : n === 1 ? 'low' : 'ok');
 
 function useBixi() {
@@ -57,7 +57,7 @@ function TripBlock({ trip }: { trip: Trip }) {
         <div className="bixi-trip">
             <div className="bixi-who">
                 <b>{trip.who}</b>
-                {trip.rideMin != null && <span>≈ {trip.rideMin} min de vélo</span>}
+                {trip.rideMin != null && <span>≈ {trip.rideMin} min<span className="bixi-long"> de vélo</span></span>}
             </div>
             <div className="bixi-route">
                 <i className="bixi-pin" />
