@@ -290,7 +290,8 @@ a.weather-pill:hover { background: var(--h-surface-2); }
     .climate { overflow-y: auto; }
     .climate .card-foot { margin-top: auto; }
     .home-center { overflow-y: auto; }
-    .rooms { flex: 1; min-height: 0; grid-auto-rows: minmax(130px, 1fr); }
+    .rooms { flex: 1 0 auto; grid-auto-rows: minmax(130px, 1fr); }
+    .home-center > .card { flex: none; }
     .room-card { height: auto; }
     .home-side { display: flex; grid-column: auto; }
     .journal { flex: 1; min-height: 0; }
