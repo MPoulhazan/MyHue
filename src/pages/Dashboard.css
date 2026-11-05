@@ -292,6 +292,7 @@ a.weather-pill:hover { background: var(--h-surface-2); }
     .home-center { overflow-y: auto; }
     .rooms { flex: 1 0 auto; grid-auto-rows: minmax(108px, 1fr); }
     .home-center > .card { flex: none; }
+    .moments-title { margin-top: 0; }
     .room-card { height: auto; }
     .home-side { display: flex; grid-column: auto; }
     .journal { flex: 1; min-height: 0; }
