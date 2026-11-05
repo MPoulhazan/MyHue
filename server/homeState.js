@@ -12,6 +12,7 @@ import * as thermostat from './thermostat.js';
 import * as circadian from './circadian.js';
 import * as cooper from './cooper.js';
 import * as mailbox from './mailbox.js';
+import * as cube from './cube.js';
 import { getSensors, getOutdoorWeather } from './sensors.js';
 
 const TZ = process.env.TZ || 'America/Toronto';
@@ -46,6 +47,8 @@ export const getHomeState = async () => {
         cooper: (({ enabled, meals, line }) => ({ enabled, meals, summary: line }))(cooper.getView()),
         // Boîte aux lettres : waiting = courrier pas encore relevé (since = passage du facteur)
         mailbox: (({ enabled, sensor, waiting, today, usual, mood }) => ({ enabled, hasSensor: Boolean(sensor), waiting, today, usualMinutes: usual, mood, summary: mailbox.mailSpeech(mailbox.getView()) }))(mailbox.getView()),
+        // Cube du salon : face du dessus = ambiance, dernier geste
+        cube: (({ found, face, faceLabel, last, battery }) => ({ found, face, faceLabel, last, battery }))(cube.getView()),
         recentEvents: recentEvents(),
     };
 };

@@ -23,6 +23,7 @@ import * as lightSignals from '../lightSignals.js';
 import * as circadian from '../circadian.js';
 import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
+import * as cube from '../cube.js';
 import * as health from '../health.js';
 
 export const router = express.Router();
@@ -176,6 +177,28 @@ router.post('/api/mailbox/test', async (_req, res) => {
     try {
         await mailbox.test();
         res.json({ ok: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Cube ---
+
+router.get('/api/cube', (_req, res) => res.json(cube.getView()));
+
+router.get('/api/cube/settings', (_req, res) => res.json(cube.getSettings()));
+
+router.put('/api/cube/settings', (req, res) => {
+    try {
+        res.json(cube.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.post('/api/cube/test', async (req, res) => {
+    try {
+        res.json({ ok: true, label: await cube.test(req.body?.face) });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

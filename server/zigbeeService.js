@@ -158,6 +158,11 @@ function subscribeToZ2m() {
                     devices[name].lastSeen = Date.now();
                     emitter.emit('update', name);
 
+                    // Geste d'un bouton ou du cube : émis à chaque fois, même répété (deux secousses)
+                    if (typeof msg.action === 'string' && msg.action) {
+                        emitter.emit('action', { friendlyName: name, ieee: devices[name].ieeeAddr, msg });
+                    }
+
                     // Une valeur qui change (porte, température...) : 'change' par propriété
                     for (const [key, value] of Object.entries(msg)) {
                         if (prev[key] !== undefined && prev[key] !== value) {
