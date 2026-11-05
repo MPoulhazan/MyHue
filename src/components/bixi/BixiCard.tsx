@@ -31,6 +31,8 @@ const ago = (ts: number, now: number) => {
     const s = Math.max(0, Math.round((now - ts) / 1000));
     return s < 60 ? `il y a ${s} s` : `il y a ${Math.round(s / 60)} min`;
 };
+// « du Parc-La Fontaine / Roy » → « Parc-La Fontaine / Roy »
+const short = (name: string) => name.replace(/^(du|de la|des|de l’|de)s+/i, '');
 const level = (n: number) => (n <= 0 ? 'no' : n === 1 ? 'low' : 'ok');
 
 function useBixi() {
@@ -61,8 +63,8 @@ function TripBlock({ trip }: { trip: Trip }) {
                 <i className="bixi-pin" />
                 {from ? (
                     <>
-                        <span className="bixi-st">{from.name}<small>{fromNote}</small></span>
-                        <span className={`bixi-count ${from.scarce ? 'low' : level(from.bikes)}`}>{plural(from.bikes, 'vélo')}</span>
+                        <span className="bixi-st" title={from.name}>{short(from.name)}<small>{fromNote}</small></span>
+                        <span className={`bixi-count ${from.scarce ? 'low' : level(from.bikes)}`}><span className="bixi-long">{plural(from.bikes, 'vélo')}</span><span className="bixi-short">{from.bikes} 🚲</span></span>
                     </>
                 ) : (
                     <>
@@ -75,8 +77,8 @@ function TripBlock({ trip }: { trip: Trip }) {
                 <i className="bixi-pin end" />
                 {to ? (
                     <>
-                        <span className="bixi-st">{to.name}<small>{to.alt ? 'la préférée est pleine' : 'à l’arrivée'}</small></span>
-                        <span className={`bixi-count ${to.low ? 'low' : 'ok'}`}>{plural(to.docks, 'place')}</span>
+                        <span className="bixi-st" title={to.name}>{short(to.name)}<small>{to.alt ? 'la préférée est pleine' : 'à l’arrivée'}</small></span>
+                        <span className={`bixi-count ${to.low ? 'low' : 'ok'}`}><span className="bixi-long">{plural(to.docks, 'place')}</span><span className="bixi-short">{to.docks} P</span></span>
                     </>
                 ) : (
                     <span className="bixi-st muted">Station d’arrivée inconnue</span>
@@ -109,7 +111,7 @@ export function BixiCard() {
                 <div className="bixi-foot">
                     <span className="bixi-chips">
                         {view.extras.map((s) => (
-                            <span key={s.id} className="bixi-chip">{s.name} · {s.bikes ?? '–'}{s.dist != null && s.dist > 350 ? ` (${s.dist} m)` : ''}</span>
+                            <span key={s.id} className="bixi-chip">{short(s.name)} · {s.bikes ?? '–'}{s.dist != null && s.dist > 350 ? ` (${s.dist} m)` : ''}</span>
                         ))}
                     </span>
                     <span>relevé {ago(view.updatedAt, now)}</span>

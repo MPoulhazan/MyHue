@@ -32,3 +32,22 @@
 .bixi-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--h-muted); font-variant-numeric: tabular-nums; }
 .bixi-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .bixi-chip { padding: 5px 10px; border-radius: 999px; background: var(--h-surface-2); font-weight: 700; color: var(--h-text); }
+
+.bixi-short { display: none; }
+
+/* Tablette murale en paysage : version compacte qui tient sous les Moments sans faire défiler */
+@media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
+    .card.bixi-card { padding: 14px 18px; gap: 10px; border-radius: 22px; }
+    .bixi-card .card-head { font-size: 14px; }
+    .bixi-pill { font-size: 12px; padding: 4px 10px; }
+    .bixi-trips { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .bixi-trip { padding: 10px 12px; gap: 6px; border-radius: 16px; }
+    .bixi-who b { font-size: 15px; }
+    .bixi-who span { font-size: 12px; }
+    .bixi-route { grid-template-columns: 16px minmax(0, 1fr) auto; row-gap: 6px; }
+    .bixi-pin { width: 11px; height: 11px; border-width: 2.5px; }
+    .bixi-line, .bixi-ride, .bixi-st small, .bixi-foot, .bixi-long { display: none; }
+    .bixi-short { display: inline; }
+    .bixi-st { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+    .bixi-count { font-size: 13px; padding: 2px 8px; }
+}
