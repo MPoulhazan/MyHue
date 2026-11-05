@@ -1,0 +1,34 @@
+/* Carte BIXI de l'accueil : maquette B, un trajet par personne (rouge BIXI pour les repères) */
+
+.bixi-card { --bixi: #d52b1e; --bixi-dim: #3a1a17; --bixi-text: #ffc2bc; --bixi-ok-bg: #2f3a1a; --bixi-ok-text: #e3f7b5; --bixi-low-bg: #3a2f14; --bixi-low-text: #ffd98a; }
+
+.bixi-title { display: inline-flex; align-items: center; gap: 8px; }
+.bixi-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--bixi); display: inline-block; }
+
+.bixi-pill { font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+.bixi-pill.ok { background: var(--bixi-ok-bg); color: var(--bixi-ok-text); }
+.bixi-pill.low { background: var(--bixi-low-bg); color: var(--bixi-low-text); }
+.bixi-pill.no { background: var(--bixi-dim); color: var(--bixi-text); }
+
+.bixi-trips { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.bixi-trip { background: var(--h-surface-2); border-radius: 20px; padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
+.bixi-who { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.bixi-who b { font-size: 17px; }
+.bixi-who span { font-size: 13px; color: var(--h-muted); font-variant-numeric: tabular-nums; }
+
+.bixi-route { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+.bixi-pin { width: 14px; height: 14px; border-radius: 999px; border: 3px solid var(--bixi); justify-self: center; }
+.bixi-pin.end { background: var(--bixi); }
+.bixi-line { width: 3px; height: 22px; background: repeating-linear-gradient(var(--h-line-2) 0 5px, transparent 5px 9px); justify-self: center; }
+.bixi-ride { grid-column: 2 / 4; }
+.bixi-st { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.bixi-st small { display: block; font-size: 12px; color: var(--h-muted); font-weight: 500; }
+
+.bixi-count { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.bixi-count.ok { background: var(--bixi-ok-bg); color: var(--bixi-ok-text); }
+.bixi-count.low { background: var(--bixi-low-bg); color: var(--bixi-low-text); }
+.bixi-count.no { background: var(--bixi-dim); color: var(--bixi-text); }
+
+.bixi-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--h-muted); font-variant-numeric: tabular-nums; }
+.bixi-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.bixi-chip { padding: 5px 10px; border-radius: 999px; background: var(--h-surface-2); font-weight: 700; color: var(--h-text); }

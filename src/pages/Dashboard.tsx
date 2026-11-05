@@ -13,6 +13,7 @@ import { PhoneHome } from '../components/phone/PhoneHome';
 import { SkyCard } from '../components/sky/SkyCard';
 import { CooperCard } from '../components/cooper/CooperCard';
 import { MailboxCard } from '../components/mailbox/MailboxCard';
+import { BixiCard } from '../components/bixi/BixiCard';
 import { ScheduleSheet } from '../components/home/ScheduleSheet';
 import { ClimateCard, HouseCard, HueStatus, Journal, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import './Dashboard.css';
@@ -134,6 +135,8 @@ export function Dashboard() {
                             </div>
                         </>
                     )}
+
+                    <BixiCard />
                 </section>
 
                 <aside className="home-side">

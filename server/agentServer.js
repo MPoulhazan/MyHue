@@ -18,6 +18,7 @@ import * as circadian from './circadian.js';
 import * as cooper from './cooper.js';
 import * as mailbox from './mailbox.js';
 import * as cube from './cube.js';
+import * as bixi from './bixi.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as health from './health.js';
@@ -71,6 +72,7 @@ app.listen(PORT, () => {
     cooper.start();
     mailbox.start();
     cube.start();
+    bixi.start();
     broadlinkService.discover().catch((err) => console.warn('⚠️  Broadlink:', err.message));
     zigbeeService.start().catch((err) => console.warn('⚠️  Zigbee:', err.message));
     health.start();

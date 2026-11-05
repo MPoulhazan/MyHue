@@ -24,6 +24,7 @@ import * as circadian from '../circadian.js';
 import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
 import * as cube from '../cube.js';
+import * as bixi from '../bixi.js';
 import * as health from '../health.js';
 
 export const router = express.Router();
@@ -177,6 +178,26 @@ router.post('/api/mailbox/test', async (_req, res) => {
     try {
         await mailbox.test();
         res.json({ ok: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- BIXI ---
+
+router.get('/api/bixi', async (_req, res) => {
+    try {
+        res.json(await bixi.getView());
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/api/bixi/settings', (_req, res) => res.json(bixi.getSettings()));
+
+router.put('/api/bixi/settings', (req, res) => {
+    try {
+        res.json(bixi.update(req.body || {}));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

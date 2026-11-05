@@ -13,6 +13,8 @@ import * as circadian from './circadian.js';
 import * as cooper from './cooper.js';
 import * as mailbox from './mailbox.js';
 import * as cube from './cube.js';
+import * as bixi from './bixi.js';
+import { bixiSpeech } from './bixiLogic.js';
 import { getSensors, getOutdoorWeather } from './sensors.js';
 
 const TZ = process.env.TZ || 'America/Toronto';
@@ -49,6 +51,8 @@ export const getHomeState = async () => {
         mailbox: (({ enabled, sensor, waiting, today, usual, mood }) => ({ enabled, hasSensor: Boolean(sensor), waiting, today, usualMinutes: usual, mood, summary: mailbox.mailSpeech(mailbox.getView()) }))(mailbox.getView()),
         // Cube du salon : face du dessus = ambiance, dernier geste
         cube: (({ found, face, faceLabel, last, battery }) => ({ found, face, faceLabel, last, battery }))(cube.getView()),
+        // Vélos BIXI classiques au départ de la maison, places libres à l'arrivée de chacun
+        bixi: await bixi.getView().then((v) => ({ configured: v.configured, season: v.season, verdict: v.verdict, trips: v.trips, summary: bixiSpeech(v) })).catch(() => null),
         recentEvents: recentEvents(),
     };
 };

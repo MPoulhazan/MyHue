@@ -6,6 +6,7 @@ import { HouseCard, HueStatus, RoomCard, fmt } from '../home/cards';
 import { SkyCard } from '../sky/SkyCard';
 import { CooperCard } from '../cooper/CooperCard';
 import { MailboxCard } from '../mailbox/MailboxCard';
+import { BixiCard } from '../bixi/BixiCard';
 import './PhoneHome.css';
 
 /** Accueil du téléphone : moments, pièces et état de la maison sur une colonne. */
@@ -61,6 +62,7 @@ export function PhoneHome({ home, roomLights, onAdd }: {
             <HouseCard sensors={home.sensors} onAdd={onAdd} />
             <CooperCard />
             <MailboxCard />
+            <BixiCard />
             <SkyCard />
         </div>
     );

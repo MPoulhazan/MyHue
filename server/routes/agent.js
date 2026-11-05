@@ -16,6 +16,8 @@ import { getSensors, getOutdoorWeather } from '../sensors.js';
 import { getSky, isSkyQuestion, skySpeech } from '../astro.js';
 import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
+import * as bixi from '../bixi.js';
+import { bixiSpeech, isBixiQuestion } from '../bixiLogic.js';
 import { getHomeState, recentEvents } from '../homeState.js';
 import { executeActions } from '../actions.js';
 import { groqClient, GROQ_API_KEY, GROQ_MODEL } from '../llm.js';
@@ -89,6 +91,12 @@ router.post('/api/agent', async (req, res) => {
         if (mailbox.isMailQuestion(message) && /\?|est-ce|passé|arrivé|du courrier|y a/i.test(message)) {
             const speech = mailbox.mailSpeech(mailbox.getView());
             return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'mailbox' });
+        }
+
+        // Niveau 0 : « Il y a des BIXI ? », d'après le flux BIXI relu tout de suite
+        if (isBixiQuestion(message)) {
+            const view = await bixi.getView({ fresh: true }).catch(() => null);
+            if (view) return res.json({ message: bixiSpeech(view), actions: [], actionResults: [], tier: 'local', intent: 'bixi' });
         }
 
         const context = await getHueContext();
