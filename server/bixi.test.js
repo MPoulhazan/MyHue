@@ -1,7 +1,7 @@
 // node --test server/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { distM, classicBikes, freeDocks, trend, assignStarts, pickDest, bikeVerdict, bixiSpeech, isBixiQuestion, rideMinutes } from './bixiLogic.js';
+import { distM, classicBikes, freeDocks, trend, assignStarts, pickDest, bikeVerdict, bixiSpeech, isBixiQuestion, rideMinutes, departureAlerts } from './bixiLogic.js';
 
 const st = (bikes, ebikes = 0, docks = 10, extra = {}) => ({ num_bikes_available: bikes, num_ebikes_available: ebikes, num_docks_available: docks, is_installed: 1, is_renting: 1, is_returning: 1, ...extra });
 
@@ -80,4 +80,25 @@ test('bixiSpeech et isBixiQuestion', () => {
     assert.equal(isBixiQuestion('Il y a des BIXI ?'), true);
     assert.equal(isBixiQuestion('reste-t-il des vélos'), true);
     assert.equal(isBixiQuestion('allume le salon'), false);
+});
+
+test('departureAlerts : vélos, places, météo', () => {
+    const base = {
+        configured: true, season: 'open', updatedAt: 1, verdict: { level: 'ok', text: '4 °C, sec' },
+        home: [{ id: 'a', bikes: 1, trend: null }, { id: 'b', bikes: 0, trend: null }],
+        extras: [{ id: 'z', name: 'St-André / Cherrier', bikes: 12, dist: 430 }],
+        trips: [{ who: 'Toi', to: { name: 'RB', docks: 14, low: false, alt: false } }, { who: 'Lou', to: { name: 'Mq', docks: 9, low: false, alt: true } }],
+    };
+    const a = departureAlerts(base);
+    assert.deepEqual(a.map((x) => x.key), ['bikes', 'docks:Lou']);
+    assert.equal(a[0].text, '🚲 Plus que 1 vélo classique à vos stations. Le plus proche bien garni : St-André / Cherrier (12 vélos, 430 m).');
+    assert.equal(a[0].lamp, true);
+    assert.match(a[1].text, /pleine, Mq a 9 places/);
+    const ok = { ...base, home: [{ id: 'a', bikes: 5 }], trips: [{ who: 'Toi', to: { name: 'RB', docks: 14, low: false, alt: false } }] };
+    assert.deepEqual(departureAlerts(ok), []);
+    const drain = { ...ok, home: [{ id: 'a', bikes: 1, trend: -3 }] };
+    assert.match(departureAlerts(drain)[0].text, /ça part vite/);
+    const ice = { ...base, verdict: { level: 'no', text: 'Verglas possible, pas de vélo' } };
+    assert.deepEqual(departureAlerts(ice).map((x) => x.text), ['🚲 Pas de BIXI ce matin : verglas possible, pas de vélo.']);
+    assert.deepEqual(departureAlerts({ ...base, season: 'closed' }), []);
 });

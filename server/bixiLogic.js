@@ -121,3 +121,34 @@ export const bixiSpeech = (view) => {
 
 /** « Il y a des BIXI ? », « Reste-t-il des vélos ? » */
 export const isBixiQuestion = (text) => /\bbixi\b/i.test(text) || (/\bv[ée]los?\b/i.test(text) && /\?|reste|y a|combien|dispo/i.test(text));
+
+/**
+ * Alertes du matin, dans la fenêtre de départ. Chaque clé n'est envoyée qu'une fois par jour.
+ * @param view vue de bixi.getView()
+ * @returns [{ key, text, lamp }] lamp = la lampe signal respire en rouge BIXI
+ */
+export const departureAlerts = (view) => {
+    if (!view?.configured || view.season !== 'open' || !view.updatedAt) return [];
+    const out = [];
+    if (view.verdict?.level === 'no') {
+        return [{ key: 'weather', text: `🚲 Pas de BIXI ce matin : ${view.verdict.text.charAt(0).toLowerCase()}${view.verdict.text.slice(1)}.`, lamp: false }];
+    }
+    const count = view.trips.length || 1;
+    const total = view.home.reduce((n, s) => n + (s.bikes || 0), 0);
+    const draining = view.home.reduce((n, s) => n + Math.min(0, s.trend ?? 0), 0);
+    const backup = (view.extras || []).find((s) => !view.home.some((h) => h.id === s.id) && s.bikes >= 3);
+    const tip = backup ? ` Le plus proche bien garni : ${backup.name} (${backup.bikes} vélos, ${backup.dist} m).` : '';
+    if (total < count) {
+        out.push({ key: 'bikes', text: `🚲 ${total ? `Plus que ${plural(total, 'vélo classique')}` : 'Plus aucun vélo classique'} à vos stations.${tip}`, lamp: true });
+    } else if (total === count && draining <= -2) {
+        out.push({ key: 'bikes', text: `🚲 Il reste juste ${plural(total, 'vélo classique')} et ça part vite : partez maintenant.${tip}`, lamp: true });
+    }
+    for (const t of view.trips) {
+        if (!t.to || (!t.to.low && !t.to.alt)) continue;
+        const text = t.to.low
+            ? `🅿️ ${t.who} : presque plus de places à l’arrivée, ${plural(t.to.docks, 'place')} à ${t.to.name}.`
+            : `🅿️ ${t.who} : la station d’arrivée habituelle est pleine, ${t.to.name} a ${plural(t.to.docks, 'place')}.`;
+        out.push({ key: `docks:${t.who}`, text, lamp: false });
+    }
+    return out;
+};

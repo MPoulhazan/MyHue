@@ -14,7 +14,11 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dataFile } from './dataDir.js';
 import { getForecast, getLocation } from './weather.js';
 import { localParts, toMin } from './cooper.js';
-import { distM, classicBikes, freeDocks, trend, rideMinutes, assignStarts, pickDest, bikeVerdict } from './bixiLogic.js';
+import * as notifier from './notifier.js';
+import * as presence from './presence.js';
+import * as journal from './journal.js';
+import * as lightSignals from './lightSignals.js';
+import { distM, classicBikes, freeDocks, trend, rideMinutes, assignStarts, pickDest, bikeVerdict, departureAlerts } from './bixiLogic.js';
 
 const FILE = dataFile('bixi.json');
 const TZ = process.env.TZ || 'America/Toronto';
@@ -30,6 +34,10 @@ const DEFAULTS = {
     leaveFrom: '08:00',
     leaveTo: '08:30',
     extrasRadiusM: 500,
+    alerts: true, // Telegram dans la fenêtre de départ
+    lamp: true, // la lampe signal respire en rouge BIXI
+    alertsBeforeMin: 20, // les alertes commencent 20 min avant leaveFrom
+    sent: { date: null, keys: [] }, // alertes déjà envoyées aujourd'hui
 };
 
 let config = structuredClone(DEFAULTS);
@@ -109,11 +117,46 @@ const maxAge = (now = Date.now()) => {
     return m >= 6 * 60 && m < 23 * 60 ? 10 * 60_000 : Infinity;
 };
 
+// --- Alertes du matin ---
+
+/** De 20 min avant le départ jusqu'à la fin de la fenêtre, en semaine. */
+const inAlertWindow = (now = Date.now()) => {
+    if (!isWeekday(now)) return false;
+    const m = localParts(now, TZ).minutes;
+    return m >= toMin(config.leaveFrom) - config.alertsBeforeMin && m <= toMin(config.leaveTo);
+};
+
+let shortage = false; // vélos à sec en ce moment, pour la lampe au départ
+
+const checkAlerts = async () => {
+    const now = Date.now();
+    if (!inAlertWindow(now)) {
+        shortage = false;
+        return;
+    }
+    const view = await getView();
+    const alerts = departureAlerts(view);
+    shortage = alerts.some((a) => a.key === 'bikes');
+    if (!config.alerts || presence.anyoneHome() === false) return;
+    const today = localParts(now, TZ).date;
+    if (config.sent.date !== today) config.sent = { date: today, keys: [] };
+    const fresh = alerts.filter((a) => !config.sent.keys.includes(a.key));
+    if (!fresh.length) return;
+    config.sent.keys.push(...fresh.map((a) => a.key));
+    save();
+    for (const a of fresh) {
+        await notifier.notify({ text: a.text, silent: a.key.startsWith('docks') });
+        journal.log({ kind: 'system', title: a.text.replace(/^S+s/, 'BIXI : '), data: { key: a.key } });
+    }
+    if (config.lamp && fresh.some((a) => a.lamp)) await lightSignals.pulse(['bixi'], 'BIXI').catch((err) => console.warn('[BIXI] lampe :', err.message));
+};
+
 export const start = () => {
     if (!config.enabled) return console.log('🚲 BIXI désactivé');
+    lightSignals.addSource(() => (config.lamp && shortage && inAlertWindow() ? ['bixi'] : []));
     const tick = () => {
         const age = maxAge();
-        if (age !== Infinity) ensureFresh(age - 5_000);
+        if (age !== Infinity) ensureFresh(age - 5_000).then(checkAlerts).catch((err) => console.warn('[BIXI] alertes :', err.message));
     };
     tick();
     setInterval(tick, TICK_MS).unref?.();
@@ -191,7 +234,10 @@ export const getView = async ({ fresh = false } = {}) => {
 
 // --- Réglages ---
 
-export const getSettings = () => structuredClone(config);
+export const getSettings = () => {
+    const { sent, ...rest } = config;
+    return structuredClone(rest);
+};
 
 const ids = (list) => {
     if (!Array.isArray(list) || list.some((x) => !/^\d+$/.test(String(x)))) throw new Error('ids de station invalides');
@@ -199,7 +245,14 @@ const ids = (list) => {
 };
 
 export const update = (patch = {}) => {
-    if (patch.enabled !== undefined) config.enabled = Boolean(patch.enabled);
+    for (const key of ['enabled', 'alerts', 'lamp']) {
+        if (patch[key] !== undefined) config[key] = Boolean(patch[key]);
+    }
+    if (patch.alertsBeforeMin !== undefined) {
+        const n = Number(patch.alertsBeforeMin);
+        if (!Number.isFinite(n) || n < 0 || n > 90) throw new Error('alertsBeforeMin invalide');
+        config.alertsBeforeMin = n;
+    }
     if (patch.homeStations !== undefined) config.homeStations = ids(patch.homeStations).slice(0, 5);
     if (patch.commuters !== undefined) {
         if (!Array.isArray(patch.commuters)) throw new Error('commuters invalide');
