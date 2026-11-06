@@ -51,6 +51,10 @@
 .yt-lists strong { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .yt-lists .muted { font-size: 13px; }
 .yt-hint { margin: 0; font-size: 14px; line-height: 1.4; }
+.yt-login { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: var(--h-surface-2); }
+.yt-login p { margin: 0; font-size: 14px; line-height: 1.4; }
+.yt-login-code { font-size: 28px !important; font-weight: 700; letter-spacing: 0.12em; text-align: center; font-variant-numeric: tabular-nums; user-select: all; }
+.yt-logout { align-self: flex-start; border: none; background: none; padding: 4px 0; color: var(--h-muted); font-size: 13px; text-decoration: underline; cursor: pointer; }
 .yt-add { display: flex; gap: 8px; align-items: center; }
 .yt-add input { flex: 1; min-width: 0; height: 48px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--h-line-2); background: var(--h-bg); font-size: 15px; }
 .yt-add input::placeholder { color: var(--h-muted); }

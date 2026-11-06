@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useHomeData } from '../hooks/useHome';
-import { youtubeApi, type YouTubePlaylist, type YouTubeVideo } from '../services/youtubeApi';
+import { youtubeApi, type DeviceLogin, type YouTubePlaylist, type YouTubeVideo } from '../services/youtubeApi';
 import { Icon } from '../components/Icon';
 import { Equalizer } from '../components/shell/MiniPlayer';
 import './Dashboard.css';
@@ -55,19 +55,34 @@ export function Music() {
     const [customUrl, setCustomUrl] = useState('');
     const [adding, setAdding] = useState(false);
     const [yt, setYt] = useState({ authenticated: false, oauthConfigured: false });
+    const [login, setLogin] = useState<DeviceLogin | null>(null);
 
     useEffect(() => {
-        youtubeApi.getAuthStatus().then(setYt).catch(() => {});
-        // Retour de la fenêtre de connexion YouTube
-        const onMessage = (e: MessageEvent) => {
-            if (e.data === 'youtube-auth-success') {
-                setYt((s) => ({ ...s, authenticated: true }));
-                loadPlaylists();
-            }
-        };
-        window.addEventListener('message', onMessage);
-        return () => window.removeEventListener('message', onMessage);
+        youtubeApi.getAuthStatus().then((s) => {
+            setYt({ authenticated: s.authenticated, oauthConfigured: s.oauthConfigured });
+            if (s.pending && !s.pending.error) setLogin(s.pending);
+        }).catch(() => {});
     }, []);
+
+    // Pendant la connexion : on vérifie toutes les 3 s si le code a été saisi
+    useEffect(() => {
+        if (!login || login.error) return;
+        const timer = window.setInterval(async () => {
+            try {
+                const s = await youtubeApi.getAuthStatus();
+                if (s.authenticated) {
+                    setLogin(null);
+                    setYt({ authenticated: true, oauthConfigured: true });
+                    loadPlaylists();
+                } else if (s.pending) {
+                    setLogin(s.pending);
+                } else {
+                    setLogin(null);
+                }
+            } catch { /* on réessaie */ }
+        }, 3000);
+        return () => window.clearInterval(timer);
+    }, [login?.userCode, login?.error]);
 
     useEffect(() => {
         if (tab === 'playlists') loadPlaylists();
@@ -75,9 +90,10 @@ export function Music() {
 
     const loadPlaylists = () => {
         youtubeApi.getPlaylists()
-            .then(({ playlists: list, authenticated }) => {
+            .then(({ playlists: list, authenticated, accountError }) => {
                 setPlaylists(list);
                 setYt((s) => ({ ...s, authenticated }));
+                if (accountError) setNotice('Le compte YouTube ne répond pas pour l’instant, réessaie dans un moment.');
             })
             .catch(() => setNotice('Impossible de charger les playlists YouTube.'));
     };
@@ -112,11 +128,23 @@ export function Music() {
     };
 
     const connectYouTube = async () => {
+        setNotice(null);
         try {
-            window.open(await youtubeApi.getAuthUrl(), 'youtube-auth', 'width=500,height=600');
+            setLogin(await youtubeApi.startLogin());
         } catch (err) {
             setNotice(errorText(err, 'Connexion YouTube impossible.'));
         }
+    };
+
+    const cancelLogin = () => {
+        youtubeApi.cancelLogin().catch(() => {});
+        setLogin(null);
+    };
+
+    const disconnectYouTube = async () => {
+        await youtubeApi.logout().catch(() => {});
+        setYt((s) => ({ ...s, authenticated: false }));
+        loadPlaylists();
     };
 
     const playRadio = async (radio: Radio) => {
@@ -230,8 +258,25 @@ export function Music() {
                 <div className="yt-layout">
                     <section className="card yt-lists" aria-label="Mes playlists">
                         <h2 className="card-title">Mes playlists</h2>
-                        {yt.oauthConfigured && !yt.authenticated && (
+                        {yt.oauthConfigured && !yt.authenticated && !login && (
                             <button type="button" className="ghost-btn" onClick={connectYouTube}>Connecter mon compte YouTube</button>
+                        )}
+                        {login && (
+                            <div className="yt-login" role="status">
+                                {login.error ? (
+                                    <>
+                                        <p>{login.error}</p>
+                                        <button type="button" className="ghost-btn" onClick={connectYouTube}>Recommencer</button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p>Sur ton téléphone, ouvre <strong>{login.verificationUrl.replace(/^https?:\/\/(www\.)?/, '')}</strong> et entre ce code :</p>
+                                        <p className="yt-login-code">{login.userCode}</p>
+                                        <p className="muted">La page se met à jour toute seule une fois le code validé.</p>
+                                        <button type="button" className="ghost-btn" onClick={cancelLogin}>Annuler</button>
+                                    </>
+                                )}
+                            </div>
                         )}
                         {!playlists.length && (
                             <p className="muted yt-hint">
@@ -258,6 +303,9 @@ export function Music() {
                                 <Icon name="plus" size={20} strokeWidth={2.2} />
                             </button>
                         </form>
+                        {yt.authenticated && (
+                            <button type="button" className="yt-logout" onClick={disconnectYouTube}>Déconnecter le compte YouTube</button>
+                        )}
                     </section>
 
                     <section className="card yt-tracks" aria-label={playlist ? playlist.name : 'Titres'}>

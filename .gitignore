@@ -34,3 +34,7 @@ server/data/wakeword/
 
 # Ancien réseau Zigbee local (clé réseau) : jamais dans le repo
 server/data/z2m/
+
+# YouTube OAuth tokens and saved playlists (secrets, per install)
+server/data/youtube-oauth.json
+server/data/youtube-playlists.json

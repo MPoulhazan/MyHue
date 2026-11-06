@@ -30,9 +30,17 @@ export interface AudioExtraction {
     cached?: boolean;
 }
 
+export interface DeviceLogin {
+    userCode: string;
+    verificationUrl: string;
+    expiresAt: number;
+    error: string | null;
+}
+
 export interface AuthStatus {
     authenticated: boolean;
     oauthConfigured: boolean;
+    pending?: DeviceLogin | null;
 }
 
 export const youtubeApi = {
@@ -41,13 +49,22 @@ export const youtubeApi = {
         return data;
     },
 
-    async getAuthUrl(): Promise<string> {
-        const { data } = await axios.get<{ url: string }>('/api/youtube/auth/url');
-        return data.url;
+    /** Démarre la connexion par code (google.com/device). */
+    async startLogin(): Promise<DeviceLogin> {
+        const { data } = await axios.post<DeviceLogin>('/api/youtube/auth/start');
+        return data;
     },
 
-    async getPlaylists(): Promise<{ playlists: YouTubePlaylist[]; authenticated: boolean }> {
-        const { data } = await axios.get<{ playlists: YouTubePlaylist[]; authenticated: boolean }>('/api/youtube/playlists');
+    async cancelLogin(): Promise<void> {
+        await axios.post('/api/youtube/auth/cancel');
+    },
+
+    async logout(): Promise<void> {
+        await axios.post('/api/youtube/auth/logout');
+    },
+
+    async getPlaylists(): Promise<{ playlists: YouTubePlaylist[]; authenticated: boolean; accountError?: string | null }> {
+        const { data } = await axios.get<{ playlists: YouTubePlaylist[]; authenticated: boolean; accountError?: string | null }>('/api/youtube/playlists');
         return data;
     },
 

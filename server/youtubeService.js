@@ -1,5 +1,7 @@
 import ytdl from '@distube/ytdl-core';
 import dotenv from 'dotenv';
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { dataFile } from './dataDir.js';
 
 dotenv.config();
 
@@ -42,83 +44,165 @@ export const parsePlaylistId = (url) => {
     return null;
 };
 
-// --- OAuth2 ---
-let oauthTokens = null; // { access_token, refresh_token, expiry_date }
+// --- OAuth2 (flux « appareil » : un code à saisir sur google.com/device) ---
+// Les jetons sont enregistrés sur disque : on reste connecté après un redémarrage.
+const TOKEN_FILE = dataFile('youtube-oauth.json');
+const PLAYLISTS_FILE = dataFile('youtube-playlists.json');
+
+const readJson = (file, fallback) => {
+    try { return existsSync(file) ? JSON.parse(readFileSync(file, 'utf-8')) : fallback; } catch { return fallback; }
+};
+
+let oauthTokens = readJson(TOKEN_FILE, null); // { access_token, refresh_token, expiry_date }
+for (const pl of readJson(PLAYLISTS_FILE, [])) customPlaylists.set(pl.id, pl);
+
+const saveTokens = () => {
+    try {
+        if (oauthTokens) writeFileSync(TOKEN_FILE, JSON.stringify(oauthTokens, null, 2));
+        else if (existsSync(TOKEN_FILE)) unlinkSync(TOKEN_FILE);
+    } catch (err) {
+        console.error('YouTube: could not save tokens', err?.message);
+    }
+};
 
 const OAUTH_CLIENT_ID = process.env.YOUTUBE_CLIENT_ID;
 const OAUTH_CLIENT_SECRET = process.env.YOUTUBE_CLIENT_SECRET;
-const OAUTH_REDIRECT_URI = `http://localhost:${process.env.AGENT_PORT || 5174}/api/youtube/callback`;
 const OAUTH_SCOPES = 'https://www.googleapis.com/auth/youtube.readonly';
 
-export const getAuthUrl = () => {
-    if (!OAUTH_CLIENT_ID || !OAUTH_CLIENT_SECRET) {
-        throw new Error('YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET not configured');
-    }
-    const params = new URLSearchParams({
-        client_id: OAUTH_CLIENT_ID,
-        redirect_uri: OAUTH_REDIRECT_URI,
-        response_type: 'code',
-        scope: OAUTH_SCOPES,
-        access_type: 'offline',
-        prompt: 'consent',
-    });
-    return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-};
+export const isOAuthConfigured = () => Boolean(OAUTH_CLIENT_ID && OAUTH_CLIENT_SECRET);
+export const isAuthenticated = () => Boolean(oauthTokens?.refresh_token || oauthTokens?.access_token);
 
-export const exchangeCode = async (code) => {
-    const res = await fetch('https://oauth2.googleapis.com/token', {
+const postForm = async (url, body) => {
+    const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            code,
-            client_id: OAUTH_CLIENT_ID,
-            client_secret: OAUTH_CLIENT_SECRET,
-            redirect_uri: OAUTH_REDIRECT_URI,
-            grant_type: 'authorization_code',
-        }),
+        body: new URLSearchParams(body),
     });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error_description || data.error);
+    return res.json();
+};
 
+/** Connexion en cours : { deviceCode, userCode, verificationUrl, interval, expiresAt, error } */
+let pendingLogin = null;
+
+const storeTokens = (data) => {
     oauthTokens = {
         access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        expiry_date: Date.now() + data.expires_in * 1000,
+        // Google ne renvoie pas toujours un nouveau refresh_token : on garde l'ancien
+        refresh_token: data.refresh_token || oauthTokens?.refresh_token,
+        expiry_date: Date.now() + (data.expires_in || 3600) * 1000,
     };
-    console.log('🔑 YouTube OAuth2 connected successfully');
-    return oauthTokens;
+    saveTokens();
 };
+
+const publicLogin = () => pendingLogin && {
+    userCode: pendingLogin.userCode,
+    verificationUrl: pendingLogin.verificationUrl,
+    expiresAt: pendingLogin.expiresAt,
+    error: pendingLogin.error,
+};
+
+const pollLogin = async (login) => {
+    while (pendingLogin === login && Date.now() < login.expiresAt) {
+        await new Promise((r) => setTimeout(r, login.interval * 1000));
+        if (pendingLogin !== login) return;
+        try {
+            const data = await postForm('https://oauth2.googleapis.com/token', {
+                client_id: OAUTH_CLIENT_ID,
+                client_secret: OAUTH_CLIENT_SECRET,
+                device_code: login.deviceCode,
+                grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+            });
+            if (data.access_token) {
+                storeTokens(data);
+                pendingLogin = null;
+                console.log('🔑 YouTube account connected');
+                return;
+            }
+            if (data.error === 'slow_down') login.interval += 5;
+            else if (data.error !== 'authorization_pending') {
+                login.error = data.error === 'access_denied' ? 'Connexion refusée.' : (data.error_description || data.error);
+                return;
+            }
+        } catch {
+            // réseau : on réessaie au prochain tour
+        }
+    }
+    if (pendingLogin === login && !login.error) login.error = 'Le code a expiré, recommence.';
+};
+
+/** Démarre une connexion : renvoie le code à saisir sur google.com/device. */
+export const startDeviceLogin = async () => {
+    if (!isOAuthConfigured()) throw new Error('YOUTUBE_CLIENT_ID et YOUTUBE_CLIENT_SECRET ne sont pas configurés');
+    if (pendingLogin && !pendingLogin.error && Date.now() < pendingLogin.expiresAt - 30000) return publicLogin();
+
+    const data = await postForm('https://oauth2.googleapis.com/device/code', {
+        client_id: OAUTH_CLIENT_ID,
+        scope: OAUTH_SCOPES,
+    });
+    if (data.error) {
+        if (/invalid_client|unauthorized_client/.test(data.error)) {
+            throw new Error('Le client OAuth Google doit être de type « TV et appareils à saisie limitée ». Crée-le dans Google Cloud et mets son ID et son secret dans la configuration de l’add-on.');
+        }
+        throw new Error(data.error_description || data.error);
+    }
+    pendingLogin = {
+        deviceCode: data.device_code,
+        userCode: data.user_code,
+        verificationUrl: data.verification_url || 'https://www.google.com/device',
+        interval: data.interval || 5,
+        expiresAt: Date.now() + (data.expires_in || 1800) * 1000,
+        error: null,
+    };
+    pollLogin(pendingLogin);
+    return publicLogin();
+};
+
+export const cancelDeviceLogin = () => { pendingLogin = null; };
+
+export const logout = () => {
+    oauthTokens = null;
+    pendingLogin = null;
+    saveTokens();
+};
+
+export const getLoginStatus = () => ({
+    authenticated: isAuthenticated(),
+    oauthConfigured: isOAuthConfigured(),
+    pending: isAuthenticated() ? null : publicLogin(),
+});
 
 const refreshAccessToken = async () => {
     if (!oauthTokens?.refresh_token) throw new Error('No refresh token');
-    const res = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            refresh_token: oauthTokens.refresh_token,
-            client_id: OAUTH_CLIENT_ID,
-            client_secret: OAUTH_CLIENT_SECRET,
-            grant_type: 'refresh_token',
-        }),
+    const data = await postForm('https://oauth2.googleapis.com/token', {
+        refresh_token: oauthTokens.refresh_token,
+        client_id: OAUTH_CLIENT_ID,
+        client_secret: OAUTH_CLIENT_SECRET,
+        grant_type: 'refresh_token',
     });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error_description || data.error);
-
-    oauthTokens.access_token = data.access_token;
-    oauthTokens.expiry_date = Date.now() + data.expires_in * 1000;
+    if (data.error) {
+        // Jeton révoqué ou expiré pour de bon : il faut se reconnecter
+        if (data.error === 'invalid_grant') {
+            console.warn('YouTube: refresh token rejected, reconnect needed');
+            logout();
+        }
+        throw new Error(data.error_description || data.error);
+    }
+    storeTokens(data);
     return oauthTokens.access_token;
 };
 
 const getAccessToken = async () => {
     if (!oauthTokens) throw new Error('Not authenticated');
-    if (Date.now() >= oauthTokens.expiry_date - 60000) {
+    if (!oauthTokens.access_token || Date.now() >= oauthTokens.expiry_date - 60000) {
         return refreshAccessToken();
     }
     return oauthTokens.access_token;
 };
 
-export const isAuthenticated = () => Boolean(oauthTokens?.access_token);
-export const isOAuthConfigured = () => Boolean(OAUTH_CLIENT_ID && OAUTH_CLIENT_SECRET);
+// Rafraîchit le jeton en arrière-plan pour garder la session active
+setInterval(() => {
+    if (oauthTokens?.refresh_token) refreshAccessToken().catch(() => {});
+}, 45 * 60 * 1000).unref?.();
 
 // --- Fetch user's playlists via OAuth ---
 export const fetchMyPlaylists = async () => {
@@ -175,8 +259,8 @@ export const fetchPlaylistItems = async (playlistId, maxResults = 50) => {
     const headers = {};
     let authParam = '';
 
-    if (isAuthenticated()) {
-        const token = await getAccessToken();
+    const token = isAuthenticated() ? await getAccessToken().catch(() => null) : null;
+    if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     } else {
         const apiKey = process.env.YOUTUBE_API_KEY;
@@ -285,5 +369,6 @@ export const addCustomPlaylist = async (url) => {
     };
 
     customPlaylists.set(playlistId, playlist);
+    try { writeFileSync(PLAYLISTS_FILE, JSON.stringify([...customPlaylists.values()], null, 2)); } catch {}
     return playlist;
 };

@@ -66,47 +66,45 @@ router.post('/api/cast/volume', async (req, res) => {
 // --- YouTube OAuth2 ---
 
 router.get('/api/youtube/auth/status', (_req, res) => {
-    res.json({
-        authenticated: youtubeService.isAuthenticated(),
-        oauthConfigured: youtubeService.isOAuthConfigured(),
-    });
+    res.json(youtubeService.getLoginStatus());
 });
 
-router.get('/api/youtube/auth/url', (_req, res) => {
+// Connexion par code (google.com/device) : marche depuis la tablette et le téléphone
+router.post('/api/youtube/auth/start', async (_req, res) => {
     try {
-        res.json({ url: youtubeService.getAuthUrl() });
+        res.json(await youtubeService.startDeviceLogin());
     } catch (error) {
         res.status(500).json({ error: error?.message });
     }
 });
 
-router.get('/api/youtube/callback', async (req, res) => {
-    try {
-        const { code } = req.query;
-        if (!code) return res.status(400).send('Missing code');
-        await youtubeService.exchangeCode(code);
-        res.send(
-            '<html><body><script>window.close(); window.opener && window.opener.postMessage("youtube-auth-success","*");</script><p>Connecte ! Tu peux fermer cette fenetre.</p></body></html>',
-        );
-    } catch (error) {
-        res.status(500).send(`Erreur OAuth: ${error?.message}`);
-    }
+router.post('/api/youtube/auth/cancel', (_req, res) => {
+    youtubeService.cancelDeviceLogin();
+    res.json({ ok: true });
+});
+
+router.post('/api/youtube/auth/logout', (_req, res) => {
+    youtubeService.logout();
+    res.json({ ok: true });
 });
 
 // --- YouTube playlists ---
 
 router.get('/api/youtube/playlists', async (_req, res) => {
-    try {
-        const userPlaylists = youtubeService.isAuthenticated()
-            ? await youtubeService.fetchMyPlaylists()
-            : [];
-        res.json({
-            playlists: [...userPlaylists, ...youtubeService.getAllPlaylists()],
-            authenticated: youtubeService.isAuthenticated(),
-        });
-    } catch (error) {
-        res.status(500).json({ error: error?.message || 'Failed to get playlists' });
+    let userPlaylists = [];
+    let accountError = null;
+    if (youtubeService.isAuthenticated()) {
+        try {
+            userPlaylists = await youtubeService.fetchMyPlaylists();
+        } catch (error) {
+            accountError = error?.message || 'YouTube account error';
+        }
     }
+    res.json({
+        playlists: [...userPlaylists, ...youtubeService.getAllPlaylists()],
+        authenticated: youtubeService.isAuthenticated(),
+        accountError,
+    });
 });
 
 router.get('/api/youtube/playlist/:id', async (req, res) => {
