@@ -18,15 +18,17 @@ import * as notifier from './notifier.js';
 import * as presence from './presence.js';
 import * as journal from './journal.js';
 import * as lightSignals from './lightSignals.js';
-import { fromEccc, icePreview, fromCityNotices, fromManual, merge, whenLabel, bucket, telegramText, weekendText, briefingLine as line, lampKind } from './cityLogic.js';
+import * as bixi from './bixi.js';
+import { fromEccc, icePreview, fromCityNotices, fromManual, fromStm, merge, whenLabel, bucket, telegramText, weekendText, briefingLine as line, lampKind } from './cityLogic.js';
 
 const FILE = dataFile('city.json');
 const TZ = process.env.TZ || 'America/Toronto';
 const ECCC = 'https://api.weather.gc.ca/collections/weather-alerts/items';
 const NOTICES = 'https://donnees.montreal.ca/api/3/action/datastore_search';
 const NOTICES_RESOURCE = 'fc6e5f85-7eba-451c-8243-bdf35c2ab336'; // « Avis et alertes »
+const STM = 'https://api.stm.info/pub/od/i3/v2/messages/etatservice';
 const TICK_MS = 60_000;
-const AGE = { eccc: 10 * 60_000, ville: 30 * 60_000, meteo: 15 * 60_000 };
+const AGE = { eccc: 10 * 60_000, ville: 30 * 60_000, meteo: 15 * 60_000, stm: 3 * 60_000 };
 const UA = { 'User-Agent': 'MyHue (domotique maison)' };
 
 const DEFAULTS = {
@@ -39,6 +41,12 @@ const DEFAULTS = {
     takeover: true, // écran d'alerte sur la tablette
     dayFrom: '07:00', // en dehors : messages silencieux, pas de lampe
     dayTo: '22:00',
+    // Métro : clé gratuite du portail développeurs STM, lignes suivies, alertes au départ en semaine
+    stmKey: null,
+    metroLines: ['2'],
+    metroStation: null,
+    commuteFrom: '07:40',
+    commuteTo: '08:30',
     sent: {}, // id → envoyé le (ms)
     acked: [], // dangers déjà vus sur la tablette
 };
@@ -61,7 +69,19 @@ const sources = {
     eccc: { at: 0, ok: null, events: [] },
     ville: { at: 0, ok: null, events: [], records: [] },
     meteo: { at: 0, ok: null, events: [] },
+    stm: { at: 0, ok: null, events: [], status: [], error: null },
 };
+
+// Autres modules qui ajoutent des lignes à la carte (la collecte du soir) : () => [événements]
+const extra = [];
+export const addSource = (fn) => extra.push(fn);
+const extraEvents = () => extra.flatMap((fn) => {
+    try {
+        return fn() || [];
+    } catch {
+        return [];
+    }
+});
 
 const read = async (key, fn) => {
     const s = sources[key];
@@ -88,6 +108,15 @@ const refresh = async () => {
             const { data } = await axios.get(NOTICES, { timeout: 20_000, headers: UA, params: { resource_id: NOTICES_RESOURCE, limit: 300, sort: 'date_debut desc' } });
             s.records = data.result?.records || [];
         }),
+        config.stmKey && read('stm', async (s) => {
+            try {
+                const { data } = await axios.get(STM, { timeout: 15_000, headers: { apiKey: config.stmKey, Accept: 'application/json' } });
+                Object.assign(s, fromStm(data, config.metroLines), { error: null });
+            } catch (err) {
+                s.error = err.response?.status === 400 || err.response?.status === 401 ? 'clé STM refusée' : err.message;
+                throw err;
+            }
+        }),
         read('meteo', async (s) => {
             const forecast = await getForecast();
             s.events = [icePreview(forecast?.hours || [])].filter(Boolean);
@@ -101,6 +130,8 @@ export const getEvents = (now = Date.now()) => merge([
     sources.meteo.events,
     fromCityNotices(sources.ville.records, { areas: config.areas, streets: config.streets, now }),
     config.events.map((e) => fromManual(e, now, TZ)),
+    config.stmKey ? sources.stm.events : [],
+    extraEvents(),
 ], now);
 
 // --- Envois ---
@@ -116,6 +147,13 @@ const dueForHeadsUp = (e, now) => {
     return e.start - now < 24 * 3600_000 && (localParts(now, TZ).minutes >= 19 * 60 || ['now', 'today'].includes(bucket(e, now, TZ)));
 };
 
+/** En semaine, à l'heure de partir au travail. */
+const commuting = (now = Date.now()) => {
+    const { date, minutes } = localParts(now, TZ);
+    const wd = new Date(`${date}T12:00:00Z`).getUTCDay();
+    return wd >= 1 && wd <= 5 && minutes >= toMin(config.commuteFrom) && minutes <= toMin(config.commuteTo);
+};
+
 const send = async (key, text, { silent }) => {
     config.sent[key] = Date.now();
     save();
@@ -128,8 +166,11 @@ const dispatch = async () => {
     const events = getEvents(now);
     const day = daytime(now);
     for (const e of events) {
-        if (config.sent[e.id] || e.level === 'info') continue;
-        if (e.level === 'danger') {
+        if (config.sent[e.id] || e.level === 'info' || e.notify === false) continue;
+        if (e.kind === 'metro') {
+            // Le métro ne compte qu'au moment de partir : Telegram avec son, pas de lampe
+            if (commuting(now)) await send(e.id, `🚇 ${e.title} : ${e.detail}`, { silent: false });
+        } else if (e.level === 'danger') {
             // La nuit : message silencieux, la lampe et l'écran attendent le matin
             await send(e.id, telegramText(e, now, TZ), { silent: !day });
             if (day && config.lamp && presence.anyoneHome() !== false) {
@@ -188,6 +229,14 @@ export const getView = (now = Date.now()) => {
         sources: Object.fromEntries(Object.entries(sources).map(([k, s]) => [k, { ok: s.ok, at: s.at || null }])),
         events,
         takeover: takeover && { ...takeover, lamp: config.lamp ? lampKind(takeover) : null },
+        // Carte « Métro » quand la saison BIXI est finie
+        metro: config.stmKey ? {
+            station: config.metroStation,
+            lines: sources.stm.status,
+            updatedAt: sources.stm.at || null,
+            error: sources.stm.error,
+            show: !bixi.inSeason(now),
+        } : null,
     };
 };
 
@@ -202,8 +251,8 @@ export const ack = (id) => {
 // --- Réglages ---
 
 export const getSettings = () => {
-    const { sent, acked, ...rest } = config;
-    return structuredClone(rest);
+    const { sent, acked, stmKey, ...rest } = config;
+    return { ...structuredClone(rest), stmKeySet: Boolean(stmKey) };
 };
 
 const strings = (list, max, len = 60) => {
@@ -218,8 +267,14 @@ export const update = (patch = {}) => {
         if (patch[key] !== undefined) config[key] = Boolean(patch[key]);
     }
     if (patch.areas !== undefined) config.areas = strings(patch.areas, 6);
+    if (patch.stmKey !== undefined) {
+        config.stmKey = patch.stmKey ? String(patch.stmKey).trim().slice(0, 80) : null;
+        sources.stm.at = 0;
+    }
+    if (patch.metroLines !== undefined) config.metroLines = strings(patch.metroLines, 4, 2).filter((l) => /^[1245]$/.test(l));
+    if (patch.metroStation !== undefined) config.metroStation = patch.metroStation ? String(patch.metroStation).slice(0, 40) : null;
     if (patch.streets !== undefined) config.streets = strings(patch.streets, 30);
-    for (const key of ['dayFrom', 'dayTo']) {
+    for (const key of ['dayFrom', 'dayTo', 'commuteFrom', 'commuteTo']) {
         if (patch[key] === undefined) continue;
         if (!HHMM.test(patch[key])) throw new Error(`${key} invalide`);
         config[key] = patch[key];

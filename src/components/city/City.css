@@ -17,6 +17,8 @@
 .city-ev-text small { display: block; font-size: 12px; color: var(--h-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .city-when { font-weight: 800; color: var(--h-text); font-variant-numeric: tabular-nums; }
 .city-ev.danger .city-when { color: var(--city-danger-text); }
+.city-ev:has(.city-do) { grid-template-columns: 6px minmax(0, 1fr) auto; }
+.city-do { font: inherit; font-size: 12px; font-weight: 800; padding: 7px 12px; border-radius: 999px; border: 0; background: var(--h-accent); color: var(--h-on-accent); cursor: pointer; white-space: nowrap; }
 .city-more { font-size: 12px; color: var(--h-muted); font-weight: 700; }
 
 /* Écran d'alerte */
@@ -36,3 +38,15 @@
     .city-takeover { animation: city-in .35s ease-out; }
     @keyframes city-in { from { transform: translateY(12px); opacity: .6; } }
 }
+
+/* Carte Métro (hors saison BIXI) */
+.metro-pill { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap; background: var(--h-surface-2); color: var(--h-muted); }
+.metro-pill.ok { background: #2f3a1a; color: #e3f7b5; }
+.metro-pill.bad { background: #3d1714; color: #ffc4bd; }
+.metro-lines { display: grid; gap: 8px; }
+.metro-line { display: grid; grid-template-columns: 14px auto minmax(0, 1fr); gap: 10px; align-items: center; background: var(--h-surface-2); border-radius: 14px; padding: 10px 12px; }
+.metro-line i { width: 14px; height: 14px; border-radius: 999px; }
+.metro-line b { font-size: 14px; white-space: nowrap; }
+.metro-line span { font-size: 13px; color: var(--h-muted); min-width: 0; }
+.metro-line.bad span { color: var(--h-text); }
+.metro-note { font-size: 13px; }

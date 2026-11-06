@@ -301,9 +301,13 @@ const endLamp = async ({ checkManual = false } = {}) => {
     }
 };
 
-// Autre signal sur le bar (boîte aux lettres) : il rend la lampe avant qu'on lise son état
-let lampYield = null;
-export const setLampYield = (fn) => (lampYield = fn);
+// Autres signaux sur le bar (boîte aux lettres, collecte) : ils rendent la lampe avant qu'on lise son état
+const lampYields = [];
+export const setLampYield = (fn) => lampYields.push(fn);
+// Un signal plus important que le courrier veut le bar (la poubelle du soir) : le courrier lui laisse la place
+const barClaims = new Set();
+export const claimBar = (who, on) => (on ? barClaims.add(who) : barClaims.delete(who));
+export const barClaimed = () => barClaims.size > 0;
 let taking = false;
 export const lampBusy = () => taking || Boolean(config.lamp);
 export const pickBarLight = () => pickLight();
@@ -315,7 +319,7 @@ const takeLamp = async (mode) => {
     }
     taking = true;
     try {
-        await lampYield?.().catch(() => {});
+        for (const fn of lampYields) await fn().catch(() => {});
         const id = await pickLight();
         if (!id) throw new Error('Lampe du bar introuvable');
         const { data } = await hueClient.get(`/lights/${id}`);

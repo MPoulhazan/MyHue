@@ -37,6 +37,8 @@ const DEFAULTS = {
     alerts: true, // Telegram dans la fenêtre de départ
     lamp: true, // la lampe signal respire en rouge BIXI
     alertsBeforeMin: 20, // les alertes commencent 20 min avant leaveFrom
+    seasonFrom: null, // 'MM-JJ' : on reprend le BIXI ce jour-là (null = toute l'année)
+    seasonTo: null, // 'MM-JJ' : dernier jour de BIXI, ensuite métro
     sent: { date: null, keys: [] }, // alertes déjà envoyées aujourd'hui
 };
 
@@ -90,10 +92,21 @@ const refresh = async () => {
 
 /** Relit le flux s'il a plus de `maxAgeMs` ; une seule lecture à la fois. */
 export const ensureFresh = async (maxAgeMs = 60_000) => {
-    if (!config.enabled || !config.homeStations.length) return;
+    if (!config.enabled || !config.homeStations.length || !inSeason()) return;
     if (Date.now() - status.at < maxAgeMs) return;
     inflight ??= refresh().catch((err) => console.warn('[BIXI]', err.message)).finally(() => (inflight = null));
     await inflight;
+};
+
+// --- Saison : hors saison, ni lecture, ni alertes, ni carte (le métro prend le relais) ---
+
+/** Le BIXI fait-il partie des trajets en ce moment ? */
+export const inSeason = (now = Date.now()) => {
+    if (!config.seasonFrom || !config.seasonTo) return true;
+    const md = localParts(now, TZ).date.slice(5);
+    return config.seasonFrom <= config.seasonTo
+        ? md >= config.seasonFrom && md <= config.seasonTo
+        : md >= config.seasonFrom || md <= config.seasonTo;
 };
 
 // --- Fenêtres horaires ---
@@ -130,7 +143,7 @@ let shortage = false; // vélos à sec en ce moment, pour la lampe au départ
 
 const checkAlerts = async () => {
     const now = Date.now();
-    if (!inAlertWindow(now)) {
+    if (!inAlertWindow(now) || !inSeason(now)) {
         shortage = false;
         return;
     }
@@ -195,6 +208,7 @@ export const getView = async ({ fresh = false } = {}) => {
     await ensureFresh(fresh ? 60_000 : Math.min(maxAge(now), 10 * 60_000));
     const configured = config.homeStations.length > 0;
     const base = { enabled: config.enabled, configured, window: inLeaveWindow(now), leaveFrom: config.leaveFrom, leaveTo: config.leaveTo };
+    if (!inSeason(now)) return { ...base, season: 'closed', updatedAt: status.at || null, home: [], trips: [], extras: [], verdict: await verdict() };
     if (!configured || !status.at) return { ...base, season: 'open', updatedAt: status.at || null, home: [], trips: [], extras: [], verdict: await verdict() };
 
     const loc = await getLocation().catch(() => null);
@@ -260,6 +274,11 @@ export const update = (patch = {}) => {
             if (!c?.who) throw new Error('commuters : « who » requis');
             return { who: String(c.who).slice(0, 24), dest: ids(c.dest || []).slice(0, 4) };
         });
+    }
+    for (const key of ['seasonFrom', 'seasonTo']) {
+        if (patch[key] === undefined) continue;
+        if (patch[key] !== null && !/^(0[1-9]|1[0-2])-(0[1-9]|[12]d|3[01])$/.test(patch[key])) throw new Error(`${key} invalide (MM-JJ)`);
+        config[key] = patch[key];
     }
     for (const key of ['leaveFrom', 'leaveTo']) {
         if (patch[key] === undefined) continue;

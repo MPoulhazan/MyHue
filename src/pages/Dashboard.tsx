@@ -16,6 +16,7 @@ import { MailboxCard } from '../components/mailbox/MailboxCard';
 import { BixiCard } from '../components/bixi/BixiCard';
 import { CityCard } from '../components/city/CityCard';
 import { CityAlert } from '../components/city/CityAlert';
+import { MetroCard } from '../components/city/MetroCard';
 import { ScheduleSheet } from '../components/home/ScheduleSheet';
 import { ClimateCard, HouseCard, HueStatus, Journal, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import './Dashboard.css';
@@ -139,6 +140,7 @@ export function Dashboard() {
                     )}
 
                     <BixiCard />
+                    <MetroCard />
                 </section>
 
                 <aside className="home-side">

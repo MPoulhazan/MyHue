@@ -17,12 +17,15 @@ export interface CityEvent {
     link: string | null;
     when: string;
     bucket: 'now' | 'today' | 'tomorrow' | 'weekend' | 'later';
+    action?: 'collecte';
 }
+export interface MetroLine { line: string; name: string; ok: boolean; text: string }
 export interface CityView {
     enabled: boolean;
     updatedAt: number | null;
     events: CityEvent[];
     takeover: (CityEvent & { lamp: 'ice' | 'alert' | null }) | null;
+    metro: { station: string | null; lines: MetroLine[]; updatedAt: number | null; error: string | null; show: boolean } | null;
 }
 
 // Une seule lecture partagée par la carte et l'écran d'alerte
@@ -52,5 +55,6 @@ export function useCity() {
         };
     }, []);
     const ack = useCallback((id: string) => axios.post('/api/city/ack', { id }).then(({ data }) => publish(data)).catch(load), []);
-    return { view, ack };
+    const binOut = useCallback(() => axios.post('/api/collecte/done', {}).then(load).catch(load), []);
+    return { view, ack, binOut };
 }

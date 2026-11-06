@@ -20,6 +20,7 @@ import * as mailbox from './mailbox.js';
 import * as cube from './cube.js';
 import * as bixi from './bixi.js';
 import * as city from './city.js';
+import * as collecte from './collecte.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as health from './health.js';
@@ -75,6 +76,7 @@ app.listen(PORT, () => {
     cube.start();
     bixi.start();
     city.start();
+    collecte.start();
     broadlinkService.discover().catch((err) => console.warn('⚠️  Broadlink:', err.message));
     zigbeeService.start().catch((err) => console.warn('⚠️  Zigbee:', err.message));
     health.start();

@@ -80,3 +80,16 @@ test('Questions pour Jarvis', () => {
     assert.ok(isCityQuestion('Il y a une alerte météo ?'));
     assert.ok(!isCityQuestion('Allume le salon'));
 });
+
+test('STM : ligne orange interrompue, les autres lignes ignorées', async () => {
+    const { fromStm } = await import('./cityLogic.js');
+    const data = { alerts: [
+        { active_periods: { start: NOW / 1000 - 600, end: null }, informed_entities: [{ route_short_name: '2' }], description_texts: [{ language: 'fr', text: 'Arrêt de service entre Berri-UQAM et Jean-Talon. Reprise prévue vers 8 h 15.' }] },
+        { active_periods: { start: NOW / 1000 - 600, end: null }, informed_entities: [{ route_short_name: '1' }], description_texts: [{ language: 'fr', text: 'Service normal du métro' }] },
+    ] };
+    const { status, events } = fromStm(data, ['2', '1'], NOW);
+    assert.deepEqual(status.map((s) => [s.name, s.ok]), [['orange', false], ['verte', true]]);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].title, 'Métro ligne orange');
+    assert.equal(fromStm({ alerts: [] }, ['2'], NOW).status[0].text, 'Service normal');
+});

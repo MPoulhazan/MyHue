@@ -19,6 +19,7 @@ import * as mailbox from '../mailbox.js';
 import * as bixi from '../bixi.js';
 import { bixiSpeech, isBixiQuestion } from '../bixiLogic.js';
 import * as city from '../city.js';
+import * as collecte from '../collecte.js';
 import { citySpeech, isCityQuestion } from '../cityLogic.js';
 import { getHomeState, recentEvents } from '../homeState.js';
 import { executeActions } from '../actions.js';
@@ -99,6 +100,12 @@ router.post('/api/agent', async (req, res) => {
         if (isBixiQuestion(message)) {
             const view = await bixi.getView({ fresh: true }).catch(() => null);
             if (view) return res.json({ message: bixiSpeech(view), actions: [], actionResults: [], tier: 'local', intent: 'bixi' });
+        }
+
+        // Niveau 0 : « J'ai sorti la poubelle »
+        if (/(j.ai|c.est|on a|bac|poubelle|compost).*sorti/i.test(message) && /poubelle|bac|compost|ordures/i.test(message)) {
+            const speech = await collecte.markDone('Jarvis').then((v) => `Noté, ${v.tonight.label.toLowerCase()} sortie.`).catch((err) => err.message);
+            return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'collecte' });
         }
 
         // Niveau 0 : « Il se passe quoi ce week-end ? », d'après les alertes de la ville

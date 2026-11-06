@@ -269,3 +269,41 @@ export const citySpeech = (events, now = Date.now(), tz = TZ) => {
 
 export const isCityQuestion = (text) =>
     /\b(en ville|ce week-?end|alertes? (m[ée]t[ée]o|de la ville)|verglas|avis d.[ée]bullition|il se passe quoi|quoi de pr[ée]vu)\b/i.test(text);
+
+// --- Métro (STM, API i3 « état du service ») ---
+
+export const METRO = { 1: 'verte', 2: 'orange', 4: 'jaune', 5: 'bleue' };
+const text = (list = [], lang = 'fr') => (list.find((t) => t.language === lang) || list[0])?.text?.replace(/\s+/g, ' ').trim() || '';
+
+/**
+ * Alertes STM → état de chaque ligne suivie + événements pour les lignes perturbées.
+ * @param data  réponse de /pub/od/i3/v2/messages/etatservice ({ alerts: [...] })
+ * @param lines ['2'] numéros de ligne de métro
+ */
+export const fromStm = (data, lines = ['2'], now = Date.now()) => {
+    const alerts = (data?.alerts || []).filter((a) => {
+        const p = a.active_periods || {};
+        const start = Number(p.start) * 1000 || 0;
+        const end = Number(p.end) * 1000 || 0;
+        return (!start || start <= now) && (!end || end > now);
+    });
+    const status = lines.map((line) => {
+        const mine = alerts.filter((a) => (a.informed_entities || []).some((e) => String(e.route_short_name) === String(line)));
+        const msgs = mine.map((a) => text(a.description_texts) || text(a.header_texts)).filter(Boolean);
+        const trouble = msgs.filter((m) => !/service normal/i.test(m));
+        return { line: String(line), name: METRO[line] || String(line), ok: trouble.length === 0, text: trouble[0] || 'Service normal' };
+    });
+    const events = status.filter((s) => !s.ok).map((s) => ({
+        id: `stm:${s.line}:${fold(s.text).slice(0, 40)}`,
+        level: 'heads',
+        kind: 'metro',
+        title: `Métro ligne ${s.name}`,
+        detail: s.text.slice(0, 180),
+        advice: '',
+        start: null,
+        end: null,
+        source: 'STM',
+        link: 'https://www.stm.info/fr/infos/etat-du-service',
+    }));
+    return { status, events };
+};

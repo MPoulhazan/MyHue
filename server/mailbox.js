@@ -247,7 +247,7 @@ const wantLamp = (now = Date.now()) => {
     return config.enabled && config.lamp && Boolean(hueBaseUrl) && Boolean(config.waiting)
         && config.lampDismissedFor !== config.waiting.since
         && minutes >= toMin(config.lampFrom) && minutes < toMin(config.lampUntil)
-        && someoneHome() && !alarm.anyActive() && !cooper.lampBusy();
+        && someoneHome() && !alarm.anyActive() && !cooper.lampBusy() && !cooper.barClaimed();
 };
 
 let lampBusy = false;
@@ -260,6 +260,9 @@ const lightLamp = async () => {
     save();
     await putLight(id, { ...(color ? YELLOW : YELLOW_CT), transitiontime: 20 });
 };
+
+/** Le bar est en jaune pour le courrier en ce moment. */
+export const lampHeld = () => Boolean(config.lampState) || lampBusy;
 
 /** Remet le bar comme avant, sauf si quelqu'un l'a changé entre-temps. */
 const releaseLamp = async () => {

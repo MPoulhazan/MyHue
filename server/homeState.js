@@ -16,6 +16,7 @@ import * as cube from './cube.js';
 import * as bixi from './bixi.js';
 import { bixiSpeech } from './bixiLogic.js';
 import * as city from './city.js';
+import * as collecte from './collecte.js';
 import { citySpeech } from './cityLogic.js';
 import { getSensors, getOutdoorWeather } from './sensors.js';
 
@@ -60,6 +61,8 @@ export const getHomeState = async () => {
             const events = city.getEvents();
             return { events: events.slice(0, 8).map(({ id, level, kind, title, detail, start, end }) => ({ id, level, kind, title, detail, start, end })), summary: citySpeech(events) };
         })(),
+        // Collecte des bacs : tonight = bac à sortir ce soir (done = sorti), next = prochain soir
+        collecte: collecte.getView(),
         recentEvents: recentEvents(),
     };
 };

@@ -13,7 +13,7 @@ const MAX = 5;
 
 /** Carte « En ville » : alertes météo, avis du quartier et événements, rangés par jour. Cachée quand il n'y a rien. */
 export function CityCard() {
-    const { view } = useCity();
+    const { view, binOut } = useCity();
     if (!view?.enabled || !view.events.length) return null;
 
     // Les événements arrivent du plus grave au moins grave : on garde les MAX premiers
@@ -40,6 +40,7 @@ export function CityCard() {
                                         <b>{e.title}</b>
                                         <small><span className="city-when">{e.when}</span>{e.detail && <> · {e.detail}</>}</small>
                                     </span>
+                                    {e.action === 'collecte' && <button type="button" className="city-do" onClick={binOut}>C’est sorti</button>}
                                 </div>
                             ))}
                         </div>

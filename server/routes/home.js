@@ -26,6 +26,7 @@ import * as mailbox from '../mailbox.js';
 import * as cube from '../cube.js';
 import * as bixi from '../bixi.js';
 import * as city from '../city.js';
+import * as collecte from '../collecte.js';
 import * as health from '../health.js';
 
 export const router = express.Router();
@@ -218,6 +219,36 @@ router.get('/api/city/settings', (_req, res) => res.json(city.getSettings()));
 router.put('/api/city/settings', (req, res) => {
     try {
         res.json(city.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Collecte des bacs ---
+
+router.get('/api/collecte', (_req, res) => res.json(collecte.getView()));
+
+router.post('/api/collecte/done', async (_req, res) => {
+    try {
+        res.json(await collecte.markDone('tablette'));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.post('/api/collecte/test', async (req, res) => {
+    try {
+        res.json(await collecte.test(req.body?.id));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.get('/api/collecte/settings', (_req, res) => res.json(collecte.getSettings()));
+
+router.put('/api/collecte/settings', (req, res) => {
+    try {
+        res.json(collecte.update(req.body || {}));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

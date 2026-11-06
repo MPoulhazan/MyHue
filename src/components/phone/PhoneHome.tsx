@@ -8,6 +8,7 @@ import { CooperCard } from '../cooper/CooperCard';
 import { MailboxCard } from '../mailbox/MailboxCard';
 import { BixiCard } from '../bixi/BixiCard';
 import { CityCard } from '../city/CityCard';
+import { MetroCard } from '../city/MetroCard';
 import './PhoneHome.css';
 
 /** Accueil du téléphone : moments, pièces et état de la maison sur une colonne. */
@@ -65,6 +66,7 @@ export function PhoneHome({ home, roomLights, onAdd }: {
             <CooperCard />
             <MailboxCard />
             <BixiCard />
+            <MetroCard />
             <SkyCard />
         </div>
     );
