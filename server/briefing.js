@@ -15,6 +15,7 @@ import * as flexd from './flexd.js';
 import { getWeatherDetails } from './weather.js';
 import { getSky, skyBriefingLine } from './astro.js';
 import * as mailbox from './mailbox.js';
+import * as city from './city.js';
 
 const FILE = dataFile('briefing.json');
 const TZ = process.env.TZ || 'America/Toronto';
@@ -183,7 +184,7 @@ export const announce = async (speakers, message, { volume = 0.7, holdMs = 20_00
 export const preview = async () => {
     const sky = await getSky().catch(() => null);
     const skyLine = sky ? skyBriefingLine(sky) : null;
-    return composeBriefing(await getWeatherDetails(), flexd.getStatus(), localParts().day, undefined, [skyLine, mailbox.briefingLine(mailbox.getView())]);
+    return composeBriefing(await getWeatherDetails(), flexd.getStatus(), localParts().day, undefined, [city.briefingLine(), skyLine, mailbox.briefingLine(mailbox.getView())]);
 };
 
 /** Dit le briefing tout de suite. */

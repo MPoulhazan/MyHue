@@ -1,0 +1,38 @@
+/* Alertes de la ville : rouge = danger, ambre = à prévoir, bleu = info */
+
+.city-card, .city-dim { --city-danger: #ff5a4e; --city-danger-bg: #3d1714; --city-danger-text: #ffc4bd; --city-heads: var(--h-warn); --city-info: var(--h-cool); }
+
+.city-pill { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.city-pill.danger { background: var(--city-danger-bg); color: var(--city-danger-text); }
+
+.city-agenda { display: grid; gap: 10px; }
+.city-day { display: grid; gap: 6px; }
+.city-day-name { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--h-muted); }
+.city-ev { display: grid; grid-template-columns: 6px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: var(--h-surface-2); border-radius: 14px; padding: 9px 12px 9px 0; overflow: hidden; }
+.city-ev > i { align-self: stretch; border-radius: 0 4px 4px 0; background: var(--city-info); }
+.city-ev.danger > i { background: var(--city-danger); }
+.city-ev.heads > i { background: var(--city-heads); }
+.city-ev-text { min-width: 0; }
+.city-ev-text b { display: block; font-size: 14px; }
+.city-ev-text small { display: block; font-size: 12px; color: var(--h-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.city-when { font-size: 12px; font-weight: 800; color: var(--h-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.city-ev.danger .city-when { color: var(--city-danger-text); }
+.city-more { font-size: 12px; color: var(--h-muted); font-weight: 700; }
+
+/* Écran d'alerte */
+.city-dim { position: fixed; inset: 0; z-index: 60; background: rgba(10, 10, 9, .74); display: grid; place-items: center; padding: 24px; }
+.city-takeover { width: min(720px, 100%); background: var(--h-surface); border: 2px solid var(--city-danger); border-radius: 30px; padding: 28px 32px; display: grid; gap: 18px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
+.city-kicker { font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--city-danger); }
+.city-takeover h2 { font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -.01em; text-wrap: balance; }
+.city-takeover p { font-size: 17px; color: var(--h-muted); }
+.city-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.city-fact { background: var(--h-surface-2); border-radius: 16px; padding: 12px 14px; display: grid; gap: 2px; }
+.city-fact small { font-size: 12px; color: var(--h-muted); font-weight: 700; }
+.city-fact b { font-size: 15px; }
+.city-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.city-seen { font: inherit; font-size: 16px; font-weight: 800; padding: 13px 26px; border-radius: 999px; border: 0; background: var(--h-accent); color: var(--h-on-accent); cursor: pointer; }
+.city-seen:focus-visible { outline: 3px solid var(--h-text); outline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+    .city-takeover { animation: city-in .35s ease-out; }
+    @keyframes city-in { from { transform: translateY(12px); opacity: .6; } }
+}

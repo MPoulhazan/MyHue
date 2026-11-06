@@ -25,6 +25,7 @@ import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
 import * as cube from '../cube.js';
 import * as bixi from '../bixi.js';
+import * as city from '../city.js';
 import * as health from '../health.js';
 
 export const router = express.Router();
@@ -198,6 +199,25 @@ router.get('/api/bixi/settings', (_req, res) => res.json(bixi.getSettings()));
 router.put('/api/bixi/settings', (req, res) => {
     try {
         res.json(bixi.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Alertes de la ville ---
+
+router.get('/api/city', (_req, res) => res.json(city.getView()));
+
+router.post('/api/city/ack', (req, res) => {
+    if (!req.body?.id) return res.status(400).json({ error: 'id requis' });
+    res.json(city.ack(req.body.id));
+});
+
+router.get('/api/city/settings', (_req, res) => res.json(city.getSettings()));
+
+router.put('/api/city/settings', (req, res) => {
+    try {
+        res.json(city.update(req.body || {}));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

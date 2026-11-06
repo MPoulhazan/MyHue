@@ -18,6 +18,8 @@ import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
 import * as bixi from '../bixi.js';
 import { bixiSpeech, isBixiQuestion } from '../bixiLogic.js';
+import * as city from '../city.js';
+import { citySpeech, isCityQuestion } from '../cityLogic.js';
 import { getHomeState, recentEvents } from '../homeState.js';
 import { executeActions } from '../actions.js';
 import { groqClient, GROQ_API_KEY, GROQ_MODEL } from '../llm.js';
@@ -97,6 +99,11 @@ router.post('/api/agent', async (req, res) => {
         if (isBixiQuestion(message)) {
             const view = await bixi.getView({ fresh: true }).catch(() => null);
             if (view) return res.json({ message: bixiSpeech(view), actions: [], actionResults: [], tier: 'local', intent: 'bixi' });
+        }
+
+        // Niveau 0 : « Il se passe quoi ce week-end ? », d'après les alertes de la ville
+        if (isCityQuestion(message)) {
+            return res.json({ message: citySpeech(city.getEvents()), actions: [], actionResults: [], tier: 'local', intent: 'city' });
         }
 
         const context = await getHueContext();

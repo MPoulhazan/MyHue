@@ -15,8 +15,8 @@ import { getWeatherDetails } from './weather.js';
 
 const FILE = dataFile('signals.json');
 const TZ = process.env.TZ || 'America/Toronto';
-// Couleurs en xy (gamut C) : bleu pluie, ambre tempête, vert aurore
-const COLORS = { rain: [0.167, 0.04], storm: [0.56, 0.41], aurora: [0.17, 0.7], bixi: [0.675, 0.322] };
+// Couleurs en xy (gamut C) : bleu pluie, ambre tempête, vert aurore, rouge BIXI, bleu glace, orange alerte
+const COLORS = { rain: [0.167, 0.04], storm: [0.56, 0.41], aurora: [0.17, 0.7], bixi: [0.675, 0.322], ice: [0.21, 0.29], alert: [0.62, 0.36] };
 const BREATHE_MS = 15_000; // durée d'une « respiration » Hue (alert lselect)
 
 const DEFAULTS = {
@@ -102,7 +102,7 @@ export const pulse = async (kinds, source = 'départ') => {
     } finally {
         await restoreLight(id, before);
     }
-    const LABELS = { rain: 'pluie dans 30 min', storm: 'tempête en approche', aurora: 'aurores possibles', bixi: 'plus de BIXI autour' };
+    const LABELS = { rain: 'pluie dans 30 min', storm: 'tempête en approche', aurora: 'aurores possibles', bixi: 'plus de BIXI autour', ice: 'verglas, neige ou grand froid', alert: 'alerte en ville' };
     const what = kinds.map((k) => LABELS[k]).join(' et ');
     journal.log({ kind: 'system', title: `${light.name} a prévenu : ${what} (${source})`, data: { light: id, kinds } });
     return { light: { id, name: light.name }, kinds };

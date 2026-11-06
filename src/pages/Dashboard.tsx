@@ -14,6 +14,8 @@ import { SkyCard } from '../components/sky/SkyCard';
 import { CooperCard } from '../components/cooper/CooperCard';
 import { MailboxCard } from '../components/mailbox/MailboxCard';
 import { BixiCard } from '../components/bixi/BixiCard';
+import { CityCard } from '../components/city/CityCard';
+import { CityAlert } from '../components/city/CityAlert';
 import { ScheduleSheet } from '../components/home/ScheduleSheet';
 import { ClimateCard, HouseCard, HueStatus, Journal, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import './Dashboard.css';
@@ -140,6 +142,7 @@ export function Dashboard() {
                 </section>
 
                 <aside className="home-side">
+                    <CityCard />
                     <HouseCard sensors={home.sensors} onAdd={() => setAdding(true)} />
                     <CooperCard />
                     <MailboxCard />
@@ -149,6 +152,8 @@ export function Dashboard() {
             </div>
 
             {sheets}
+
+            <CityAlert />
 
             <NightMode
                 temperature={home.sensors.find((s) => s.props.temperature != null)?.props.temperature ?? null}

@@ -15,6 +15,8 @@ import * as mailbox from './mailbox.js';
 import * as cube from './cube.js';
 import * as bixi from './bixi.js';
 import { bixiSpeech } from './bixiLogic.js';
+import * as city from './city.js';
+import { citySpeech } from './cityLogic.js';
 import { getSensors, getOutdoorWeather } from './sensors.js';
 
 const TZ = process.env.TZ || 'America/Toronto';
@@ -53,6 +55,11 @@ export const getHomeState = async () => {
         cube: (({ found, face, faceLabel, last, battery }) => ({ found, face, faceLabel, last, battery }))(cube.getView()),
         // Vélos BIXI classiques au départ de la maison, places libres à l'arrivée de chacun
         bixi: await bixi.getView().then((v) => ({ configured: v.configured, season: v.season, verdict: v.verdict, trips: v.trips, summary: bixiSpeech(v) })).catch(() => null),
+        // Alertes de la ville : météo dangereuse, avis du quartier, événements (level danger/heads/info)
+        city: (() => {
+            const events = city.getEvents();
+            return { events: events.slice(0, 8).map(({ id, level, kind, title, detail, start, end }) => ({ id, level, kind, title, detail, start, end })), summary: citySpeech(events) };
+        })(),
         recentEvents: recentEvents(),
     };
 };
