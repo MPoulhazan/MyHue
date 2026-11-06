@@ -277,7 +277,7 @@ export const update = (patch = {}) => {
     }
     for (const key of ['seasonFrom', 'seasonTo']) {
         if (patch[key] === undefined) continue;
-        if (patch[key] !== null && !/^(0[1-9]|1[0-2])-(0[1-9]|[12]d|3[01])$/.test(patch[key])) throw new Error(`${key} invalide (MM-JJ)`);
+        if (patch[key] !== null && !/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(patch[key])) throw new Error(`${key} invalide (MM-JJ)`);
         config[key] = patch[key];
     }
     for (const key of ['leaveFrom', 'leaveTo']) {
