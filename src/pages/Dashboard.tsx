@@ -145,9 +145,9 @@ export function Dashboard() {
 
                 <aside className="home-side">
                     <CityCard />
-                    <HouseCard sensors={home.sensors} onAdd={() => setAdding(true)} />
                     <CooperCard />
                     <MailboxCard />
+                    <HouseCard sensors={home.sensors} onAdd={() => setAdding(true)} />
                     <SkyCard />
                     <Journal log={home.log} />
                 </aside>

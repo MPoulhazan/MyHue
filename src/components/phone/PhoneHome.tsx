@@ -62,9 +62,9 @@ export function PhoneHome({ home, roomLights, onAdd }: {
             </div>
 
             <CityCard />
-            <HouseCard sensors={home.sensors} onAdd={onAdd} />
             <CooperCard />
             <MailboxCard />
+            <HouseCard sensors={home.sensors} onAdd={onAdd} />
             <BixiCard />
             <MetroCard />
             <SkyCard />
