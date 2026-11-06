@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Home } from '../../../hooks/useHome';
 import { useCity } from '../../city/useCity';
 import { useSky } from '../../sky/sky';
-import { bixiPoll, cooperPoll, mailboxPoll } from './polls';
+import { bixiPoll, cooperPoll, mailboxPoll, pinsPoll } from './polls';
 import {
     arrange, bixiRelevance, cityRelevance, cooperRelevance, houseRelevance,
     journalRelevance, mailRelevance, metroRelevance, skyRelevance,
@@ -24,6 +24,7 @@ export function useHomeWidgets(home: Home): {
     const mail = mailboxPoll.use();
     const bixi = bixiPoll.use();
     const sky = useSky();
+    const pins = pinsPoll.use();
 
     // Les règles d'heure (BIXI le matin, Ciel le soir) se réévaluent chaque minute
     const [clock, setClock] = useState(() => new Date());
@@ -42,7 +43,7 @@ export function useHomeWidgets(home: Home): {
         skyRelevance(sky, clock),
         journalRelevance(home.log.length),
     ];
-    const arrangement = arrange(states);
+    const arrangement = arrange(states, pins?.pins);
 
     // Pastilles ouvertes à la main : elles se referment seules
     const [peek, setPeek] = useState<{ id: WidgetId; until: number }[]>([]);

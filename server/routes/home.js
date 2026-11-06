@@ -23,6 +23,7 @@ import * as lightSignals from '../lightSignals.js';
 import * as circadian from '../circadian.js';
 import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
+import * as homeWidgets from '../homeWidgets.js';
 import * as cube from '../cube.js';
 import * as bixi from '../bixi.js';
 import * as city from '../city.js';
@@ -112,6 +113,18 @@ router.put('/api/signals', (req, res) => {
 router.post('/api/signals/test', async (req, res) => {
     try {
         res.json(await lightSignals.test(req.body?.kind));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Widgets de l'accueil : Auto / Toujours / Masqué ---
+
+router.get('/api/home-widgets', (_req, res) => res.json(homeWidgets.getPins()));
+
+router.put('/api/home-widgets', (req, res) => {
+    try {
+        res.json(homeWidgets.updatePins(req.body || {}));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

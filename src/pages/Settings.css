@@ -96,3 +96,14 @@ button.item-row:hover { background: var(--h-surface-2); }
 @media (max-width: 760px) {
     .wakeword-actions > * { flex: 1 1 calc(50% - 10px); }
 }
+
+/* Widgets de l'accueil : Auto / Toujours / Masqué */
+.widget-pin-row { flex-wrap: wrap; }
+.widget-seg { flex: none; display: flex; padding: 4px; border-radius: 16px; background: var(--h-surface-2); }
+.widget-seg button { min-width: 96px; min-height: 44px; padding: 0 14px; border: none; border-radius: 12px; background: transparent; color: var(--h-muted); font-size: 15px; font-weight: 700; }
+.widget-seg button.on { background: var(--h-accent); color: var(--h-on-accent); }
+.widget-seg button:disabled { cursor: default; }
+@media (max-width: 760px) {
+    .widget-seg { width: 100%; }
+    .widget-seg button { flex: 1; min-width: 0; }
+}

@@ -12,6 +12,7 @@ export function Settings() {
     const speakersOn = home.cast.speakers.filter((s) => s.online).length;
 
     const entries: { to: string; icon: IconName; label: string; hint: string }[] = [
+        { to: '/settings/widgets', icon: 'grid', label: 'Widgets de l’accueil', hint: 'Auto, toujours affiché ou masqué, widget par widget' },
         {
             to: '/sensors', icon: 'door', label: 'Capteurs',
             hint: home.sensors.length ? `${home.sensors.length} capteur${home.sensors.length > 1 ? 's' : ''}${offline ? `, ${offline} hors ligne` : ''} · ajouter, renommer, ranger` : 'Ajouter un capteur Zigbee',

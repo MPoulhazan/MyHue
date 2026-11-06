@@ -3,15 +3,18 @@ import type { DashLight, Home } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import type { IconName } from '../Icon';
 import { HueStatus, RoomCard, fmt } from '../home/cards';
-import { HomeWidgets } from '../home/widgets/registry';
-import { WIDGET_META, WIDGET_ORDER } from '../home/widgets/relevance';
+import { HomeWidgets, WidgetChips } from '../home/widgets/registry';
+import { WIDGET_META } from '../home/widgets/relevance';
+import type { useHomeWidgets } from '../home/widgets/useHomeWidgets';
 import './PhoneHome.css';
 
 /** Accueil du téléphone : moments, pièces et état de la maison sur une colonne. */
-export function PhoneHome({ home, roomLights, onAdd }: {
+export function PhoneHome({ home, roomLights, onAdd, widgets }: {
     home: Home;
     roomLights: [string, DashLight[]][];
     onAdd: () => void;
+    /** Même tri que la tablette : cartes qui ont quelque chose à dire, pastilles pour le reste */
+    widgets: ReturnType<typeof useHomeWidgets>;
 }) {
     const navigate = useNavigate();
     const climate = home.sensors.find((s) => s.props.temperature != null);
@@ -57,7 +60,10 @@ export function PhoneHome({ home, roomLights, onAdd }: {
                 <HueStatus />
             </div>
 
-            <HomeWidgets ctx={{ home, onAdd }} ids={WIDGET_ORDER.filter((id) => !WIDGET_META[id].tabletOnly)} />
+            <h2 className="phone-section">Maintenant</h2>
+            <HomeWidgets ctx={{ home, onAdd }} ids={[...widgets.arrangement.cards, ...widgets.peek].filter((id) => !WIDGET_META[id].tabletOnly)} />
+            <WidgetChips states={widgets.states} ids={widgets.arrangement.chips.filter((id) => !WIDGET_META[id].tabletOnly)}
+                open={widgets.peek} onToggle={widgets.togglePeek} />
         </div>
     );
 }

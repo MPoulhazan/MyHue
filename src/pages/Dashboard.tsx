@@ -60,7 +60,8 @@ export function Dashboard() {
     const allIds = home.lights.map((l) => l.id);
     const onCount = home.lights.filter((l) => l.reachable && l.level > 0).length;
     const phone = useIsPhone();
-    const { states, arrangement, peek, togglePeek } = useHomeWidgets(home);
+    const widgets = useHomeWidgets(home);
+    const { states, arrangement, peek, togglePeek } = widgets;
     const widgetCtx = { home, onAdd: () => setAdding(true) };
     // Les pastilles touchées s'ouvrent en carte sous les autres
     const nowIds = [...arrangement.cards, ...peek];
@@ -80,7 +81,7 @@ export function Dashboard() {
     if (phone) {
         return (
             <>
-                <PhoneHome home={home} roomLights={roomLights} onAdd={() => setAdding(true)} />
+                <PhoneHome home={home} roomLights={roomLights} onAdd={() => setAdding(true)} widgets={widgets} />
                 {sheets}
             </>
         );
