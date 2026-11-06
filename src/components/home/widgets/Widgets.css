@@ -1,0 +1,20 @@
+/* Colonne « Maintenant » et bandeau « Rien de neuf » de l'accueil (tablette) */
+
+.now-head { display: flex; align-items: center; justify-content: space-between; min-height: 32px; flex: none; }
+.now-head strong { font-size: 18px; }
+.now-head span { font-size: 13px; color: var(--h-muted); }
+.now-empty { margin: 0; font-size: 14px; color: var(--h-muted); }
+
+.widget-chips { display: flex; align-items: center; gap: 10px; flex: none; overflow-x: auto; scrollbar-width: none; }
+.widget-chips::-webkit-scrollbar { display: none; }
+.widget-chips-label { flex: none; margin-right: 4px; font-size: 13px; color: var(--h-muted); }
+.widget-chip {
+    flex: none; display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 16px;
+    border-radius: 24px; border: 1px solid var(--h-line); background: var(--h-surface);
+    font-size: 14px; white-space: nowrap;
+}
+.widget-chip b { font-weight: 600; }
+.widget-chip span { color: var(--h-muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.widget-chip:hover { background: var(--h-surface-2); }
+.widget-chip.on { border-color: var(--h-accent); }
+.widget-chip-photo { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }

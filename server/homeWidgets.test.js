@@ -6,7 +6,7 @@ import {
     journalRelevance, mailRelevance, metroRelevance, skyRelevance,
 } from '../src/components/home/widgets/relevance.ts';
 
-const s = (id, relevance) => ({ id, relevance, reason: '' });
+const s = (id, relevance) => ({ id, relevance, summary: '' });
 
 test('Cooper : oublié en alerte, repas bientôt maintenant, sinon calme', () => {
     const base = { enabled: true, sensor: {}, mood: 'waiting', meals: [{ status: 'done' }, { status: 'upcoming' }] };
@@ -76,4 +76,12 @@ test('arrange : caché ou masqué n’apparaît nulle part, Toujours force la ca
         { mail: 'hidden', sky: 'always', cooper: 'auto' });
     assert.deepEqual(r.cards, ['sky']);
     assert.deepEqual(r.chips, ['cooper']);
+});
+
+test('pastilles : un texte court pour chaque widget calme', () => {
+    assert.equal(mailRelevance({ enabled: true, sensor: {}, waiting: null, pending: false, night: null, today: { delivery: null } }).summary, 'pas encore passé');
+    assert.equal(skyRelevance({ aurora: null, highlight: { kind: 'moon' }, moon: { fraction: 0.62 } }).summary, 'lune 62 %');
+    assert.equal(journalRelevance(12).summary, '12 évènements');
+    assert.equal(journalRelevance(0).summary, 'rien pour l’instant');
+    assert.equal(houseRelevance([]).summary, 'tout est fermé');
 });

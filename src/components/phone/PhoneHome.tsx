@@ -4,6 +4,7 @@ import { Icon } from '../Icon';
 import type { IconName } from '../Icon';
 import { HueStatus, RoomCard, fmt } from '../home/cards';
 import { HomeWidgets } from '../home/widgets/registry';
+import { WIDGET_META, WIDGET_ORDER } from '../home/widgets/relevance';
 import './PhoneHome.css';
 
 /** Accueil du téléphone : moments, pièces et état de la maison sur une colonne. */
@@ -56,7 +57,7 @@ export function PhoneHome({ home, roomLights, onAdd }: {
                 <HueStatus />
             </div>
 
-            <HomeWidgets ctx={{ home, onAdd }} keep={(w) => !w.tabletOnly} />
+            <HomeWidgets ctx={{ home, onAdd }} ids={WIDGET_ORDER.filter((id) => !WIDGET_META[id].tabletOnly)} />
         </div>
     );
 }

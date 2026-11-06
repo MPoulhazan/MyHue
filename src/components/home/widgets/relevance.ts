@@ -15,8 +15,8 @@ export type WidgetId = 'city' | 'cooper' | 'mail' | 'house' | 'bixi' | 'metro' |
 export interface WidgetState {
     id: WidgetId;
     relevance: Relevance;
-    /** Pourquoi, en une courte phrase (débogage, puis l'écran de réglages) */
-    reason: string;
+    /** Ce que dit la pastille, en quelques mots */
+    summary: string;
 }
 
 /** Ordre du registre : il départage deux widgets de même pertinence. */
@@ -26,21 +26,19 @@ export interface WidgetMeta {
     label: string;
     /** Quand il passe en carte en Auto (ligne de l'écran de réglages) */
     when: string;
-    /** Place actuelle sur la tablette, en attendant la colonne « Maintenant » */
-    zone: 'center' | 'side';
     /** Absent de l'accueil du téléphone */
     tabletOnly?: boolean;
 }
 
 export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
-    city: { label: 'En ville', when: 'Alerte météo, collecte la veille au soir, avis du quartier', zone: 'side' },
-    cooper: { label: 'Cooper', when: 'Autour de midi et 18 h, en alerte s’il est oublié', zone: 'side' },
-    mail: { label: 'Courrier', when: 'Du passage du facteur jusqu’à l’ouverture de la boîte', zone: 'side' },
-    house: { label: 'Maison', when: 'Une porte ou une fenêtre ouverte, une pile faible', zone: 'side' },
-    bixi: { label: 'BIXI', when: 'De 7 h à 9 h en semaine', zone: 'center' },
-    metro: { label: 'Métro', when: 'Hors saison BIXI, si une ligne est perturbée', zone: 'center' },
-    sky: { label: 'Ciel ce soir', when: 'Le soir, et toujours quand une aurore est possible', zone: 'side' },
-    journal: { label: 'Journal', when: 'Jamais en carte : pastille seulement', zone: 'side', tabletOnly: true },
+    city: { label: 'En ville', when: 'Alerte météo, collecte la veille au soir, avis du quartier' },
+    cooper: { label: 'Cooper', when: 'Autour de midi et 18 h, en alerte s’il est oublié' },
+    mail: { label: 'Courrier', when: 'Du passage du facteur jusqu’à l’ouverture de la boîte' },
+    house: { label: 'Maison', when: 'Une porte ou une fenêtre ouverte, une pile faible' },
+    bixi: { label: 'BIXI', when: 'De 7 h à 9 h en semaine' },
+    metro: { label: 'Métro', when: 'Hors saison BIXI, si une ligne est perturbée' },
+    sky: { label: 'Ciel', when: 'Le soir, et toujours quand une aurore est possible' },
+    journal: { label: 'Journal', when: 'Jamais en carte : pastille seulement', tabletOnly: true },
 };
 
 /** Cooper reste toujours une carte : c'est le widget préféré de la maison. */
@@ -51,21 +49,25 @@ export const DEFAULT_PINS: Record<WidgetId, Pin> = {
 /** Cartes pleines au plus dans « Maintenant », Cooper compris. */
 export const MAX_CARDS = 5;
 
-const state = (id: WidgetId, relevance: Relevance, reason: string): WidgetState => ({ id, relevance, reason });
+const state = (id: WidgetId, relevance: Relevance, summary: string): WidgetState => ({ id, relevance, summary });
+const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
 // ── Un widget à la fois ──────────────────────────────────────────────────────
 
 interface CityIn {
     enabled: boolean;
-    events: { level: string; bucket: string; action?: string }[];
+    events: { level: string; bucket: string; title: string; action?: string }[];
     takeover: unknown | null;
 }
 export function cityRelevance(v: CityIn | null): WidgetState {
     if (!v?.enabled || !v.events.length) return state('city', 'hidden', 'rien en ville');
-    if (v.takeover || v.events.some((e) => e.level === 'danger')) return state('city', 'alert', 'alerte en ville');
-    if (v.events.some((e) => e.action === 'collecte')) return state('city', 'now', 'collecte à sortir');
-    if (v.events.some((e) => e.bucket === 'now' || e.bucket === 'today')) return state('city', 'now', 'avis pour aujourd’hui');
-    return state('city', 'calm', 'rien d’urgent');
+    const danger = v.events.find((e) => e.level === 'danger');
+    if (v.takeover || danger) return state('city', 'alert', danger?.title ?? 'alerte en ville');
+    const bin = v.events.find((e) => e.action === 'collecte');
+    if (bin) return state('city', 'now', bin.title);
+    const today = v.events.find((e) => e.bucket === 'now' || e.bucket === 'today');
+    if (today) return state('city', 'now', today.title);
+    return state('city', 'calm', plural(v.events.length, 'avis'));
 }
 
 interface CooperIn {
@@ -87,13 +89,14 @@ interface MailIn {
     waiting: unknown | null;
     pending: boolean;
     night: unknown | null;
+    today?: { delivery: number | null };
 }
 export function mailRelevance(v: MailIn | null): WidgetState {
     if (!v?.enabled || !v.sensor) return state('mail', 'hidden', 'pas de capteur');
-    if (v.night) return state('mail', 'alert', 'boîte ouverte la nuit');
+    if (v.night) return state('mail', 'alert', 'ouverte la nuit');
     if (v.waiting) return state('mail', 'now', 'courrier dans la boîte');
     if (v.pending) return state('mail', 'now', 'passage à confirmer');
-    return state('mail', 'calm', 'boîte vide');
+    return state('mail', 'calm', v.today?.delivery ? 'courrier relevé' : 'pas encore passé');
 }
 
 interface SensorIn {
@@ -103,7 +106,8 @@ interface SensorIn {
 }
 export function houseRelevance(sensors: SensorIn[]): WidgetState {
     if (sensors.some((s) => s.type === 'water_leak' && s.props.leak)) return state('house', 'alert', 'fuite d’eau');
-    if (sensors.some((s) => s.type === 'door' && s.props.isOpen)) return state('house', 'now', 'porte ouverte');
+    const open = sensors.filter((s) => s.type === 'door' && s.props.isOpen).length;
+    if (open) return state('house', 'now', open > 1 ? `${open} portes ouvertes` : 'porte ouverte');
     if (sensors.some((s) => s.props.battery != null && s.props.battery < 20)) return state('house', 'now', 'pile faible');
     if (sensors.some((s) => !s.isOnline)) return state('house', 'now', 'capteur hors ligne');
     return state('house', 'calm', 'tout est fermé');
@@ -114,11 +118,13 @@ interface BixiIn {
     configured: boolean;
     season: string;
     window: boolean;
+    verdict?: { text: string };
 }
 export function bixiRelevance(v: BixiIn | null): WidgetState {
     if (!v?.enabled || !v.configured || v.season === 'closed') return state('bixi', 'hidden', 'hors saison');
-    if (v.window) return state('bixi', 'now', 'heure de départ');
-    return state('bixi', 'calm', 'pas l’heure de partir');
+    const said = v.verdict?.text.toLowerCase();
+    if (v.window) return state('bixi', 'now', said ?? 'heure de départ');
+    return state('bixi', 'calm', said ?? 'pas l’heure de partir');
 }
 
 interface MetroIn {
@@ -134,15 +140,17 @@ export function metroRelevance(v: MetroIn | null): WidgetState {
 interface SkyIn {
     aurora: { level: string } | null;
     highlight: { kind: string };
+    moon?: { fraction: number };
 }
 export function skyRelevance(v: SkyIn | null): WidgetState {
     if (!v) return state('sky', 'hidden', 'ciel pas encore lu');
     if (v.highlight.kind === 'aurora' && v.aurora?.level === 'alert') return state('sky', 'alert', 'aurore possible');
-    return state('sky', 'calm', 'ciel ordinaire');
+    return state('sky', 'calm', v.moon ? `lune ${Math.round(v.moon.fraction * 100)} %` : 'ciel ordinaire');
 }
 
 /** Le journal ne devient jamais une carte en Auto : pastille seulement. */
-export const journalRelevance = (): WidgetState => state('journal', 'calm', 'journal');
+export const journalRelevance = (count = 0): WidgetState =>
+    state('journal', 'calm', count ? plural(count, 'évènement') : 'rien pour l’instant');
 
 // ── Mise en page ─────────────────────────────────────────────────────────────
 

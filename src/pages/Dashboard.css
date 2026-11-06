@@ -285,7 +285,10 @@ a.weather-pill:hover { background: var(--h-surface-2); }
 /* Tablette en paysage : la page tient exactement dans l'écran et les colonnes vont jusqu'en bas */
 @media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
     .home { height: 100%; min-height: 0; }
-    .home-grid { grid-template-columns: 320px minmax(0, 1fr) 280px; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+    .home-grid { grid-template-columns: 300px minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+    /* La colonne « Maintenant » défile si ses cartes dépassent */
+    .home-now { overflow-y: auto; }
+    .home-now > * { flex: none; }
     .home-grid > * { min-height: 0; }
     .climate { overflow-y: auto; }
     .climate .card-foot { margin-top: auto; }

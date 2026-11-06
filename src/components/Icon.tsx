@@ -7,7 +7,8 @@ export type IconName =
     | 'screen' | 'glass' | 'moon' | 'leave' | 'check' | 'close' | 'plus' | 'sun' | 'cloud' | 'menu' | 'battery'
     | 'chevron' | 'back' | 'alert'
     | 'play' | 'pause' | 'stop' | 'volume' | 'minus' | 'radio' | 'list'
-    | 'trash' | 'drop' | 'wifi' | 'refresh' | 'chat';
+    | 'trash' | 'drop' | 'wifi' | 'refresh' | 'chat'
+    | 'mail' | 'bike' | 'metro' | 'city';
 
 const PATHS: Record<IconName, string> = {
     home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
@@ -51,6 +52,10 @@ const PATHS: Record<IconName, string> = {
     wifi: 'M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01',
     refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
     chat: 'M4 5h16v11H10l-5 4v-4H4zM8 9.5h8M8 12.5h5',
+    mail: 'M3 5h18v14H3zM3 7l9 6 9-6',
+    bike: 'M5.5 14a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM18.5 14a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM5.5 17.5 9 10h6l3.5 7.5M9 10 7.5 6.5H6M12 17.5 9 10',
+    metro: 'M7 3h10a2 2 0 0 1 2 2v10a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V5a2 2 0 0 1 2-2zM5 11h14M8 21l2-3M16 21l-2-3M9 14.5h.01M15 14.5h.01',
+    city: 'M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13M14 10h2M14 14h2M14 18h2M7 12h1M7 16h1',
 };
 
 export function Icon({ name, size = 20, strokeWidth = 1.8, className }: { name: IconName; size?: number; strokeWidth?: number; className?: string }) {
