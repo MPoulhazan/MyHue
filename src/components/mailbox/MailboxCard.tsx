@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
+import { mailboxPoll } from '../home/widgets/polls';
 import './Mailbox.css';
 
 // ── Données de /api/mailbox (server/mailbox.js) ──────────────────────────────
 
-interface MailView {
+export interface MailView {
     enabled: boolean;
     sensor: { did: string; name: string; online: boolean; battery: number | null } | null;
     waiting: { since: number; count: number } | null;
@@ -23,20 +24,9 @@ const hm = (ts: number) => {
 };
 const hmMin = (min: number) => `${Math.floor(min / 60)} h${min % 60 ? ` ${String(min % 60).padStart(2, '0')}` : ''}`;
 
-function useMailbox() {
-    const [view, setView] = useState<MailView | null>(null);
-    const load = useCallback(() => axios.get('/api/mailbox').then(({ data }) => setView(data)).catch(() => {}), []);
-    useEffect(() => {
-        load();
-        const t = setInterval(load, 30_000);
-        return () => clearInterval(t);
-    }, [load]);
-    return { view, setView, load };
-}
-
 /** Carte « Okayyy ! Le courrier » de l'accueil : le visiteur dit si le facteur est passé. */
 export function MailboxCard() {
-    const { view, setView, load } = useMailbox();
+    const view = mailboxPoll.use();
     const [busy, setBusy] = useState(false);
     if (!view?.enabled || !view.sensor) return null;
 
@@ -44,9 +34,9 @@ export function MailboxCard() {
         setBusy(true);
         try {
             const { data } = await axios.post(url, {});
-            setView(data);
+            mailboxPoll.publish(data);
         } catch {
-            load();
+            mailboxPoll.load();
         } finally {
             setBusy(false);
         }

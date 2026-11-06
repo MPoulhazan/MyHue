@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { bixiPoll } from '../home/widgets/polls';
 import './Bixi.css';
 
 // ── Données de /api/bixi (server/bixi.js) ────────────────────────────────────
@@ -8,7 +8,7 @@ interface Start { id: string; name: string; dist: number | null; bikes: number; 
 interface Dest { id: string; name: string; docks: number; low: boolean; alt: boolean }
 interface Trip { who: string; from: Start | null; to: Dest | null; rideMin: number | null }
 interface Station { id: string; name: string; dist: number | null; bikes: number | null; docks: number | null; trend?: number | null }
-interface BixiView {
+export interface BixiView {
     enabled: boolean;
     configured: boolean;
     season: 'open' | 'closed';
@@ -36,17 +36,13 @@ const short = (name: string) => name.replace(/^(du|de la|des|de l’|de)\s+/i, '
 const level = (n: number) => (n <= 0 ? 'no' : n === 1 ? 'low' : 'ok');
 
 function useBixi() {
-    const [view, setView] = useState<BixiView | null>(null);
+    const view = bixiPoll.use();
+    // L'horloge du « relevé il y a… » avance à chaque minute
     const [now, setNow] = useState(() => Date.now());
-    const load = useCallback(() => axios.get('/api/bixi').then(({ data }) => setView(data)).catch(() => {}), []);
     useEffect(() => {
-        load();
-        const t = setInterval(() => {
-            load();
-            setNow(Date.now());
-        }, 60_000);
+        const t = setInterval(() => setNow(Date.now()), 60_000);
         return () => clearInterval(t);
-    }, [load]);
+    }, []);
     return { view, now };
 }
 

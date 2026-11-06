@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { createSharedPoll } from '../../hooks/sharedPoll';
 
 // ── Données de /api/sky (server/astro.js) ────────────────────────────────────
 
@@ -31,16 +30,9 @@ export interface Sky {
     highlight: { kind: 'aurora' | 'eclipse' | 'iss' | 'shower' | 'planet' | 'moon'; title: string; text: string };
 }
 
-export function useSky() {
-    const [sky, setSky] = useState<Sky | null>(null);
-    useEffect(() => {
-        const load = () => axios.get('/api/sky').then(({ data }) => setSky(data)).catch(() => {});
-        load();
-        const t = setInterval(load, 15 * 60_000);
-        return () => clearInterval(t);
-    }, []);
-    return sky;
-}
+// Une seule lecture partagée par la carte, la page Météo et le registre des widgets
+const skyPoll = createSharedPoll<Sky>('/api/sky', 15 * 60_000);
+export const useSky = skyPoll.use;
 
 // ── Formats ──────────────────────────────────────────────────────────────────
 

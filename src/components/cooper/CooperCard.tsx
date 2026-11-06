@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
+import { cooperPoll } from '../home/widgets/polls';
 import './Cooper.css';
 
 // ── Données de /api/cooper (server/cooper.js) ────────────────────────────────
 
-type MealStatus = 'done' | 'upcoming' | 'soon' | 'due' | 'late' | 'missed' | 'unknown';
-interface Meal { id: string; label: string; time: string; status: MealStatus; at: number | null; late: boolean }
-interface CooperView {
+export type MealStatus = 'done' | 'upcoming' | 'soon' | 'due' | 'late' | 'missed' | 'unknown';
+export interface Meal { id: string; label: string; time: string; status: MealStatus; at: number | null; late: boolean }
+export interface CooperView {
     enabled: boolean;
     sensor: { did: string; name: string; online: boolean } | null;
     meals: Meal[];
@@ -21,20 +22,9 @@ const hm = (ts: number) => {
 };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function useCooper() {
-    const [view, setView] = useState<CooperView | null>(null);
-    const load = useCallback(() => axios.get('/api/cooper').then(({ data }) => setView(data)).catch(() => {}), []);
-    useEffect(() => {
-        load();
-        const t = setInterval(load, 30_000);
-        return () => clearInterval(t);
-    }, [load]);
-    return { view, setView, load };
-}
-
 /** Carte « Cooper parle » de l'accueil : sa bulle dit s'il a eu ses repas de 12 h et 18 h. */
 export function CooperCard() {
-    const { view, setView, load } = useCooper();
+    const view = cooperPoll.use();
     const [busy, setBusy] = useState(false);
     if (!view?.enabled || !view.sensor) return null;
 
@@ -46,9 +36,9 @@ export function CooperCard() {
         setBusy(true);
         try {
             const { data } = await axios.post('/api/cooper/fed', {});
-            setView(data);
+            cooperPoll.publish(data);
         } catch {
-            load();
+            cooperPoll.load();
         } finally {
             setBusy(false);
         }

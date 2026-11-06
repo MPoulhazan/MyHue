@@ -11,7 +11,7 @@
         "build": "tsc -b && vite build",
         "lint": "eslint .",
         "preview": "vite preview",
-        "test": "node --test server/*.test.js",
+        "test": "node --experimental-strip-types --no-warnings=ExperimentalWarning --test server/*.test.js",
         "discover-bridge": "node scripts/discover-bridge.js",
         "generate-token": "node scripts/generate-token.js",
         "discover-cast": "node scripts/discover-cast.js"

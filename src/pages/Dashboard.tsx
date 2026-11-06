@@ -10,15 +10,11 @@ import { AddSensorSheet } from '../components/home/AddSensorSheet';
 import { OUTSIDE_ROOM } from '../components/home/RoomPicker';
 import { NightMode } from '../components/home/NightMode';
 import { PhoneHome } from '../components/phone/PhoneHome';
-import { SkyCard } from '../components/sky/SkyCard';
-import { CooperCard } from '../components/cooper/CooperCard';
-import { MailboxCard } from '../components/mailbox/MailboxCard';
-import { BixiCard } from '../components/bixi/BixiCard';
-import { CityCard } from '../components/city/CityCard';
 import { CityAlert } from '../components/city/CityAlert';
-import { MetroCard } from '../components/city/MetroCard';
 import { ScheduleSheet } from '../components/home/ScheduleSheet';
-import { ClimateCard, HouseCard, HueStatus, Journal, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
+import { ClimateCard, HueStatus, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
+import { HomeWidgets } from '../components/home/widgets/registry';
+import { useHomeWidgets } from '../components/home/widgets/useHomeWidgets';
 import './Dashboard.css';
 import '../components/lights/LightsPanel.css';
 
@@ -64,6 +60,8 @@ export function Dashboard() {
     const allIds = home.lights.map((l) => l.id);
     const onCount = home.lights.filter((l) => l.reachable && l.level > 0).length;
     const phone = useIsPhone();
+    const { arrangement } = useHomeWidgets(home);
+    const widgetCtx = { home, onAdd: () => setAdding(true) };
 
     // Panneaux communs aux deux mises en page
     const sheets = (
@@ -139,17 +137,12 @@ export function Dashboard() {
                         </>
                     )}
 
-                    <BixiCard />
-                    <MetroCard />
+                    <HomeWidgets ctx={widgetCtx} keep={(w) => w.zone === 'center'} />
                 </section>
 
-                <aside className="home-side">
-                    <CityCard />
-                    <CooperCard />
-                    <MailboxCard />
-                    <HouseCard sensors={home.sensors} onAdd={() => setAdding(true)} />
-                    <SkyCard />
-                    <Journal log={home.log} />
+                {/* Lot 1 : la pertinence est calculée mais la mise en page ne change pas encore */}
+                <aside className="home-side" data-cards={arrangement.cards.join(' ')} data-chips={arrangement.chips.join(' ')}>
+                    <HomeWidgets ctx={widgetCtx} keep={(w) => w.zone === 'side'} />
                 </aside>
             </div>
 

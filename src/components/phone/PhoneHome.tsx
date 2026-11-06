@@ -2,13 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import type { DashLight, Home } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import type { IconName } from '../Icon';
-import { HouseCard, HueStatus, RoomCard, fmt } from '../home/cards';
-import { SkyCard } from '../sky/SkyCard';
-import { CooperCard } from '../cooper/CooperCard';
-import { MailboxCard } from '../mailbox/MailboxCard';
-import { BixiCard } from '../bixi/BixiCard';
-import { CityCard } from '../city/CityCard';
-import { MetroCard } from '../city/MetroCard';
+import { HueStatus, RoomCard, fmt } from '../home/cards';
+import { HomeWidgets } from '../home/widgets/registry';
 import './PhoneHome.css';
 
 /** Accueil du téléphone : moments, pièces et état de la maison sur une colonne. */
@@ -61,13 +56,7 @@ export function PhoneHome({ home, roomLights, onAdd }: {
                 <HueStatus />
             </div>
 
-            <CityCard />
-            <CooperCard />
-            <MailboxCard />
-            <HouseCard sensors={home.sensors} onAdd={onAdd} />
-            <BixiCard />
-            <MetroCard />
-            <SkyCard />
+            <HomeWidgets ctx={{ home, onAdd }} keep={(w) => !w.tabletOnly} />
         </div>
     );
 }
