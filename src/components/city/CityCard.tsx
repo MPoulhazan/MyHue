@@ -36,8 +36,10 @@ export function CityCard() {
                             {list.map((e) => (
                                 <div key={e.id} className={`city-ev ${e.level}`} title={[e.detail, e.advice, e.source].filter(Boolean).join(' · ')}>
                                     <i />
-                                    <span className="city-ev-text"><b>{e.title}</b>{e.detail && <small>{e.detail}</small>}</span>
-                                    <span className="city-when">{e.when}</span>
+                                    <span className="city-ev-text">
+                                        <b>{e.title}</b>
+                                        <small><span className="city-when">{e.when}</span>{e.detail && <> · {e.detail}</>}</small>
+                                    </span>
                                 </div>
                             ))}
                         </div>
