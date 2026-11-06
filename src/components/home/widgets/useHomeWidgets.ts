@@ -25,14 +25,21 @@ export function useHomeWidgets(home: Home): {
     const bixi = bixiPoll.use();
     const sky = useSky();
 
+    // Les règles d'heure (BIXI le matin, Ciel le soir) se réévaluent chaque minute
+    const [clock, setClock] = useState(() => new Date());
+    useEffect(() => {
+        const t = setInterval(() => setClock(new Date()), 60_000);
+        return () => clearInterval(t);
+    }, []);
+
     const states = [
         cityRelevance(city),
         cooperRelevance(cooper),
         mailRelevance(mail),
         houseRelevance(home.sensors),
-        bixiRelevance(bixi),
-        metroRelevance(city),
-        skyRelevance(sky),
+        bixiRelevance(bixi, clock),
+        metroRelevance(city, clock),
+        skyRelevance(sky, clock),
         journalRelevance(home.log.length),
     ];
     const arrangement = arrange(states);

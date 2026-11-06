@@ -32,11 +32,11 @@ export interface WidgetMeta {
 
 export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
     city: { label: 'En ville', when: 'Alerte météo, collecte la veille au soir, avis du quartier' },
-    cooper: { label: 'Cooper', when: 'Autour de midi et 18 h, en alerte s’il est oublié' },
+    cooper: { label: 'Cooper', when: 'Toujours affiché, en tête s’il est oublié' },
     mail: { label: 'Courrier', when: 'Du passage du facteur jusqu’à l’ouverture de la boîte' },
     house: { label: 'Maison', when: 'Une porte ou une fenêtre ouverte, une pile faible' },
     bixi: { label: 'BIXI', when: 'De 7 h à 9 h en semaine' },
-    metro: { label: 'Métro', when: 'Hors saison BIXI, si une ligne est perturbée' },
+    metro: { label: 'Métro', when: 'Hors saison BIXI : de 7 h à 9 h en semaine, ou si une ligne est perturbée' },
     sky: { label: 'Ciel', when: 'Le soir, et toujours quand une aurore est possible' },
     journal: { label: 'Journal', when: 'Jamais en carte : pastille seulement', tabletOnly: true },
 };
@@ -51,6 +51,13 @@ export const MAX_CARDS = 5;
 
 const state = (id: WidgetId, relevance: Relevance, summary: string): WidgetState => ({ id, relevance, summary });
 const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
+
+// ── Heures du mode Auto (heure de la tablette, à Montréal) ───────────────────
+
+/** Heure de pointe du matin : de 7 h à 9 h, du lundi au vendredi. */
+export const isCommute = (d: Date) => d.getDay() >= 1 && d.getDay() <= 5 && d.getHours() >= 7 && d.getHours() < 9;
+/** Le soir : de 18 h à 1 h du matin. */
+export const isEvening = (d: Date) => d.getHours() >= 18 || d.getHours() < 1;
 
 // ── Un widget à la fois ──────────────────────────────────────────────────────
 
@@ -120,32 +127,38 @@ interface BixiIn {
     window: boolean;
     verdict?: { text: string };
 }
-export function bixiRelevance(v: BixiIn | null): WidgetState {
+export function bixiRelevance(v: BixiIn | null, now = new Date()): WidgetState {
     if (!v?.enabled || !v.configured || v.season === 'closed') return state('bixi', 'hidden', 'hors saison');
     const said = v.verdict?.text.toLowerCase();
-    if (v.window) return state('bixi', 'now', said ?? 'heure de départ');
+    // La fenêtre de départ du serveur, ou toute l'heure de pointe du matin
+    if (v.window || isCommute(now)) return state('bixi', 'now', said ?? 'heure de départ');
     return state('bixi', 'calm', said ?? 'pas l’heure de partir');
 }
 
 interface MetroIn {
     metro: { show: boolean; error: string | null; lines: { ok: boolean }[] } | null;
 }
-export function metroRelevance(v: MetroIn | null): WidgetState {
+export function metroRelevance(v: MetroIn | null, now = new Date()): WidgetState {
     const m = v?.metro;
     if (!m?.show) return state('metro', 'hidden', 'saison BIXI');
     if (!m.error && m.lines.some((l) => !l.ok)) return state('metro', 'now', 'ligne perturbée');
-    return state('metro', 'calm', m.error ? 'état inconnu' : 'service normal');
+    const said = m.error ? 'état inconnu' : 'service normal';
+    return state('metro', isCommute(now) ? 'now' : 'calm', said);
 }
 
 interface SkyIn {
     aurora: { level: string } | null;
     highlight: { kind: string };
     moon?: { fraction: number };
+    night?: { quality: { level: string } };
 }
-export function skyRelevance(v: SkyIn | null): WidgetState {
+export function skyRelevance(v: SkyIn | null, now = new Date()): WidgetState {
     if (!v) return state('sky', 'hidden', 'ciel pas encore lu');
     if (v.highlight.kind === 'aurora' && v.aurora?.level === 'alert') return state('sky', 'alert', 'aurore possible');
-    return state('sky', 'calm', v.moon ? `lune ${Math.round(v.moon.fraction * 100)} %` : 'ciel ordinaire');
+    const said = v.moon ? `lune ${Math.round(v.moon.fraction * 100)} %` : 'ciel ordinaire';
+    // Le soir, sauf si le ciel est bouché et qu'il n'y a rien d'autre que la lune
+    const worth = v.night?.quality.level !== 'bad' || v.highlight.kind !== 'moon';
+    return state('sky', isEvening(now) && worth ? 'now' : 'calm', said);
 }
 
 /** Le journal ne devient jamais une carte en Auto : pastille seulement. */
