@@ -93,3 +93,15 @@ test('STM : ligne orange interrompue, les autres lignes ignorées', async () => 
     assert.equal(events[0].title, 'Métro ligne orange');
     assert.equal(fromStm({ alerts: [] }, ['2'], NOW).status[0].text, 'Service normal');
 });
+
+test('STM : une alerte de station ne rend pas la ligne perturbée, le HTML est retiré', async () => {
+    const { fromStm } = await import('./cityLogic.js');
+    const period = { start: NOW / 1000 - 600, end: null };
+    const station = { active_periods: period, informed_entities: [{ route_short_name: '2' }, { stop_code: '10254' }], description_texts: [{ language: 'fr', text: "L'accès D est fermé pour une durée indéterminée." }] };
+    const normal = { active_periods: period, informed_entities: [{ route_short_name: '2' }], description_texts: [{ language: 'fr', text: 'Service normal du métro' }] };
+    const quiet = fromStm({ alerts: [station, normal] }, ['2'], NOW);
+    assert.equal(quiet.status[0].ok, true);
+    assert.equal(quiet.events.length, 0);
+    const notice = { active_periods: period, informed_entities: [{ route_short_name: '5' }], description_texts: [{ language: 'fr', text: 'Service réduit samedi. <a class="external" href="https://www.stm.info/x" target="_blank">Pour plus de détails.</a>' }] };
+    assert.equal(fromStm({ alerts: [notice] }, ['5'], NOW).status[0].text, 'Service réduit samedi.');
+});

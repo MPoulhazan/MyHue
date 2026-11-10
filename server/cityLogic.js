@@ -273,7 +273,9 @@ export const isCityQuestion = (text) =>
 // --- Métro (STM, API i3 « état du service ») ---
 
 export const METRO = { 1: 'verte', 2: 'orange', 4: 'jaune', 5: 'bleue' };
-const text = (list = [], lang = 'fr') => (list.find((t) => t.language === lang) || list[0])?.text?.replace(/\s+/g, ' ').trim() || '';
+// La STM glisse des liens « Pour plus de détails. » en HTML dans ses messages
+const text = (list = [], lang = 'fr') => (list.find((t) => t.language === lang) || list[0])?.text
+    ?.replace(/<a\b[^>]*>.*?<\/a>/gi, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() || '';
 
 /**
  * Alertes STM → état de chaque ligne suivie + événements pour les lignes perturbées.
@@ -288,7 +290,11 @@ export const fromStm = (data, lines = ['2'], now = Date.now()) => {
         return (!start || start <= now) && (!end || end > now);
     });
     const status = lines.map((line) => {
-        const mine = alerts.filter((a) => (a.informed_entities || []).some((e) => String(e.route_short_name) === String(line)));
+        // Une alerte avec stop_code vise une seule station (accès fermé, travaux) : le métro roule
+        const mine = alerts.filter((a) => {
+            const entities = a.informed_entities || [];
+            return entities.some((e) => String(e.route_short_name) === String(line)) && !entities.some((e) => e.stop_code);
+        });
         const msgs = mine.map((a) => text(a.description_texts) || text(a.header_texts)).filter(Boolean);
         const trouble = msgs.filter((m) => !/service normal/i.test(m));
         return { line: String(line), name: METRO[line] || String(line), ok: trouble.length === 0, text: trouble[0] || 'Service normal' };
