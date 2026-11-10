@@ -11,7 +11,8 @@ import * as sensorRegistry from '../sensorRegistry.js';
 import * as haService from '../haService.js';
 import * as journal from '../journal.js';
 import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
-import { getWeatherDetails } from '../weather.js';
+import { getWeatherDetails, getForecast } from '../weather.js';
+import * as climateChart from '../climateChart.js';
 import { getSky } from '../astro.js';
 import * as skyAlerts from '../skyAlerts.js';
 import * as moments from '../moments.js';
@@ -31,6 +32,12 @@ import * as collecte from '../collecte.js';
 import * as health from '../health.js';
 
 export const router = express.Router();
+
+// Une consigne changée depuis l'interface : notée tout de suite pour le graphique Climat
+router.use(['/api/heating', '/api/thermostat'], (req, _res, next) => {
+    if (req.method !== 'GET') climateChart.touch();
+    next();
+});
 
 // --- Chauffage ---
 
@@ -550,6 +557,20 @@ router.get('/api/zigbee/history/:deviceId', async (req, res) => {
     const hours = Math.min(Number(req.query.hours) || 24, 24 * 30);
     const history = await getSensorHistory(decodeURIComponent(req.params.deviceId), hours);
     res.json({ deviceId: req.params.deviceId, hours, ...history });
+});
+
+// Graphique « Dernières 24 h » de l'écran Climat
+router.get('/api/climate/chart/:deviceId', async (req, res) => {
+    const did = decodeURIComponent(req.params.deviceId);
+    const [history, forecast, sensors] = await Promise.all([
+        getSensorHistory(did, 24),
+        getForecast().catch(() => null),
+        getSensors().catch(() => []),
+    ]);
+    const { sensorDid } = thermostat.getStatus().config;
+    const room = sensors.find((s) => s.did === sensorDid && s.props.temperature != null)
+        || sensors.find((s) => s.props.temperature != null);
+    res.json(climateChart.buildChart({ points: history.points || [], forecast, withSetpoint: room?.did === did }));
 });
 
 router.post('/api/zigbee/install-code', async (req, res) => {

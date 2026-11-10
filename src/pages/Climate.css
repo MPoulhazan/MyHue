@@ -3,9 +3,47 @@
 .climate-layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
 .climate-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 
-.temp-chart { margin: 0; display: flex; flex-direction: column; gap: 8px; }
-.temp-chart svg { width: 100%; height: 160px; }
-.temp-chart figcaption { display: flex; justify-content: space-between; font-size: 13px; }
+/* Courbe des dernières 24 h */
+.temp-chart { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.temp-chart-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.temp-chart-summary .tc-now { font-size: 30px; font-weight: 500; line-height: 1; margin-right: 6px; }
+.tc-pill { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--h-surface-2); color: var(--h-muted); font-size: 13px; }
+.tc-pill.up { background: var(--h-light-dim); color: var(--h-light-text); }
+.tc-pill.down { background: var(--h-cool-dim); color: var(--h-cool-text); }
+.tc-pill.set { color: var(--h-text); }
+.tc-pill.set::before { content: ''; width: 12px; border-top: 2px dashed var(--h-accent); margin-right: 6px; }
+
+.temp-chart-box { position: relative; height: 240px; touch-action: pan-y; }
+.temp-chart-box svg { position: absolute; inset: 0; display: block; overflow: visible; cursor: crosshair; }
+.temp-chart-skeleton { height: 280px; border-radius: 16px; background: var(--h-surface-2); opacity: 0.5; }
+
+.tc-night { fill: var(--h-cool); opacity: 0.07; }
+.tc-grid { stroke: var(--h-line); stroke-width: 1; }
+.tc-axis { fill: var(--h-muted); font-size: 11px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.tc-mark { fill: var(--h-text); font-size: 11.5px; font-weight: 600; paint-order: stroke; stroke: var(--h-surface); stroke-width: 4px; stroke-linejoin: round; }
+.tc-set { fill: none; stroke: var(--h-accent); stroke-width: 2; stroke-dasharray: 5 5; opacity: 0.85; }
+.tc-out { fill: none; stroke: var(--h-muted); stroke-width: 2; stroke-dasharray: 2 4; stroke-linecap: round; }
+.tc-dot { stroke: var(--h-surface); stroke-width: 2; }
+.tc-dot.max { fill: var(--h-light); }
+.tc-dot.min { fill: var(--h-cool); }
+.tc-dot.out { fill: var(--h-muted); }
+.tc-now-dot { fill: var(--h-text); stroke: var(--h-surface); stroke-width: 2.5; }
+.tc-pulse { fill: var(--h-cool); opacity: 0; transform-box: fill-box; transform-origin: center; animation: tc-pulse 2.4s ease-out infinite; }
+@keyframes tc-pulse { 0% { opacity: 0.55; transform: scale(0.5); } 100% { opacity: 0; transform: scale(1.8); } }
+@media (prefers-reduced-motion: reduce) { .tc-pulse { animation: none; opacity: 0.25; } }
+.tc-cursor { stroke: var(--h-text); stroke-width: 1; opacity: 0.35; }
+
+.tc-tip { position: absolute; top: 4px; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 12px; background: var(--h-surface-2); border: 1px solid var(--h-line); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); font-size: 13px; white-space: nowrap; pointer-events: none; }
+.tc-tip span { display: flex; justify-content: space-between; gap: 12px; color: var(--h-muted); }
+.tc-tip b { color: var(--h-text); font-weight: 500; }
+
+.temp-chart-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; }
+.temp-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.temp-chart-legend i { display: inline-block; width: 16px; height: 0; }
+.temp-chart-legend .lg-room { height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--h-cool), var(--h-light)); }
+.temp-chart-legend .lg-set { border-top: 2px dashed var(--h-accent); }
+.temp-chart-legend .lg-out { border-top: 2px dotted var(--h-muted); }
+.temp-chart-legend .lg-night { width: 12px; height: 12px; border-radius: 3px; background: var(--h-cool); opacity: 0.18; }
 
 /* Thermomètres de la maison : toucher une ligne affiche sa courbe */
 .thermo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -32,7 +70,8 @@
     .home:has(.climate-layout) { padding: 20px 16px; }
     .climate-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .climate-side { gap: 16px; }
-    .temp-chart svg { height: 110px; }
+    .temp-chart-box { height: 200px; }
+    .temp-chart-skeleton { height: 240px; }
 }
 
 /* Tablette en paysage : la colonne de droite défile si les réglages fins sont ouverts */

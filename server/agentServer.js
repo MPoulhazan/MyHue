@@ -28,6 +28,7 @@ import { installAuth, TOKEN, PUBLIC_PORT } from './auth.js';
 import { installWakewordRoutes } from './wakewordSamples.js';
 import { hueProxy } from './hue.js';
 import { getSensors } from './sensors.js';
+import * as climateChart from './climateChart.js';
 import './events.js';
 import { router as agentRoutes, GROQ_MODEL } from './routes/agent.js';
 import { router as mediaRoutes } from './routes/media.js';
@@ -66,6 +67,7 @@ app.listen(PORT, () => {
     companion.start(getSensors);
     presence.start();
     thermostat.start(getSensors);
+    climateChart.start();
     flexd.start();
     briefing.start();
     skyAlerts.start();
