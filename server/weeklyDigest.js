@@ -11,6 +11,7 @@ import * as notifier from './notifier.js';
 import { groqClient, GROQ_API_KEY, GROQ_MODEL } from './llm.js';
 import { getSensors, getSensorHistory } from './sensors.js';
 import * as mailbox from './mailbox.js';
+import * as automationsModule from './automations.js';
 
 const FILE = dataFile('digest.json');
 const TZ = process.env.TZ || 'America/Toronto';
@@ -86,17 +87,20 @@ export const doorStats = (entries, from, to, hourOf = (ts) => localParts(ts).hou
 };
 
 /** Chauffage et automatismes d'après le journal. */
-export const activityStats = (entries, from, to) => {
+export const activityStats = (entries, from, to, automationNames = {}) => {
     const inWeek = entries.filter((e) => e.ts >= from && e.ts < to);
     const heating = inWeek.filter((e) => e.kind === 'heating');
+    // Regroupé par automatisme : ses messages changent à chaque fois (« ouverte depuis 10 min », « 40 min »…)
     const automations = {};
-    for (const e of inWeek.filter((x) => x.kind === 'automation')) automations[e.title] = (automations[e.title] || 0) + 1;
+    for (const e of inWeek.filter((x) => x.kind === 'automation')) {
+        const title = automationNames[e.data?.automationId] || e.title;
+        automations[title] = (automations[title] || 0) + 1;
+    }
     return {
         heatingCommands: heating.length,
         heatingOffs: heating.filter((e) => e.data?.state && e.data.state.power === false).length,
         flexPeaks: heating.filter((e) => /Pointe Flex D :/.test(e.title)).length,
         automations: Object.entries(automations).map(([title, count]) => ({ title, count })).sort((a, b) => b.count - a.count).slice(0, 5),
-        companionAlerts: inWeek.filter((e) => e.kind === 'companion').map((e) => e.title).slice(0, 5),
     };
 };
 
@@ -180,6 +184,14 @@ export const draftText = (facts) => {
 
 // --- Collecte ---
 
+const automationNames = () => {
+    try {
+        return Object.fromEntries(automationsModule.getAll().map((a) => [a.id, a.name]));
+    } catch {
+        return {};
+    }
+};
+
 export const collectFacts = async (now = Date.now()) => {
     const from = now - WEEK;
     const prevFrom = from - WEEK;
@@ -211,7 +223,7 @@ export const collectFacts = async (now = Date.now()) => {
         sensors: measured,
         doors: doorStats(doorEntries, from, now, undefined, names),
         doorsPrev: doorStats(doorEntries, prevFrom, from, undefined, names).map(({ name, openings, openMin }) => ({ name, openings, openMin })),
-        activity: activityStats(entries, from, now),
+        activity: activityStats(entries, from, now, automationNames()),
         mail: mailStats(mailEvents, from, now),
         mailPrev: mailStats(mailEvents, prevFrom, from),
         batteries: sensors.filter((s) => s.props.battery != null && s.props.battery < 25).map((s) => ({ name: s.name, battery: s.props.battery })),

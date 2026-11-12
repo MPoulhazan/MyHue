@@ -94,3 +94,11 @@ test('doorStats : le nom actuel du capteur remplace celui du journal', () => {
     const d = doorStats([door(from + H, true), door(from + 2 * H, false)], from, to, hourOf, { a: 'Porte terrasse' });
     assert.equal(d[0].name, 'Porte terrasse');
 });
+
+test('activityStats : alertes regroupées par automatisme', () => {
+    const a = activityStats([
+        { kind: 'automation', ts: from + H, title: 'Porte terrasse est ouverte depuis 10 min', data: { automationId: 'x' } },
+        { kind: 'automation', ts: from + 2 * H, title: 'Porte terrasse est ouverte depuis 40 min', data: { automationId: 'x' } },
+    ], from, to, { x: 'Porte terrasse oubliée' });
+    assert.deepEqual(a.automations, [{ title: 'Porte terrasse oubliée', count: 2 }]);
+});
