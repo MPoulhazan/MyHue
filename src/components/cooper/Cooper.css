@@ -12,7 +12,7 @@
 .cooper-photo.late { animation: cooper-blink 4s ease-in-out infinite; }
 /* Dodo et réveil : sa vraie photo du moment, plus grande, en carré arrondi */
 .cooper-photo.moment { width: 96px; height: 96px; border-radius: 22px; object-position: 50% 50%; }
-.moment-dodo .cooper-bubble { background: #1f2540; color: #cfd6ff; }
+.cooper-card.moment-dodo .cooper-bubble { background: #1f2540; color: #cfd6ff; }
 
 .cooper-bubble { margin: 0; min-width: 0; padding: 14px 16px; border-radius: 20px 20px 20px 6px; background: var(--h-surface-2); font-size: 16px; font-weight: 600; line-height: 1.4; }
 .mood-fed .cooper-bubble { background: var(--cooper-ok); color: #e3f7b5; }
