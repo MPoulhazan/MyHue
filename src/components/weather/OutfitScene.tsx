@@ -3,7 +3,10 @@
  * habillés selon la prévision, chaque vêtement pointé par une étiquette, et Cooper en photo,
  * « À poil » quelle que soit la météo. Pas de prénoms ni de visages : le dépôt est public.
  */
+import { useEffect, useState } from 'react';
 import './OutfitScene.css';
+
+const NARROW = '(max-width: 720px)'; // même seuil que OutfitScene.css
 
 export interface SceneGear { hat: boolean; gloves: boolean; scarf: boolean; hood: boolean; umbrella: boolean; boots: boolean; sunglasses: boolean }
 export interface SceneOutfit {
@@ -185,8 +188,17 @@ export const sceneMarkup = (o: SceneOutfit, photo = '/cooper-poil.webp') => {
 
 export function OutfitScene({ o }: { o: SceneOutfit }) {
     const scene = sceneMarkup(o);
+    // Téléphone : pas d'étiquettes, on coupe la marge qui leur est réservée pour agrandir la scène
+    const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia(NARROW).matches);
+    useEffect(() => {
+        const mq = window.matchMedia(NARROW);
+        const on = () => setNarrow(mq.matches);
+        mq.addEventListener('change', on);
+        return () => mq.removeEventListener('change', on);
+    }, []);
+    const x0 = narrow ? 190 : 0;
     return (
-        <svg className="os-scene" viewBox={`0 -30 ${W} ${H + 30}`} role="img"
+        <svg className="os-scene" viewBox={`${x0} -30 ${W - x0} ${H + 30}`} role="img"
             aria-label={`Nos deux personnages habillés : ${o.items.join(', ')}. Cooper, lui, reste à poil.`}
             dangerouslySetInnerHTML={{ __html: scene }} />
     );
