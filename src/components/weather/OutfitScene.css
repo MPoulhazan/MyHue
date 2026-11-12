@@ -1,0 +1,23 @@
+/* Scène « Comment s'habiller » de l'écran Météo */
+.os-scene { width: 100%; height: auto; display: block; }
+.os-line { stroke: var(--h-accent); stroke-width: 2; fill: none; opacity: 0.7; }
+.os-dot { fill: var(--h-accent); }
+.os-tag { fill: #2f3a1a; }
+.os-tag-text { fill: #e2ff9e; font-weight: 700; font-size: 16px; }
+.os-name { fill: var(--h-muted); font-weight: 800; font-size: 15px; }
+.os-poil-line { stroke: #ffb547; stroke-width: 2; fill: none; }
+.os-poil-dot { fill: #ffb547; }
+.os-poil { fill: #ffb547; }
+.os-poil-text { fill: #1d1405; font-weight: 800; font-size: 24px; }
+
+.wx-scene-info { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.wx-scene-info .wx-feels { flex: 1 1 320px; }
+.wx-dog-line { margin: 0; font-size: 14px; color: var(--h-muted); }
+.wx-dog-line strong { color: #ffb547; }
+
+/* Sur téléphone les étiquettes deviennent illisibles : on garde la liste en dessous */
+.wx-items.wx-items-phone { display: none; }
+@media (max-width: 720px) {
+    .os-labels { display: none; }
+    .wx-items.wx-items-phone { display: flex; }
+}

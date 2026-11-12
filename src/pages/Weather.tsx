@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { SkyBanner } from '../components/sky/SkyBanner';
 import { useSky } from '../components/sky/sky';
+import { OutfitScene, dogTip } from '../components/weather/OutfitScene';
 import './Dashboard.css';
 import './Weather.css';
 
@@ -83,54 +84,6 @@ const dayWord = (ts: number) => {
     return w.charAt(0).toUpperCase() + w.slice(1);
 };
 const windowText = (w: { from: number; to: number }) => `${dayWord(w.from)} ${hOnly(w.from)} – ${hOnly(w.to)}`;
-
-// ── Silhouette habillée ──────────────────────────────────────────────────────
-
-function Figure({ o }: { o: Outfit }) {
-    const g = o.gear;
-    const on = (b: boolean) => (b ? 1 : 0.1);
-    const rain = o.coat === 'rain';
-    const coatStroke = o.coat === 'none' ? 'var(--h-muted)' : rain ? 'var(--h-cool)' : 'var(--h-accent)';
-    const coatFill = rain ? 'var(--h-cool-dim)' : o.coat === 'winter' ? '#2f3a1a' : o.coat === 'none' ? 'transparent' : '#232a17';
-    return (
-        <svg className="wx-figure" viewBox="0 0 260 340" role="img" aria-label={`Silhouette habillée : ${o.items.join(', ')}`}>
-            <g fill="none" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="110" cy="62" r="24" stroke="var(--h-muted)" strokeWidth="3" />
-                <path d="M92 210 L90 300 M128 210 L130 300" stroke="var(--h-muted)" strokeWidth="3" />
-                <path d="M80 104 L60 188 M140 104 L160 188" stroke="var(--h-muted)" strokeWidth="3" />
-                <path d="M82 100 Q110 90 138 100 L152 214 H68 Z" stroke={coatStroke} strokeWidth="3.5" fill={coatFill} />
-                {o.coat !== 'none' && <path d="M110 98 V214" stroke={coatStroke} strokeWidth="2" />}
-                <g opacity={on(g.hat)}>
-                    <path d="M86 58 Q86 30 110 30 Q134 30 134 58 Z" stroke="var(--h-accent)" strokeWidth="3" fill="#2f3a1a" />
-                    <path d="M84 58 H136" stroke="var(--h-accent)" strokeWidth="5" />
-                    <circle cx="110" cy="25" r="6" fill="var(--h-accent)" />
-                </g>
-                <g opacity={on(g.hood)}>
-                    <path d="M80 70 Q80 26 110 26 Q140 26 140 70 L136 96 M80 70 L84 96" stroke="var(--h-cool)" strokeWidth="3" />
-                </g>
-                <g opacity={on(g.sunglasses)}>
-                    <path d="M94 60 H106 M114 60 H126 M106 60 H114" stroke="var(--h-light)" strokeWidth="5" />
-                </g>
-                <g opacity={on(g.scarf)}>
-                    <path d="M88 94 Q110 108 132 94" stroke="var(--h-accent)" strokeWidth="7" />
-                    <path d="M124 100 L130 132" stroke="var(--h-accent)" strokeWidth="6" />
-                </g>
-                <g opacity={on(g.gloves)}>
-                    <circle cx="58" cy="194" r="8" fill="var(--h-accent)" />
-                    <circle cx="162" cy="194" r="8" fill="var(--h-accent)" />
-                </g>
-                <g opacity={on(g.boots)}>
-                    <path d="M80 286 H101 V318 H74 Q72 310 80 306 Z" stroke="var(--h-cool)" strokeWidth="3" fill="var(--h-cool-dim)" />
-                    <path d="M119 286 H140 V306 Q148 310 146 318 H119 Z" stroke="var(--h-cool)" strokeWidth="3" fill="var(--h-cool-dim)" />
-                </g>
-                <g opacity={on(g.umbrella)}>
-                    <path d="M168 128 Q210 74 252 128 Z" stroke="var(--h-cool)" strokeWidth="3" fill="var(--h-cool-dim)" />
-                    <path d="M210 128 V196 Q210 206 200 204" stroke="var(--h-cool)" strokeWidth="3" />
-                </g>
-            </g>
-        </svg>
-    );
-}
 
 // ── Baromètre à deux aiguilles ───────────────────────────────────────────────
 
@@ -394,9 +347,8 @@ export function Weather() {
                                 <h2 className={`wx-headline ${o.gust >= 60 ? 'stormy' : ''}`} aria-live="polite">
                                     {o.past && <span className="muted">C’était : </span>}{o.headline}
                                 </h2>
-                                <div className="wx-outfit">
-                                    <Figure o={o} />
-                                    <div className="wx-outfit-info">
+                                <OutfitScene o={o} />
+                                <div className="wx-scene-info">
                                         <div className="wx-feels">
                                             <div>
                                                 <span className="muted">Ressenti à {o.hour} h</span>
@@ -412,10 +364,10 @@ export function Weather() {
                                             <span className="muted">Couches</span>
                                             {[1, 2, 3, 4].map((n) => <i key={n} className={n <= o.layers ? 'on' : ''} />)}
                                         </div>
-                                        <ul className="wx-items">{o.items.map((it) => <li key={it}>{it}</li>)}</ul>
-                                        {o.tip && <p className="warn-line">{o.tip}</p>}
-                                    </div>
                                 </div>
+                                <ul className="wx-items wx-items-phone">{o.items.map((it) => <li key={it}>{it}</li>)}</ul>
+                                {o.tip && <p className="warn-line">{o.tip}</p>}
+                                <p className="wx-dog-line"><strong>Cooper</strong> : {dogTip(o)}</p>
                             </>
                         ) : <p className="muted">Pas de prévision pour cette sortie.</p>}
                     </section>

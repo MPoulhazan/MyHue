@@ -13,6 +13,8 @@ export interface CooperView {
     meals: Meal[];
     mood: 'fed' | 'waiting' | 'soon' | 'late' | 'double';
     line: string;
+    /** Moment de la journée qui prend la bulle : dodo (21 h – 8 h), réveil (« Ça pousse »), promenade faite. */
+    moment?: 'dodo' | 'pousse' | 'walked' | null;
     blinking: boolean;
 }
 
@@ -21,6 +23,7 @@ const hm = (ts: number) => {
     return `${d.getHours()} h ${String(d.getMinutes()).padStart(2, '0')}`;
 };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const MOMENT_PHOTO: Record<string, string> = { dodo: '/cooper-dodo.webp', pousse: '/cooper-pousse.webp' };
 
 /** Carte « Cooper parle » de l'accueil : sa bulle dit s'il a eu ses repas de 12 h et 18 h. */
 export function CooperCard() {
@@ -45,7 +48,7 @@ export function CooperCard() {
     };
 
     return (
-        <section className={`card cooper-card mood-${view.mood}`} aria-label="Repas de Cooper">
+        <section className={`card cooper-card mood-${view.mood}${view.moment ? ` moment-${view.moment}` : ''}`} aria-label="Repas de Cooper">
             <div className="card-head">
                 <span className="card-title">Cooper</span>
                 {late && <span className="cooper-pill late">Oublié</span>}
@@ -53,7 +56,9 @@ export function CooperCard() {
                 {!view.sensor.online && <span className="cooper-pill off">Capteur muet</span>}
             </div>
             <div className="cooper-body">
-                <img className={`cooper-photo ${late ? 'late' : ''}`} src="/cooper.jpg" alt="" width={64} height={64} />
+                {view.moment && MOMENT_PHOTO[view.moment]
+                    ? <img className="cooper-photo moment" src={MOMENT_PHOTO[view.moment]} alt="" width={96} height={96} />
+                    : <img className={`cooper-photo ${late ? 'late' : ''}`} src="/cooper.jpg" alt="" width={64} height={64} />}
                 <p className="cooper-bubble" aria-live="polite">{view.line}</p>
             </div>
             <div className="cooper-foot">

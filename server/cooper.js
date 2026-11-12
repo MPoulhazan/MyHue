@@ -162,6 +162,28 @@ export const cooperLine = (view, now = Date.now(), tz = TZ) => {
     return { mood: 'waiting', line: `Prochain repas à ${hmMin(toMin(next.time))}. Je patiente.` };
 };
 
+const WAKE = 8 * 60;
+const NIGHT = 21 * 60;
+const WAKE_END = 11 * 60;
+const WALKED_SHOWN_MS = 30 * 60_000;
+
+/**
+ * Moment de la journée, qui prend la bulle et la photo de la carte :
+ * - dodo de 21 h à 8 h, seulement si les deux repas ont été donnés (sinon il ne dort pas tranquille) ;
+ * - réveil à 8 h, « Ça pousse ! », plus pressant à 9 h, jusqu'à la sortie par la porte d'entrée (ou 11 h) ;
+ * - « Mission accomplie » pendant 30 min après la sortie.
+ * @returns {{ moment: 'dodo'|'pousse'|'walked', line: string } | null}
+ */
+export const dayMoment = ({ minutes, fedAll, walkedAt = null }, now = Date.now()) => {
+    if (minutes >= NIGHT || minutes < WAKE) return fedAll ? { moment: 'dodo', line: "J'ai bien mangé, je peux faire dodo." } : null;
+    if (minutes >= WAKE_END) return null;
+    const wakeAt = now - (minutes - WAKE) * 60_000;
+    if (walkedAt && walkedAt >= wakeAt) {
+        return now - walkedAt < WALKED_SHOWN_MS ? { moment: 'walked', line: 'Mission accomplie, merci pour la promenade !' } : null;
+    }
+    return { moment: 'pousse', line: minutes >= 9 * 60 ? 'Ça pousse vraiment, là…' : 'Ça pousse !' };
+};
+
 /** Réponse de Jarvis à « Est-ce que Cooper a mangé ? ». */
 export const cooperSpeech = (view, tz = TZ) => {
     const done = view.meals.filter((m) => m.status === 'done');
@@ -189,6 +211,15 @@ const beforeTracking = (date, meal, fed) => {
     return date === since.date && toMin(meal.time) + DEFAULTS.lateMin < since.minutes;
 };
 
+/** Dernière ouverture de la porte d'entrée depuis ce matin 8 h (la promenade du matin). */
+const lastEntranceOpen = (now) => {
+    const entrance = sensorRegistry.getAll().find((s) => s.type === 'door' && sensorRegistry.isEntrance(s.name));
+    if (!entrance) return null;
+    const since = now - 4 * 3600_000;
+    const e = journal.list({ limit: 200, kind: 'door', since }).find((x) => x.data?.did === entrance.ieee && x.data?.isOpen);
+    return e?.ts ?? null;
+};
+
 export const getView = (now = Date.now()) => {
     const { date, minutes } = localParts(now);
     const fed = todayFed(date);
@@ -206,11 +237,18 @@ export const getView = (now = Date.now()) => {
     const view = { meals, double };
     const sensor = findSensor();
     const device = sensor && zigbeeService.getDevices().find((x) => x.ieeeAddr === sensor.ieee);
+    const said = cooperLine(view, now);
+    // Avant 8 h, c'est la soirée d'hier qui compte pour le dodo
+    const night = localParts(minutes < WAKE ? now - (minutes + 1) * 60_000 : now).date;
+    const fedAll = config.meals.every((m) => todayFed(night)[m.id]);
+    const moment = said.mood === 'late' || said.mood === 'double' ? null : dayMoment({ minutes, fedAll, walkedAt: lastEntranceOpen(now) }, now);
     return {
         enabled: config.enabled,
         sensor: sensor ? { did: sensor.ieee, name: sensor.name, online: device ? device.available !== false : false } : null,
         ...view,
-        ...cooperLine(view, now),
+        ...said,
+        ...(moment ? { line: moment.line, mood: moment.moment === 'pousse' ? 'soon' : 'fed' } : {}),
+        moment: moment?.moment ?? null,
         blinking: config.lamp?.mode === 'blink',
     };
 };

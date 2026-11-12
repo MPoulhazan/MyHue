@@ -1,7 +1,7 @@
 // node --test server/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { assignOpening, mealStatus, cooperLine, cooperSpeech, isCooperQuestion, toMin, localParts } from './cooper.js';
+import { assignOpening, mealStatus, cooperLine, cooperSpeech, isCooperQuestion, toMin, localParts, dayMoment } from './cooper.js';
 
 const MEALS = [
     { id: 'midi', label: 'midi', time: '12:00', from: '10:30', to: '13:30' },
@@ -67,4 +67,20 @@ test('cooperSpeech et isCooperQuestion (Jarvis)', () => {
     assert.ok(isCooperQuestion('Est-ce que Cooper a mangé ?'));
     assert.ok(isCooperQuestion('on a donné les croquettes ?'));
     assert.ok(!isCooperQuestion('allume le bar'));
+});
+
+test('dayMoment : dodo, réveil, promenade', () => {
+    const M = 60_000;
+    const now = 1_000_000_000_000;
+    assert.equal(dayMoment({ minutes: 21 * 60 + 5, fedAll: true }, now).moment, 'dodo');
+    assert.equal(dayMoment({ minutes: 3 * 60, fedAll: true }, now).moment, 'dodo');
+    assert.equal(dayMoment({ minutes: 22 * 60, fedAll: false }, now), null);
+    assert.equal(dayMoment({ minutes: 8 * 60 + 10, fedAll: true }, now).line, 'Ça pousse !');
+    assert.equal(dayMoment({ minutes: 9 * 60 + 5, fedAll: true }, now).line, 'Ça pousse vraiment, là…');
+    // Sortie à 8 h 20, vu à 8 h 30 : mission accomplie ; à 9 h 00 : on n'en parle plus
+    assert.equal(dayMoment({ minutes: 8 * 60 + 30, fedAll: true, walkedAt: now - 10 * M }, now).moment, 'walked');
+    assert.equal(dayMoment({ minutes: 9 * 60, fedAll: true, walkedAt: now - 40 * M }, now), null);
+    // Une ouverture d'avant 8 h ne compte pas comme promenade
+    assert.equal(dayMoment({ minutes: 8 * 60 + 5, fedAll: true, walkedAt: now - 20 * M }, now).moment, 'pousse');
+    assert.equal(dayMoment({ minutes: 12 * 60, fedAll: true }, now), null);
 });
