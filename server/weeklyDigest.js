@@ -170,7 +170,7 @@ export const draftText = (facts) => {
         lines.push(`📬 Courrier : ${parts.join(', ')}.`);
     }
     const a = facts.activity;
-    if (a.heatingCommands) lines.push(`🔥 Thermopompe : ${a.heatingCommands} commande${a.heatingCommands > 1 ? 's' : ''}${a.heatingOffs ? `, ${a.heatingOffs} arrêt${a.heatingOffs > 1 ? 's' : ''}` : ''}.`);
+    if (a.heatingCommands) lines.push(`🔥 Thermopompe : ${a.heatingCommands} commande${a.heatingCommands > 1 ? 's' : ''} envoyée${a.heatingCommands > 1 ? 's' : ''}${a.heatingOffs ? `, ${a.heatingOffs} arrêt${a.heatingOffs > 1 ? 's' : ''}` : ''}.`);
     if (a.flexPeaks) lines.push(`⚡ ${a.flexPeaks} étape${a.flexPeaks > 1 ? 's' : ''} de pointe Flex D gérée${a.flexPeaks > 1 ? 's' : ''}.`);
     for (const x of a.automations.slice(0, 3)) lines.push(`⚙️ « ${x.title} » × ${x.count}.`);
     for (const b of facts.batteries) lines.push(`🔋 Pile faible : ${b.name} (${b.battery} %).`);
@@ -225,12 +225,21 @@ export const collectFacts = async (now = Date.now()) => {
 const PROMPT = `Tu écris le résumé hebdomadaire de la maison MyHue, envoyé sur Telegram à l'habitant.
 Règles :
 - Français naturel, tutoiement. Première ligne : « 🗓️ Ta semaine à la maison ».
-- Puis 3 à 6 puces courtes (une ligne chacune, un emoji au début), en gardant UNIQUEMENT ce qui sort de l'ordinaire ou mérite une action : écarts nets avec la semaine d'avant, porte restée longtemps ouverte, ouvertures la nuit, courrier (toujours la puce 📬 du brouillon quand elle existe, telle quelle : ce sont des lettres, pas des colis), pièce trop froide ou trop humide, air très sec, pile faible, capteur muet, beaucoup d'arrêts de la thermopompe.
+- Puis 3 à 6 puces courtes (une ligne chacune, un emoji au début), en gardant UNIQUEMENT ce qui sort de l'ordinaire ou mérite une action : écarts nets avec la semaine d'avant, porte restée longtemps ouverte, ouvertures la nuit, pièce trop froide ou trop humide, air très sec, pile faible, capteur muet, beaucoup d'arrêts de la thermopompe.
+- Les « commandes » de la thermopompe sont des ordres envoyés (consigne, mode), pas des démarrages.
+- N'écris aucune puce sur le courrier (📬) : elle est ajoutée après toi.
 - Si rien n'est inhabituel, dis en une phrase que la semaine a été calme et donne la température moyenne.
 - Pars des puces du brouillon : tu peux en retirer, les reformuler un peu, ajouter la comparaison avec la semaine d'avant donnée dans les faits. Une puce = un seul fait.
 - Ne relie jamais deux faits entre eux (pas de « mais », « alors que », « car »), ne déduis aucune cause, aucun conseil.
 - Garde exactement les chiffres et les noms fournis (noms des portes et des automatismes tels quels), et les durées telles qu'écrites dans le brouillon.
 - Pas de formule de politesse, pas de signature, pas de markdown (pas d'astérisques).`;
+
+/** Lignes que Groq ne doit ni perdre ni reformuler (il confondait levées et colis) : remises telles quelles. */
+export const keepLocked = (text, draft) => {
+    const locked = draft.split('\n').filter((l) => l.startsWith('📬'));
+    const kept = text.split('\n').map((l) => l.trimEnd()).filter((l) => !l.startsWith('📬'));
+    return [...kept, ...locked].join('\n');
+};
 
 export const writeDigest = async (facts) => {
     const draft = draftText(facts);
@@ -252,7 +261,7 @@ export const writeDigest = async (facts) => {
             { timeout: 20000 },
         );
         const text = data?.choices?.[0]?.message?.content?.trim();
-        if (text && text.length > 20 && text.length < 1500) return { text: text.replace(/\*\*/g, ''), by: 'groq' };
+        if (text && text.length > 20 && text.length < 1500) return { text: keepLocked(text.replace(/\*\*/g, ''), draft), by: 'groq' };
     } catch (err) {
         console.warn('[Résumé] Groq indisponible:', err.response?.status || err.message);
     }

@@ -1,7 +1,7 @@
 // node --test server/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { doorStats, activityStats, measureStats, mailStats, draftText, fmtDuration } from './weeklyDigest.js';
+import { doorStats, activityStats, measureStats, mailStats, draftText, fmtDuration, keepLocked } from './weeklyDigest.js';
 
 const H = 3600_000;
 const from = 1000 * H;
@@ -82,4 +82,10 @@ test('fmtDuration', () => {
     assert.equal(fmtDuration(45), '45 min');
     assert.equal(fmtDuration(120), '2 h');
     assert.equal(fmtDuration(1346), '22 h 26');
+});
+
+test('keepLocked remet la ligne courrier du brouillon telle quelle', () => {
+    const draft = '🗓️ Ta semaine\n🌡️ Salon\n📬 Courrier : 0 passage du facteur, courrier relevé 6 fois.';
+    assert.equal(keepLocked('🗓️ Ta semaine  \n📬 6 colis récupérés', draft), '🗓️ Ta semaine\n📬 Courrier : 0 passage du facteur, courrier relevé 6 fois.');
+    assert.equal(keepLocked('🗓️ Ta semaine', '🗓️ Ta semaine\nSemaine calme'), '🗓️ Ta semaine');
 });
