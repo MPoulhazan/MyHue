@@ -57,11 +57,11 @@ const fmtWhen = (ts) =>
 // --- Faits (fonctions pures, testées dans weeklyDigest.test.js) ---
 
 /** Portes : ouvertures, temps ouvert, plus longue ouverture, ouvertures de nuit (23 h – 6 h). */
-export const doorStats = (entries, from, to, hourOf = (ts) => localParts(ts).hour) => {
+export const doorStats = (entries, from, to, hourOf = (ts) => localParts(ts).hour, names = {}) => {
     const doors = new Map();
     const sorted = entries.filter((e) => e.kind === 'door' && e.data?.did).sort((a, b) => a.ts - b.ts);
     for (const e of sorted) {
-        const name = e.title.split(' : ')[0];
+        const name = names[e.data.did] || e.title.split(' : ')[0]; // nom actuel du capteur, le journal garde l'ancien après un renommage
         const d = doors.get(e.data.did) || { name, openings: 0, openMin: 0, longest: null, night: 0, openSince: null };
         doors.set(e.data.did, d);
         if (e.data.isOpen) {
@@ -199,6 +199,7 @@ export const collectFacts = async (now = Date.now()) => {
     // Seuls les vrais capteurs de porte : la boîte aux lettres a sa propre ligne
     const notDoor = new Set(sensors.filter((s) => s.type && s.type !== 'door').map((s) => s.did));
     const doorEntries = entries.filter((e) => e.kind !== 'door' || !notDoor.has(e.data?.did));
+    const names = Object.fromEntries(sensors.map((s) => [s.did, s.name]));
     let mailEvents = [];
     try {
         mailEvents = mailbox.getHistory().events || [];
@@ -208,8 +209,8 @@ export const collectFacts = async (now = Date.now()) => {
     return {
         period: { from, to: now },
         sensors: measured,
-        doors: doorStats(doorEntries, from, now),
-        doorsPrev: doorStats(doorEntries, prevFrom, from).map(({ name, openings, openMin }) => ({ name, openings, openMin })),
+        doors: doorStats(doorEntries, from, now, undefined, names),
+        doorsPrev: doorStats(doorEntries, prevFrom, from, undefined, names).map(({ name, openings, openMin }) => ({ name, openings, openMin })),
         activity: activityStats(entries, from, now),
         mail: mailStats(mailEvents, from, now),
         mailPrev: mailStats(mailEvents, prevFrom, from),

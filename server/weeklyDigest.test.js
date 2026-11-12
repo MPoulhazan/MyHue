@@ -89,3 +89,8 @@ test('keepLocked remet la ligne courrier du brouillon telle quelle', () => {
     assert.equal(keepLocked('🗓️ Ta semaine  \n📬 6 colis récupérés', draft), '🗓️ Ta semaine\n📬 Courrier : 0 passage du facteur, courrier relevé 6 fois.');
     assert.equal(keepLocked('🗓️ Ta semaine', '🗓️ Ta semaine\nSemaine calme'), '🗓️ Ta semaine');
 });
+
+test('doorStats : le nom actuel du capteur remplace celui du journal', () => {
+    const d = doorStats([door(from + H, true), door(from + 2 * H, false)], from, to, hourOf, { a: 'Porte terrasse' });
+    assert.equal(d[0].name, 'Porte terrasse');
+});
