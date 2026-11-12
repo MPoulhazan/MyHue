@@ -17,12 +17,12 @@ export interface SceneOutfit {
 type Key = 'coat' | 'hat' | 'gloves' | 'scarf' | 'boots' | 'umbrella' | 'sunglasses' | 'cream' | 'top' | 'hood';
 
 const keyOf = (item: string): Key | null => {
+    if (/bottes/i.test(item)) return 'boots'; // avant « imperméable » : les bottes imperméables ne sont pas un manteau
     if (/capuche/i.test(item)) return 'hood';
     if (/manteau|veste|imperm/i.test(item)) return 'coat';
     if (/tuque/i.test(item)) return 'hat';
     if (/gants|mitaines/i.test(item)) return 'gloves';
     if (/foulard/i.test(item)) return 'scarf';
-    if (/bottes/i.test(item)) return 'boots';
     if (/parapluie/i.test(item)) return 'umbrella';
     if (/lunettes/i.test(item)) return 'sunglasses';
     if (/crème/i.test(item)) return 'cream';
@@ -151,11 +151,14 @@ const W = 940;
 const H = 430;
 const POS: Record<Who, number> = { a: 210, b: 420 };
 const DOG = { x: 668, w: 150, h: 273 }; // photo 360 × 655
-const DOG_Y = H - 30 - DOG.h;
+const DOG_Y = H - 44 - DOG.h; // même sol que les pieds (336 + 44)
 
-export function OutfitScene({ o }: { o: SceneOutfit }) {
+/** Contenu SVG de la scène (chaîne), séparé pour pouvoir le rendre et le vérifier hors de React. */
+export const sceneMarkup = (o: SceneOutfit, photo = '/cooper-poil.webp') => {
     const at = (id: Who, [x, y]: [number, number]) => [POS[id] + x, y + 44];
-    const labelled = o.items.map((t) => ({ t, key: keyOf(t) })).filter((x): x is { t: string; key: Key } => x.key != null);
+    // Triées par hauteur du vêtement sur le personnage : les traits ne se croisent pas
+    const labelled = o.items.map((t) => ({ t, key: keyOf(t) })).filter((x): x is { t: string; key: Key } => x.key != null)
+        .sort((x, y) => ANCHOR[x.key][1] - ANCHOR[y.key][1]);
     const n = labelled.length;
     const step = n > 1 ? (H - 110) / (n - 1) : 0;
     const labels = labelled.map(({ t, key }, i) => {
@@ -168,17 +171,22 @@ export function OutfitScene({ o }: { o: SceneOutfit }) {
             + `<circle cx="${bx}" cy="${by}" r="4" class="os-dot" opacity=".55"/>`
             + `<rect x="20" y="${ly - 20}" width="${w}" height="40" rx="20" class="os-tag"/><text x="${20 + w / 2}" y="${ly + 6}" text-anchor="middle" class="os-tag-text">${t}</text>`;
     }).join('');
-    const scene = `<ellipse cx="420" cy="${H - 34}" rx="260" ry="12" fill="#000" opacity=".22"/>`
-        + `<g transform="translate(${POS.a} 0)">${person('a', o)}</g>`
-        + `<g transform="translate(${POS.b} 0)">${person('b', o)}</g>`
-        + `<ellipse cx="${DOG.x + DOG.w / 2}" cy="${H - 32}" rx="70" ry="8" fill="#000" opacity=".25"/>`
-        + `<image href="/cooper-poil.webp" x="${DOG.x}" y="${DOG_Y}" width="${DOG.w}" height="${DOG.h}"/>`
-        + `<text x="${DOG.x + DOG.w / 2}" y="${H - 6}" text-anchor="middle" class="os-name">Cooper</text>`
+    const scene = `<ellipse cx="420" cy="${H - 48}" rx="260" ry="12" fill="#000" opacity=".22"/>`
+        + `<g transform="translate(${POS.a} 44)">${person('a', o)}</g>`
+        + `<g transform="translate(${POS.b} 44)">${person('b', o)}</g>`
+        + `<ellipse cx="${DOG.x + DOG.w / 2}" cy="${H - 46}" rx="70" ry="8" fill="#000" opacity=".25"/>`
+        + `<image href="${photo}" x="${DOG.x}" y="${DOG_Y}" width="${DOG.w}" height="${DOG.h}"/>`
+        + `<text x="${DOG.x + DOG.w / 2}" y="${H - 16}" text-anchor="middle" class="os-name">Cooper</text>`
         + `<g class="os-labels">${labels}</g>`
         + `<path d="M${DOG.x + 150} 118 C${DOG.x + 165} 140 ${DOG.x + 140} ${DOG_Y + 20} ${DOG.x + 105} ${DOG_Y + 36}" class="os-poil-line"/><circle cx="${DOG.x + 105}" cy="${DOG_Y + 36}" r="5" class="os-poil-dot"/>`
         + `<g transform="translate(${DOG.x + 96} 62) rotate(-7)"><rect width="150" height="56" rx="16" class="os-poil"/><text x="75" y="35" text-anchor="middle" class="os-poil-text">À poil</text></g>`;
+    return scene;
+};
+
+export function OutfitScene({ o }: { o: SceneOutfit }) {
+    const scene = sceneMarkup(o);
     return (
-        <svg className="os-scene" viewBox={`0 -10 ${W} ${H + 10}`} role="img"
+        <svg className="os-scene" viewBox={`0 -30 ${W} ${H + 30}`} role="img"
             aria-label={`Nos deux personnages habillés : ${o.items.join(', ')}. Cooper, lui, reste à poil.`}
             dangerouslySetInnerHTML={{ __html: scene }} />
     );
