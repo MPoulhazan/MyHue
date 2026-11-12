@@ -472,6 +472,7 @@ export function Weather() {
 
                         {data.sun && <SunTile sun={data.sun} updatedAt={data.updatedAt} />}
                         <BriefingTile />
+                        <DigestTile />
                         <SignalTile />
                     </aside>
                 </div>
@@ -618,6 +619,85 @@ const daysText = (days: number[]) => {
     const names = DAYS.filter((x) => days.includes(x.d)).map((x) => x.name).join(', ');
     return names.charAt(0).toUpperCase() + names.slice(1);
 };
+
+interface Digest {
+    enabled: boolean;
+    day: number;
+    time: string;
+}
+
+/** Résumé de la semaine envoyé sur Telegram. */
+function DigestTile() {
+    const [d, setD] = useState<Digest | null>(null);
+    const [open, setOpen] = useState(false);
+    const [text, setText] = useState<string | null>(null);
+    const [busy, setBusy] = useState<'preview' | 'send' | null>(null);
+    const [msg, setMsg] = useState<string | null>(null);
+
+    useEffect(() => {
+        axios.get('/api/digest').then(({ data }) => setD(data)).catch(() => {});
+    }, []);
+    if (!d) return null;
+
+    const dayName = DAYS.find((x) => x.d === d.day)?.name ?? '';
+    const save = (patch: Partial<Digest>) => {
+        setD({ ...d, ...patch });
+        axios.put('/api/digest', patch)
+            .then(({ data }) => setD((cur) => (cur ? { ...cur, ...data } : cur)))
+            .catch(() => setMsg('Réglage refusé.'));
+    };
+    const preview = () => {
+        setBusy('preview');
+        setMsg(null);
+        axios.get('/api/digest/preview')
+            .then(({ data }) => setText(data.text))
+            .catch(() => setMsg('Aperçu indisponible.'))
+            .finally(() => setBusy(null));
+    };
+    const send = () => {
+        setBusy('send');
+        setMsg(null);
+        axios.post('/api/digest/send')
+            .then(({ data }) => { setText(data.text); setMsg('Envoyé sur Telegram.'); })
+            .catch(() => setMsg('Envoi impossible (Telegram configuré ?).'))
+            .finally(() => setBusy(null));
+    };
+
+    return (
+        <section className="wx-tile wx-brief" aria-label="Résumé de la semaine">
+            <span className="wx-tile-head">
+                <strong>Résumé de la semaine</strong>
+                <button type="button" className={`wx-switch ${d.enabled ? 'on' : ''}`} role="switch" aria-checked={d.enabled}
+                    aria-label="Résumé de la semaine" onClick={() => save({ enabled: !d.enabled })}><i /></button>
+            </span>
+            <span className="muted">{d.enabled ? `Le ${dayName} à ${d.time} sur Telegram, sans son.` : 'Désactivé.'}</span>
+            <span className="wx-brief-actions">
+                <button type="button" className="ghost-btn" onClick={preview} disabled={busy != null}>{busy === 'preview' ? 'Préparation…' : 'Aperçu'}</button>
+                <button type="button" className="ghost-btn" onClick={send} disabled={busy != null}>{busy === 'send' ? 'Envoi…' : 'Envoyer maintenant'}</button>
+                <button type="button" className="ghost-btn" aria-expanded={open} onClick={() => setOpen((o) => !o)}>Régler</button>
+            </span>
+            {msg && <span className="muted">{msg}</span>}
+            {text && <p className="wx-brief-text" style={{ whiteSpace: 'pre-line' }}>{text}</p>}
+            {open && (
+                <div className="wx-brief-settings">
+                    <div className="wx-brief-row" role="group" aria-label="Jour">
+                        <span className="muted">Jour</span>
+                        <span className="wx-days">
+                            {DAYS.map((x) => (
+                                <button key={x.d} type="button" className={d.day === x.d ? 'active' : ''} aria-pressed={d.day === x.d} aria-label={x.name}
+                                    onClick={() => save({ day: x.d })}>{x.label}</button>
+                            ))}
+                        </span>
+                    </div>
+                    <label className="wx-brief-row">
+                        <span className="muted">Heure</span>
+                        <input type="time" value={d.time} onChange={(e) => e.target.value && save({ time: e.target.value })} />
+                    </label>
+                </div>
+            )}
+        </section>
+    );
+}
 
 function BriefingTile() {
     const [b, setB] = useState<Briefing | null>(null);

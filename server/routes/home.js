@@ -24,6 +24,7 @@ import * as lightSignals from '../lightSignals.js';
 import * as circadian from '../circadian.js';
 import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
+import * as weeklyDigest from '../weeklyDigest.js';
 import * as homeWidgets from '../homeWidgets.js';
 import * as cube from '../cube.js';
 import * as bixi from '../bixi.js';
@@ -322,6 +323,35 @@ router.get('/api/briefing/preview', async (_req, res) => {
 router.post('/api/briefing/play', async (_req, res) => {
     try {
         res.json(await briefing.play());
+    } catch (err) {
+        res.status(503).json({ error: err.message });
+    }
+});
+
+// --- Résumé de la semaine (Telegram) ---
+
+router.get('/api/digest', (_req, res) => res.json(weeklyDigest.getStatus()));
+
+router.put('/api/digest', (req, res) => {
+    try {
+        res.json(weeklyDigest.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.get('/api/digest/preview', async (_req, res) => {
+    try {
+        const { text, by } = await weeklyDigest.preview();
+        res.json({ text, by });
+    } catch (err) {
+        res.status(503).json({ error: err.message });
+    }
+});
+
+router.post('/api/digest/send', async (_req, res) => {
+    try {
+        res.json(await weeklyDigest.send('écran'));
     } catch (err) {
         res.status(503).json({ error: err.message });
     }
