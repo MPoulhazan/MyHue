@@ -136,9 +136,9 @@ export const measureStats = (points, prop, from, to) => {
 export const mailStats = (events, from, to) => {
     const inWeek = events.filter((e) => e.at >= from && e.at < to);
     return {
-        deliveries: inWeek.filter((e) => e.kind === 'delivery').length,
-        pickups: inWeek.filter((e) => e.kind === 'pickup').length,
-        nights: inWeek.filter((e) => e.kind === 'night').length,
+        postmanVisits: inWeek.filter((e) => e.kind === 'delivery').length,
+        mailCollectedByUs: inWeek.filter((e) => e.kind === 'pickup').length,
+        mailboxOpenedAtNight: inWeek.filter((e) => e.kind === 'night').length,
     };
 };
 
@@ -162,11 +162,12 @@ export const draftText = (facts) => {
         if (d.night) line += `, dont ${d.night} la nuit`;
         lines.push(`${line}.`);
     }
-    if (facts.mail?.deliveries || facts.mail?.nights) {
-        const m = facts.mail;
-        let line = `📬 Courrier : ${m.deliveries} passage${m.deliveries > 1 ? 's' : ''} du facteur`;
-        if (m.nights) line += `, ${m.nights} ouverture${m.nights > 1 ? 's' : ''} de nuit`;
-        lines.push(`${line}.`);
+    const m = facts.mail;
+    if (m && (m.postmanVisits || m.mailCollectedByUs || m.mailboxOpenedAtNight)) {
+        const parts = [`${m.postmanVisits} passage${m.postmanVisits > 1 ? 's' : ''} du facteur`];
+        if (m.mailCollectedByUs) parts.push(`courrier relevé ${m.mailCollectedByUs} fois`);
+        if (m.mailboxOpenedAtNight) parts.push(`boîte ouverte ${m.mailboxOpenedAtNight} fois la nuit`);
+        lines.push(`📬 Courrier : ${parts.join(', ')}.`);
     }
     const a = facts.activity;
     if (a.heatingCommands) lines.push(`🔥 Thermopompe : ${a.heatingCommands} commande${a.heatingCommands > 1 ? 's' : ''}${a.heatingOffs ? `, ${a.heatingOffs} arrêt${a.heatingOffs > 1 ? 's' : ''}` : ''}.`);
@@ -224,7 +225,7 @@ export const collectFacts = async (now = Date.now()) => {
 const PROMPT = `Tu écris le résumé hebdomadaire de la maison MyHue, envoyé sur Telegram à l'habitant.
 Règles :
 - Français naturel, tutoiement. Première ligne : « 🗓️ Ta semaine à la maison ».
-- Puis 3 à 6 puces courtes (une ligne chacune, un emoji au début), en gardant UNIQUEMENT ce qui sort de l'ordinaire ou mérite une action : écarts nets avec la semaine d'avant, porte restée longtemps ouverte, ouvertures la nuit, passages du facteur (toujours une puce s'il est passé, avec le nombre), pièce trop froide ou trop humide, air très sec, pile faible, capteur muet, beaucoup d'arrêts de la thermopompe.
+- Puis 3 à 6 puces courtes (une ligne chacune, un emoji au début), en gardant UNIQUEMENT ce qui sort de l'ordinaire ou mérite une action : écarts nets avec la semaine d'avant, porte restée longtemps ouverte, ouvertures la nuit, courrier (toujours la puce 📬 du brouillon quand elle existe, telle quelle : ce sont des lettres, pas des colis), pièce trop froide ou trop humide, air très sec, pile faible, capteur muet, beaucoup d'arrêts de la thermopompe.
 - Si rien n'est inhabituel, dis en une phrase que la semaine a été calme et donne la température moyenne.
 - Pars des puces du brouillon : tu peux en retirer, les reformuler un peu, ajouter la comparaison avec la semaine d'avant donnée dans les faits. Une puce = un seul fait.
 - Ne relie jamais deux faits entre eux (pas de « mais », « alors que », « car »), ne déduis aucune cause, aucun conseil.

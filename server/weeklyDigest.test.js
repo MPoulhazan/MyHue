@@ -73,9 +73,9 @@ test('mailStats et ligne courrier', () => {
         { at: from + H, kind: 'delivery' }, { at: from + 2 * H, kind: 'pickup' },
         { at: from + 30 * H, kind: 'delivery' }, { at: from - H, kind: 'delivery' },
     ], from, to);
-    assert.deepEqual(m, { deliveries: 2, pickups: 1, nights: 0 });
+    assert.deepEqual(m, { postmanVisits: 2, mailCollectedByUs: 1, mailboxOpenedAtNight: 0 });
     const t = draftText({ sensors: [], doors: [], mail: m, activity: { heatingCommands: 0, heatingOffs: 0, flexPeaks: 0, automations: [] }, batteries: [], silent: [] });
-    assert.match(t, /📬 Courrier : 2 passages du facteur\./);
+    assert.match(t, /📬 Courrier : 2 passages du facteur, courrier relevé 1 fois\./);
 });
 
 test('fmtDuration', () => {
