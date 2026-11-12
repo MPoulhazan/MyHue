@@ -1,7 +1,7 @@
 // node --test server/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { doorStats, activityStats, measureStats, mailStats, draftText } from './weeklyDigest.js';
+import { doorStats, activityStats, measureStats, mailStats, draftText, fmtDuration } from './weeklyDigest.js';
 
 const H = 3600_000;
 const from = 1000 * H;
@@ -76,4 +76,10 @@ test('mailStats et ligne courrier', () => {
     assert.deepEqual(m, { deliveries: 2, pickups: 1, nights: 0 });
     const t = draftText({ sensors: [], doors: [], mail: m, activity: { heatingCommands: 0, heatingOffs: 0, flexPeaks: 0, automations: [] }, batteries: [], silent: [] });
     assert.match(t, /📬 Courrier : 2 passages du facteur\./);
+});
+
+test('fmtDuration', () => {
+    assert.equal(fmtDuration(45), '45 min');
+    assert.equal(fmtDuration(120), '2 h');
+    assert.equal(fmtDuration(1346), '22 h 26');
 });

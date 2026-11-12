@@ -44,6 +44,13 @@ const localParts = (ts) => {
     };
 };
 const round1 = (x) => Math.round(x * 10) / 10;
+/** 45 min, 2 h, 22 h 26 */
+export const fmtDuration = (min) => {
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return m ? `${h} h ${String(m).padStart(2, '0')}` : `${h} h`;
+};
 const fmtWhen = (ts) =>
     new Date(ts).toLocaleString('fr-FR', { timeZone: TZ, weekday: 'long', hour: '2-digit', minute: '2-digit' }).replace(':', ' h ');
 
@@ -150,8 +157,8 @@ export const draftText = (facts) => {
     }
     for (const d of facts.doors) {
         if (!d.openings && !d.stillOpen) continue;
-        let line = `🚪 ${d.name} : ${d.openings} ouverture${d.openings > 1 ? 's' : ''}, ${d.openMin} min ouverte au total`;
-        if (d.longest && d.longest.min >= 15) line += `, la plus longue ${d.longest.min} min (${fmtWhen(d.longest.at)})`;
+        let line = `🚪 ${d.name} : ${d.openings} ouverture${d.openings > 1 ? 's' : ''}, ${fmtDuration(d.openMin)} ouverte au total`;
+        if (d.longest && d.longest.min >= 15) line += `, la plus longue ${fmtDuration(d.longest.min)} (${fmtWhen(d.longest.at)})`;
         if (d.night) line += `, dont ${d.night} la nuit`;
         lines.push(`${line}.`);
     }
@@ -219,7 +226,9 @@ Règles :
 - Français naturel, tutoiement. Première ligne : « 🗓️ Ta semaine à la maison ».
 - Puis 3 à 6 puces courtes (une ligne chacune, un emoji au début), en gardant UNIQUEMENT ce qui sort de l'ordinaire ou mérite une action : écarts nets avec la semaine d'avant, porte restée longtemps ouverte, ouvertures la nuit, passages du facteur (toujours une puce s'il est passé, avec le nombre), pièce trop froide ou trop humide, air très sec, pile faible, capteur muet, beaucoup d'arrêts de la thermopompe.
 - Si rien n'est inhabituel, dis en une phrase que la semaine a été calme et donne la température moyenne.
-- Garde exactement les chiffres fournis. N'invente aucun fait, aucune cause, aucun conseil qui ne découle pas des faits.
+- Pars des puces du brouillon : tu peux en retirer, les reformuler un peu, ajouter la comparaison avec la semaine d'avant donnée dans les faits. Une puce = un seul fait.
+- Ne relie jamais deux faits entre eux (pas de « mais », « alors que », « car »), ne déduis aucune cause, aucun conseil.
+- Garde exactement les chiffres et les noms fournis (noms des portes et des automatismes tels quels), et les durées telles qu'écrites dans le brouillon.
 - Pas de formule de politesse, pas de signature, pas de markdown (pas d'astérisques).`;
 
 export const writeDigest = async (facts) => {
