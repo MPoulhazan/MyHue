@@ -30,6 +30,7 @@ export const getSensors = async () => {
                 battery: state.battery ?? null,
                 isOpen: 'contact' in state ? !state.contact : null,
                 leak: 'water_leak' in state ? Boolean(state.water_leak) : null,
+                smoke: 'smoke' in state ? Boolean(state.smoke) : null,
                 lastMotion: state.occupancy ? new Date().toISOString() : null,
                 lastOpen: null,
             },

@@ -55,7 +55,7 @@ const OP_LABELS = { gt: '>', lt: '<', gte: '≥', lte: '≤', eq: '=', neq: '≠
 
 const sensorLabel = (trigger) => {
     if (trigger.did !== '*') return sensorRegistry.find(trigger.did)?.name || trigger.did;
-    return trigger.sensorType === 'door' ? 'toute porte' : trigger.sensorType === 'water_leak' ? 'tout détecteur de fuite' : 'tout capteur';
+    return trigger.sensorType === 'door' ? 'toute porte' : trigger.sensorType === 'water_leak' ? 'tout détecteur de fuite' : trigger.sensorType === 'smoke' ? 'tout détecteur de fumée' : 'tout capteur';
 };
 
 /** Résumé lisible d'un automatisme, pour l'interface, Telegram et l'agent. */
@@ -66,6 +66,7 @@ export const summarize = (a) => {
     if (t.type === 'presence') what = t.state === 'away' ? 'plus personne à la maison' : 'quelqu’un rentre';
     else if (t.prop === 'isOpen') what = t.operator === 'is_false' ? `${who} fermée` : `${who} ouverte`;
     else if (t.prop === 'leak') what = `${who} mouillé`;
+    else if (t.prop === 'smoke') what = `${who} détecte de la fumée`;
     else what = `${who} : ${PROP_LABELS[t.prop] || t.prop} ${OP_LABELS[t.operator] || t.operator} ${t.value}`;
     if (t.forMinutes) what += ` depuis ${t.forMinutes} min`;
     const when = (a.conditions || [])
@@ -195,6 +196,35 @@ export const TEMPLATES = {
             trigger: { type: 'sensor', did: '*', sensorType: 'water_leak', prop: 'silentHours', operator: 'gt', value: hours, forMinutes: 0 },
             conditions: [],
             actions: [{ type: 'notify', level: 'alert', message: '📡 {sensor} n’a rien envoyé depuis {value} h : la fuite d’eau n’est plus surveillée. Pile, ou capteur hors de portée de la clé Zigbee ?' }],
+            cooldownMinutes: 12 * 60,
+        }),
+    },
+    smoke_alarm: {
+        label: 'Fumée',
+        description: 'Alerte immédiate, répétée toutes les 5 min tant que le détecteur sent de la fumée : Telegram (même absent), toutes les lampes Hue en rouge à fond et annonce sur les enceintes.',
+        sensorType: 'smoke',
+        build: ({ did = '*' } = {}) => ({
+            name: 'Fumée',
+            trigger: { type: 'sensor', did, sensorType: 'smoke', prop: 'smoke', operator: 'is_true', forMinutes: 0 },
+            conditions: [],
+            actions: [
+                { type: 'notify', level: 'alert', message: '🔥 FUMÉE détectée : {sensor}. Vérifie tout de suite, appelle le 911 en cas de feu.', buttons: ['leak_fixed', 'leak_false'] },
+                { type: 'alarm', speech: 'Attention : fumée détectée, {sensor}. Vérifiez tout de suite.' },
+            ],
+            onRelease: [{ type: 'alarm_clear' }, { type: 'notify', message: '✅ {sensor} ne détecte plus de fumée.' }],
+            repeatMinutes: 5,
+            cooldownMinutes: 0,
+        }),
+    },
+    smoke_sensor_silent: {
+        label: 'Détecteur de fumée muet',
+        description: 'Prévient si un détecteur de fumée n’envoie plus rien depuis 3 h : muet, il ne prévient plus personne à distance.',
+        sensorType: 'smoke',
+        build: ({ hours = 3 } = {}) => ({
+            name: 'Détecteur de fumée muet',
+            trigger: { type: 'sensor', did: '*', sensorType: 'smoke', prop: 'silentHours', operator: 'gt', value: hours, forMinutes: 0 },
+            conditions: [],
+            actions: [{ type: 'notify', level: 'alert', message: '📡 {sensor} n’a rien envoyé depuis {value} h : la fumée n’est plus surveillée à distance. Pile, ou capteur hors de portée de la clé Zigbee ?' }],
             cooldownMinutes: 12 * 60,
         }),
     },
@@ -347,7 +377,7 @@ const ensureSafety = () => {
         automations.push(normalize({ ...TEMPLATES.door_downpour.build({ did: a.trigger.did }), template: 'door_downpour' }));
         upgraded = true;
     }
-    for (const id of ['water_leak', 'leak_sensor_silent']) {
+    for (const id of ['water_leak', 'leak_sensor_silent', 'smoke_alarm', 'smoke_sensor_silent']) {
         if (automations.some((a) => a.template === id)) continue;
         automations.push(normalize({ ...TEMPLATES[id].build(), template: id }));
         upgraded = true;

@@ -123,9 +123,10 @@ export function mailRelevance(v: MailIn | null): WidgetState {
 interface SensorIn {
     type: string;
     isOnline: boolean;
-    props: { battery: number | null; isOpen: boolean | null; leak?: boolean | null };
+    props: { battery: number | null; isOpen: boolean | null; leak?: boolean | null; smoke?: boolean | null };
 }
 export function houseRelevance(sensors: SensorIn[]): WidgetState {
+    if (sensors.some((s) => s.type === 'smoke' && s.props.smoke)) return state('house', 'alert', 'fumée');
     if (sensors.some((s) => s.type === 'water_leak' && s.props.leak)) return state('house', 'alert', 'fuite d’eau');
     const open = sensors.filter((s) => s.type === 'door' && s.props.isOpen).length;
     if (open) return state('house', 'now', open > 1 ? `${open} portes ouvertes` : 'porte ouverte');

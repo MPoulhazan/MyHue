@@ -87,7 +87,7 @@ export interface Sensor {
     outside: boolean;
     isOnline: boolean;
     lastUpdated: string | null;
-    props: { temperature: number | null; humidity: number | null; pressure: number | null; battery: number | null; isOpen: boolean | null; leak?: boolean | null };
+    props: { temperature: number | null; humidity: number | null; pressure: number | null; battery: number | null; isOpen: boolean | null; leak?: boolean | null; smoke?: boolean | null };
 }
 
 /** Service dont dépend la maison (pont Hue, Zigbee, Home Assistant...), vu par le serveur. */

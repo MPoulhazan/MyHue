@@ -191,13 +191,17 @@ export function HouseCard({ sensors, onAdd }: { sensors: Sensor[]; onAdd: () => 
     const open = doors.filter((s) => s.props.isOpen);
     const leaks = sensors.filter((s) => s.type === 'water_leak');
     const wet = leaks.filter((s) => s.props.leak);
+    const smokes = sensors.filter((s) => s.type === 'smoke');
+    const smoky = smokes.filter((s) => s.props.smoke);
     const batteries = sensors.map((s) => s.props.battery).filter((b): b is number => b != null);
     const lowest = batteries.length ? Math.min(...batteries) : null;
     const offline = sensors.filter((s) => !s.isOnline);
     const since = (s: Sensor) => (s.lastUpdated ? ` · ${hhmm(new Date(s.lastUpdated))}` : '');
 
-    // Une fuite passe avant une porte ouverte
-    const status = wet.length
+    // La fumée passe avant une fuite, qui passe avant une porte ouverte
+    const status = smoky.length
+        ? { cls: 'leak', icon: 'alert' as const, text: `Fumée : ${smoky.map((s) => s.room || s.name).join(', ')}` }
+        : wet.length
         ? { cls: 'leak', icon: 'drop' as const, text: `Fuite d’eau : ${wet.map((s) => s.room || s.name).join(', ')}` }
         : open.length
             ? { cls: 'alert', icon: 'door' as const, text: `${open.map((s) => s.name).join(', ')} ouverte${open.length > 1 ? 's' : ''}` }
@@ -210,6 +214,10 @@ export function HouseCard({ sensors, onAdd }: { sensors: Sensor[]; onAdd: () => 
                 <span>{status.text}</span>
             </div>
             <ul className="house-list">
+                {smokes.map((s) => (
+                    <li key={s.did}><span>{s.name}</span><span className={s.props.smoke ? 'leak' : 'muted'}>
+                        {s.props.smoke ? 'FUMÉE !' : s.props.smoke === false ? 'rien à signaler' : 'en attente du capteur'}{since(s)}</span></li>
+                ))}
                 {leaks.map((s) => (
                     <li key={s.did}><span>{s.name}</span><span className={s.props.leak ? 'leak' : 'muted'}>
                         {s.props.leak ? 'FUITE !' : s.props.leak === false ? 'au sec' : 'en attente du capteur'}{since(s)}</span></li>

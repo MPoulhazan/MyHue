@@ -34,6 +34,11 @@ zigbeeService.emitter.on('change', ({ ieee, key, value, prev }) => {
         bus.emit('sensor', { sensor, prop: 'leak', value: Boolean(value), prev: Boolean(prev), ts });
         return;
     }
+    // Fumée : idem, chaque seconde compte
+    if (key === 'smoke') {
+        bus.emit('sensor', { sensor, prop: 'smoke', value: Boolean(value), prev: Boolean(prev), ts });
+        return;
+    }
     if (['temperature', 'humidity', 'pressure', 'battery', 'occupancy'].includes(key)) {
         bus.emit('sensor', { sensor, prop: key, value, prev, ts });
     }

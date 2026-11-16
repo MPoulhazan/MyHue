@@ -38,6 +38,7 @@ test('Courrier, Maison, BIXI, Métro, Ciel, Journal', () => {
     assert.equal(houseRelevance([door(false)]).relevance, 'calm');
     assert.equal(houseRelevance([door(true)]).relevance, 'now');
     assert.equal(houseRelevance([door(true), { type: 'water_leak', isOnline: true, props: { battery: 90, isOpen: null, leak: true } }]).relevance, 'alert');
+    assert.equal(houseRelevance([{ type: 'water_leak', isOnline: true, props: { battery: 90, isOpen: null, leak: true } }, { type: 'smoke', isOnline: true, props: { battery: 90, isOpen: null, smoke: true } }]).summary, 'fumée');
 
     const bixi = { enabled: true, configured: true, season: 'open', window: false };
     assert.equal(bixiRelevance(bixi, NOON).relevance, 'calm');
