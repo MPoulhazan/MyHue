@@ -118,11 +118,24 @@ const locate = () => {
     if (discovering) return discovering;
     discovering = (async () => {
         lastDiscoveryAt = Date.now();
-        let bulbs = await yeelight.discover();
-        if (config.bulbId) bulbs = bulbs.filter((b) => b.id === config.bulbId).concat(bulbs.filter((b) => b.id !== config.bulbId));
-        let ip = bulbs[0]?.ip || null;
-        if (bulbs[0]) config.bulbId = bulbs[0].id;
-        if (!ip) ip = (await yeelight.scan())[0] || null;
+        // Plusieurs Yeelight à la maison (chambre d'amis…) : on ne suit que la nôtre, par son identifiant
+        const bulbs = await yeelight.discover();
+        const mine = config.bulbId ? bulbs.find((b) => b.id === config.bulbId) : bulbs.find((b) => b.ip === config.ip);
+        if (mine && mine.id !== config.bulbId) {
+            config.bulbId = mine.id;
+            save();
+        }
+        let ip = mine?.ip || null;
+        if (!ip && !config.bulbId && !config.ip) {
+            // Première recherche : seulement s'il n'y a aucun doute sur l'ampoule
+            if (bulbs.length === 1) {
+                ip = bulbs[0].ip;
+                config.bulbId = bulbs[0].id;
+            } else if (!bulbs.length) {
+                const hits = await yeelight.scan();
+                if (hits.length === 1) ip = hits[0];
+            }
+        }
         if (ip && ip !== config.ip) {
             config.ip = ip;
             save();
@@ -262,6 +275,8 @@ export const start = () => {
     });
     // Le matin, c'est elle qui montre la météo : le salon ne « respire » plus à l'ouverture de la porte
     lightSignals.setDoorDelegate(() => config.enabled && config.morningColors && Boolean(config.ip));
+    // Adresse donnée à la main : on apprend l'identifiant de l'ampoule pour la retrouver si l'adresse change
+    if (config.ip && !config.bulbId) setTimeout(() => locate().catch(() => null), 5000);
     if (config.enabled && !config.ip) {
         const retry = () =>
             locate()
@@ -277,6 +292,7 @@ export const start = () => {
 export const getStatus = () => ({
     enabled: config.enabled,
     ip: config.ip,
+    bulbId: config.bulbId,
     offAfterSec: config.offAfterSec,
     nightFrom: config.nightFrom,
     nightTo: config.nightTo,
@@ -299,6 +315,7 @@ export const update = (patch = {}) => {
     if (patch.morningColors !== undefined) config.morningColors = Boolean(patch.morningColors);
     if (patch.ip !== undefined) {
         if (patch.ip !== null && !/^\d{1,3}(\.\d{1,3}){3}$/.test(String(patch.ip))) throw new Error('Adresse IP invalide');
+        if (patch.ip !== config.ip) config.bulbId = null; // autre ampoule : on réapprend son identifiant
         config.ip = patch.ip;
     }
     if (patch.offAfterSec !== undefined) {
