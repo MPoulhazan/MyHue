@@ -34,7 +34,7 @@ const lightsToRed = async () => {
 export const raise = async (did, speech) => {
     const current = active.get(did);
     clearInterval(current?.timer);
-    const entry = { before: current?.before ?? null, timer: null };
+    const entry = { before: current?.before ?? null, timer: null, since: current?.since ?? Date.now(), speech: speech || current?.speech || '' };
     active.set(did, entry);
 
     if (hueBaseUrl) {
@@ -81,4 +81,6 @@ export const clear = async (did) => {
 };
 
 export const isActive = (did) => active.has(did);
+/** Alarmes en cours, pour l'écran d'alerte de la tablette. */
+export const list = () => [...active.entries()].map(([did, e]) => ({ did, since: e.since, speech: e.speech }));
 export const anyActive = () => active.size > 0;

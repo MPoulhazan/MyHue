@@ -591,6 +591,20 @@ const acknowledge = async (a, vars, how) => {
     return `Alerte « ${vars.sensor} » : ${how}. Plus de rappel, les lampes reprennent leur état.`;
 };
 
+/** « Lumières normales » sur la tablette : comme « C'est réglé », et Telegram le dit (utile si on est dehors). */
+export const acknowledgeAlarm = async (did) => {
+    const sensor = sensorRegistry.find(did);
+    const vars = { sensor: sensor?.name || did, did };
+    let message = null;
+    for (const a of automations) {
+        if (!runtime.get(`${a.id}|${did}`)?.fired) continue;
+        message = await acknowledge(a, vars, 'réglée depuis la tablette');
+    }
+    if (!message) await alarm.clear(did);
+    await notifier.notify({ text: `🏠 Alarme « ${vars.sensor} » levée depuis la tablette : lumières remises comme avant.` }).catch(() => {});
+    return { ok: true };
+};
+
 // Boutons Telegram disponibles pour une notification
 const BUTTONS = {
     heating_off: () => ({

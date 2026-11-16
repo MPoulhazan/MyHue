@@ -26,6 +26,7 @@ import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
 import * as entranceLight from '../entranceLight.js';
 import * as guard from '../guard.js';
+import * as alarm from '../alarm.js';
 import * as weeklyDigest from '../weeklyDigest.js';
 import * as homeWidgets from '../homeWidgets.js';
 import * as cube from '../cube.js';
@@ -259,6 +260,25 @@ router.put('/api/bixi/settings', (req, res) => {
         res.json(bixi.update(req.body || {}));
     } catch (err) {
         res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Alarme maison (fumée, fuite) : écran d'alerte de la tablette ---
+
+router.get('/api/alarm', (_req, res) => {
+    const active = alarm.list().map((x) => {
+        const s = sensorRegistry.find(x.did);
+        return { ...x, name: s?.name || x.did, room: s?.room || null, type: s?.type || 'other' };
+    });
+    res.json({ active });
+});
+
+router.post('/api/alarm/clear', async (req, res) => {
+    if (!req.body?.did) return res.status(400).json({ error: 'did requis' });
+    try {
+        res.json(await automations.acknowledgeAlarm(req.body.did));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

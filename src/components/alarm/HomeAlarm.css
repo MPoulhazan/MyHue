@@ -1,0 +1,52 @@
+/* Écran d'alarme maison (fumée, fuite) : passe devant tout, y compris l'alerte de la ville */
+.home-alarm-dim {
+    --alarm-red: #ff5a4e;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgba(40, 6, 4, .88);
+}
+.home-alarm {
+    width: min(720px, 100%);
+    background: #2a0d0b;
+    color: #fff;
+    border: 3px solid var(--alarm-red);
+    border-radius: 30px;
+    padding: 32px;
+    display: grid;
+    gap: 14px;
+    text-align: center;
+    box-shadow: 0 0 80px rgba(255, 90, 78, .45);
+}
+.home-alarm-kicker { font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--alarm-red); }
+.home-alarm h2 { font-size: 44px; font-weight: 800; line-height: 1.05; }
+.home-alarm-where { font-size: 22px; font-weight: 700; }
+.home-alarm-advice { font-size: 17px; color: #ffc4bd; }
+.home-alarm-btn {
+    justify-self: center;
+    margin-top: 8px;
+    font: inherit;
+    font-size: 22px;
+    font-weight: 800;
+    padding: 18px 44px;
+    min-height: 64px;
+    border-radius: 999px;
+    border: 0;
+    background: #fff;
+    color: #2a0d0b;
+    cursor: pointer;
+}
+.home-alarm-btn:disabled { opacity: .6; cursor: wait; }
+.home-alarm-btn:focus-visible { outline: 3px solid var(--alarm-red); outline-offset: 4px; }
+.home-alarm-note { font-size: 13px; color: #e9b3ad; }
+@media (prefers-reduced-motion: no-preference) {
+    .home-alarm { animation: home-alarm-pulse 1.6s ease-in-out infinite; }
+    @keyframes home-alarm-pulse { 50% { box-shadow: 0 0 140px rgba(255, 90, 78, .8); } }
+}
+@media (max-width: 520px) {
+    .home-alarm { padding: 24px 18px; }
+    .home-alarm h2 { font-size: 32px; }
+}

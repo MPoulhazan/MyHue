@@ -11,6 +11,7 @@ import { OUTSIDE_ROOM } from '../components/home/RoomPicker';
 import { NightMode } from '../components/home/NightMode';
 import { PhoneHome } from '../components/phone/PhoneHome';
 import { CityAlert } from '../components/city/CityAlert';
+import { HomeAlarm } from '../components/alarm/HomeAlarm';
 import { ScheduleSheet } from '../components/home/ScheduleSheet';
 import { ClimateCard, HueStatus, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import { HomeWidgets, WidgetChips } from '../components/home/widgets/registry';
@@ -158,6 +159,7 @@ export function Dashboard() {
             {sheets}
 
             <CityAlert />
+            <HomeAlarm />
 
             <NightMode
                 temperature={home.sensors.find((s) => s.props.temperature != null)?.props.temperature ?? null}
