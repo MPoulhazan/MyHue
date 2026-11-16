@@ -29,6 +29,7 @@ import * as zigbeeService from './zigbeeService.js';
 import * as health from './health.js';
 import { installAuth, TOKEN, PUBLIC_PORT } from './auth.js';
 import { installWakewordRoutes } from './wakewordSamples.js';
+import { installTtsRoutes } from './tts.js';
 import { hueProxy } from './hue.js';
 import { getSensors } from './sensors.js';
 import * as climateChart from './climateChart.js';
@@ -43,6 +44,7 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 installAuth(app, express);
 installWakewordRoutes(app, express);
+installTtsRoutes(app);
 
 app.use(agentRoutes);
 app.use(mediaRoutes);

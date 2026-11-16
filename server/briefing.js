@@ -9,6 +9,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dataFile } from './dataDir.js';
 import * as haService from './haService.js';
+import { ttsEngine, ttsLanguage } from './tts.js';
 import * as journal from './journal.js';
 import * as presence from './presence.js';
 import * as flexd from './flexd.js';
@@ -117,12 +118,6 @@ export const composeBriefing = (w, flex, today, dayOf = (ts) => localParts(ts).d
 
 // --- Home Assistant : enceintes, alarme, synthèse vocale ---
 
-const ttsEngine = async () => {
-    if (process.env.BRIEFING_TTS) return process.env.BRIEFING_TTS;
-    const engines = await haService.getStates('tts');
-    if (!engines.length) throw new Error('Aucun moteur de synthèse vocale dans Home Assistant');
-    return engines[0].entity_id;
-};
 
 /** Enceintes connues de HA. */
 export const getSpeakers = async () => {
@@ -151,7 +146,7 @@ const speak = async (message) => {
         entity_id: engine,
         media_player_entity_id: config.speaker,
         message,
-        language: 'fr',
+        language: ttsLanguage(engine),
         cache: false,
     });
 };
@@ -170,7 +165,7 @@ export const announce = async (speakers, message, { volume = 0.7, holdMs = 20_00
         entity_id: engine,
         media_player_entity_id: speakers,
         message,
-        language: 'fr',
+        language: ttsLanguage(engine),
         cache: false,
     });
     setTimeout(() => {

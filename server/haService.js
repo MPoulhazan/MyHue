@@ -63,6 +63,14 @@ export async function callService(domain, service, serviceData = {}) {
     return data;
 }
 
+/** Audio (mp3) d'une phrase synthétisée par un moteur TTS de HA. */
+export async function ttsAudio(engineId, message, language) {
+    ensureConfigured();
+    const { data } = await client.post('/tts_get_url', { engine_id: engineId, message, language }, { timeout: 15000 });
+    const audio = await client.get(data.path.replace(/^\/api/, ''), { responseType: 'arraybuffer', timeout: 15000 });
+    return Buffer.from(audio.data);
+}
+
 /**
  * Une commande WebSocket HA (connexion courte). L'historique revient vide via le proxy
  * REST du Supervisor dans l'add-on ; la WebSocket, elle, marche partout.

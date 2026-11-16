@@ -3,7 +3,7 @@ import type { WakeListener, Sensitivity } from '../voice/wakeListener';
 import type { AgentAnswer } from './useHome';
 
 // Conversation vocale : (mot d'activation) → bip → reconnaissance (Web Speech)
-// → agent → réponse lue à voix haute (speechSynthesis).
+// → agent → réponse lue à voix haute (Piper via /api/tts, sinon speechSynthesis).
 
 export type VoiceState = 'idle' | 'listening' | 'thinking' | 'speaking';
 export type WakeStatus = 'off' | 'loading' | 'on' | 'needs-tap' | 'error';
@@ -111,12 +111,36 @@ const pickVoice = (voices: SpeechSynthesisVoice[]) => {
     return voices.filter((v) => v.lang.startsWith('fr')).sort((a, b) => score(b) - score(a))[0];
 };
 
-const speak = (text: string) =>
+// Voix du navigateur : dernier recours (sur Android sans voix française, elle parle anglais)
+const speakBrowser = (text: string) =>
     new Promise<void>((resolve) => {
         const synth = window.speechSynthesis;
         if (!synth || !text) return resolve();
         resolve(loadVoices().then((voices) => say(synth, text, pickVoice(voices))));
     });
+
+/** Lit la réponse avec Piper (voix française locale via HA), sinon avec la voix du navigateur. */
+const speak = async (text: string) => {
+    const clean = text.replace(/https?:\/\/\S+/g, '').trim();
+    if (!clean) return;
+    try {
+        const res = await fetch(`/api/tts?text=${encodeURIComponent(clean)}`);
+        if (!res.ok) throw new Error(`tts ${res.status}`);
+        const url = URL.createObjectURL(await res.blob());
+        try {
+            await new Promise<void>((resolve, reject) => {
+                const audio = new Audio(url);
+                audio.onended = () => resolve();
+                audio.onerror = () => reject(new Error('lecture impossible'));
+                audio.play().catch(reject);
+            });
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+    } catch {
+        await speakBrowser(clean);
+    }
+};
 
 const say = (synth: SpeechSynthesis, text: string, voice?: SpeechSynthesisVoice) =>
     new Promise<void>((resolve) => {
