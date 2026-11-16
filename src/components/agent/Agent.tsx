@@ -53,7 +53,7 @@ function VoiceDebug({ voice }: { voice: Voice }) {
     const s = voice.listenerRef.current?.stats;
     return (
         <pre style={{ width: '100%', margin: 0, fontSize: 12, opacity: 0.8 }}>
-            {`jarvis=${voice.wakeStatus}${voice.wakeError ? ` (${voice.wakeError})` : ''} blocs=${s?.chunks ?? '-'} niveau=${s ? s.level.toFixed(3) : '-'} score=${s ? s.score.toFixed(2) : '-'} perdus=${s?.dropped ?? '-'} micro=${s?.mic || '-'}
+            {`eveil=${voice.wakeStatus}${voice.wakeError ? ` (${voice.wakeError})` : ''} blocs=${s?.chunks ?? '-'} niveau=${s ? s.level.toFixed(3) : '-'} score=${s ? s.score.toFixed(2) : '-'} perdus=${s?.dropped ?? '-'} micro=${s?.mic || '-'}
 `}
             {`reco=${voice.supported ? 'ok' : 'indispo'} état=${voice.state} étapes: ${voice.trace.join(' → ') || '-'}`}
         </pre>
@@ -75,7 +75,7 @@ export function AgentBar({ voice, onAsk, onOpen, autoFocus }: {
     const listening = voice.state === 'listening';
     const placeholder =
         voice.state === 'idle'
-            ? voice.voiceError || (voice.wakeStatus === 'on' ? 'Dis « Hey Jarvis » ou écris ici' : 'Demande-moi quelque chose')
+            ? voice.voiceError || (voice.wakeStatus === 'on' ? 'Dis « Jean-Claude » ou écris ici' : 'Demande-moi quelque chose')
             : VOICE_PLACEHOLDER[voice.state];
 
     return (
@@ -166,7 +166,7 @@ export function AgentSheet({ voice, conversation, thinking, onAsk, onClear, onCl
 
                 <div className="toggle-row">
                     <div>
-                        <div className="toggle-title">Mot d’activation « Hey Jarvis »</div>
+                        <div className="toggle-title">Mot d’activation « Jean-Claude »</div>
                         <div className="muted">{wakeHint}</div>
                     </div>
                     <button type="button" className={`switch ${voice.wakeEnabled ? 'on' : ''}`} aria-pressed={voice.wakeEnabled}

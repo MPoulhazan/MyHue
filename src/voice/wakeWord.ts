@@ -1,4 +1,5 @@
-// Détection du mot d'activation « Hey Jarvis » avec les modèles openWakeWord
+// Détection du mot d'activation « Jean-Claude » avec les modèles openWakeWord
+// (modèle maison entraîné par scripts/train-wakeword.py)
 // (https://github.com/dscripka/openWakeWord), exécutés en local via ONNX.
 // Pipeline par bloc de 80 ms : audio → mel-spectrogramme → embedding → score.
 import * as ort from 'onnxruntime-web/wasm';
@@ -31,7 +32,7 @@ export class WakeWordModel {
         this.wakeSession = wakeSession;
     }
 
-    static async load(baseUrl: string, wakeModel = 'hey_jarvis_v0.1.onnx') {
+    static async load(baseUrl: string, wakeModel = 'jean_claude.onnx') {
         const open = async (file: string) => {
             const res = await fetch(`${baseUrl}/${file}`);
             if (!res.ok) throw new Error(`Modèle introuvable : ${file}`);

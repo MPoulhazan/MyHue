@@ -26,8 +26,8 @@ const REPLAYABLE = new Set([
 // « monte un peu le son » donne un volume absolu : faux dès la deuxième fois
 const RELATIVE = /\b(plus|moins|monte[rz]?|baisse[rz]?|augmente[rz]?|diminue[rz]?|un peu|encore|remets?|pareil)\b/;
 
-// Politesses et mot d'activation : « Jarvis, allume le salon stp » = « allume le salon »
-const FILLER = /\b(jarvis|s il te plait|s il vous plait|stp|svp|merci|peux tu|pourrais tu|tu peux|est ce que tu peux)\b/g;
+// Politesses et mot d'activation : « Jean-Claude, allume le salon stp » = « allume le salon »
+const FILLER = /\b(jean claude|jarvis|s il te plait|s il vous plait|stp|svp|merci|peux tu|pourrais tu|tu peux|est ce que tu peux)\b/g;
 
 export const phraseKey = (message) => normalize(message).replace(FILLER, ' ').replace(/\s+/g, ' ').trim();
 

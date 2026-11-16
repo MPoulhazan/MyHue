@@ -1,16 +1,16 @@
-// Écoute le micro en continu et appelle onWake quand « Hey Jarvis » est détecté.
+// Écoute le micro en continu et appelle onWake quand « Jean-Claude » est détecté.
 // Tout reste dans le navigateur : aucun son ne sort de l'appareil.
 import * as ort from 'onnxruntime-web/wasm';
 import { WakeWordModel, SAMPLE_RATE, CHUNK } from './wakeWord';
 
 // Seuil de score et nombre de blocs de 80 ms consécutifs au-dessus.
-// « Forte » (0.3) capte « Hey Jarvis » de loin mais réagit au moindre bruit ;
-// 0.5 est le défaut openWakeWord ; « Faible » exige en plus 2 blocs d'affilée.
+// Mesuré à l'entraînement (scripts/train-wakeword.py, 7 h de parole, musique et bruit) :
+// 2 blocs à 0.97 ≈ 0,7 fausse alerte/h, 2 blocs à 0.9 ≈ 2/h, prises test toutes détectées.
 export type Sensitivity = 'low' | 'normal' | 'high';
 export const SENSITIVITIES: Record<Sensitivity, { label: string; threshold: number; frames: number }> = {
-    low: { label: 'Faible', threshold: 0.7, frames: 2 },
-    normal: { label: 'Normale', threshold: 0.5, frames: 1 },
-    high: { label: 'Forte', threshold: 0.3, frames: 1 },
+    low: { label: 'Faible', threshold: 0.99, frames: 2 },
+    normal: { label: 'Normale', threshold: 0.97, frames: 2 },
+    high: { label: 'Forte', threshold: 0.9, frames: 2 },
 };
 const COOLDOWN_MS = 2000;
 const MAX_QUEUE = 6; // au-delà, l'inférence est trop lente : on jette les plus anciens
