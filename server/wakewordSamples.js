@@ -58,6 +58,18 @@ export function installWakewordRoutes(app, express) {
         },
     );
 
+    // Récupération des prises pour l'entraînement (hors du Pi)
+    app.get('/api/wakeword/samples/:speaker', (req, res) => {
+        res.json({ files: wavFiles(join(ROOT, safeName(req.params.speaker))) });
+    });
+    app.get('/api/wakeword/samples/:speaker/:file', (req, res) => {
+        const file = String(req.params.file);
+        if (!/^\d+\.wav$/.test(file)) return res.status(400).json({ error: 'Nom de fichier invalide' });
+        const path = join(ROOT, safeName(req.params.speaker), file);
+        if (!existsSync(path)) return res.status(404).end();
+        res.type('audio/wav').sendFile(path);
+    });
+
     // Supprime la dernière prise (ratée, bruit, fou rire…)
     app.delete('/api/wakeword/samples/last', (req, res) => {
         const speaker = safeName(req.query.speaker);
