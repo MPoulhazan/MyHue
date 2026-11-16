@@ -25,6 +25,7 @@ import * as circadian from '../circadian.js';
 import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
 import * as entranceLight from '../entranceLight.js';
+import * as guard from '../guard.js';
 import * as weeklyDigest from '../weeklyDigest.js';
 import * as homeWidgets from '../homeWidgets.js';
 import * as cube from '../cube.js';
@@ -139,9 +140,23 @@ router.put('/api/entrance-light', (req, res) => {
     }
 });
 
-router.post('/api/entrance-light/test', async (_req, res) => {
+router.post('/api/entrance-light/test', async (req, res) => {
     try {
-        res.json(await entranceLight.test());
+        res.json(await entranceLight.test(req.body?.kind));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Mode alarme / vacances ---
+
+router.get('/api/guard', (_req, res) => res.json(guard.getView()));
+
+router.put('/api/guard', async (req, res) => {
+    try {
+        const body = req.body || {};
+        if (body.mode !== undefined) await guard.setMode(body.mode || null, body.by || 'écran');
+        res.json(guard.update(body));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

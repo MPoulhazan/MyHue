@@ -16,6 +16,7 @@ import { getSensors, getOutdoorWeather } from '../sensors.js';
 import { getSky, isSkyQuestion, skySpeech } from '../astro.js';
 import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
+import * as guard from '../guard.js';
 import * as bixi from '../bixi.js';
 import { bixiSpeech, isBixiQuestion } from '../bixiLogic.js';
 import * as city from '../city.js';
@@ -94,6 +95,21 @@ router.post('/api/agent', async (req, res) => {
         if (mailbox.isMailQuestion(message) && /\?|est-ce|passé|arrivé|du courrier|y a/i.test(message)) {
             const speech = mailbox.mailSpeech(mailbox.getView());
             return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'mailbox' });
+        }
+
+        // Niveau 0 : « Active le mode vacances », « On est rentrés », « L'alarme est activée ? »
+        const guardCmd = guard.parseGuardCommand(message);
+        if (guardCmd) {
+            let speech;
+            if (guardCmd.action === 'status') speech = guard.guardSpeech(guard.getView());
+            else {
+                const before = guard.getView().mode;
+                const view = await guard.setMode(guardCmd.action === 'on' ? guardCmd.mode : null, 'Jarvis');
+                speech = guardCmd.action === 'off'
+                    ? (before ? 'Mode coupé. Bon retour !' : 'Aucun mode n’était activé.')
+                    : view.mode === 'vacation' ? 'Mode vacances activé. Je préviens au moindre passage, et le salon s’allumera le soir.' : 'Mode alarme activé. Je préviens au moindre passage.';
+            }
+            return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'guard' });
         }
 
         // Niveau 0 : « Il y a des BIXI ? », d'après le flux BIXI relu tout de suite

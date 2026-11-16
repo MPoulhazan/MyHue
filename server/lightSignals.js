@@ -121,6 +121,21 @@ const extraKinds = () => sources.flatMap((fn) => {
     }
 });
 
+/** Signaux à montrer maintenant (météo + autres modules), sans la lampe du salon. */
+export const leaveKinds = async () => {
+    const w = await getWeatherDetails();
+    return [...new Set([...signalsFor(w, Date.now(), config.stormWithinHours), ...extraKinds()])];
+};
+
+/** Autour de la sortie du matin ? (même plage que la porte d'entrée ci-dessous) */
+export const inMorningWindow = (ts = Date.now()) => inLeaveWindow(localMinutes(ts), outHour(), config.windowBeforeMin, config.windowAfterMin);
+
+// La lampe de l'entrée montre ces couleurs à la place du salon quand elle est joignable
+let doorDelegate = () => false;
+export const setDoorDelegate = (fn) => {
+    doorDelegate = fn;
+};
+
 let busy = false;
 const onLeave = async (source) => {
     if (!config.enabled || busy) return;
@@ -147,6 +162,7 @@ export const start = () => {
     bus.on('sensor', ({ sensor, prop, value }) => {
         if (prop !== 'isOpen' || value !== true || sensor.type !== 'door' || !isEntrance(sensor.name)) return;
         if (!inLeaveWindow(localMinutes(Date.now()), outHour(), config.windowBeforeMin, config.windowAfterMin)) return;
+        if (doorDelegate()) return;
         onLeave(sensor.name);
     });
     // « Je pars » éteint tout : on attend la fin pour que la lampe retourne à l'état éteint

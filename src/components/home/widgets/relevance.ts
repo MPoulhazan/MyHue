@@ -10,7 +10,7 @@ export type Relevance = 'alert' | 'now' | 'calm' | 'hidden';
 /** Réglage par widget : Auto suit la pertinence, Toujours garde la carte, Masqué l'enlève. */
 export type Pin = 'auto' | 'always' | 'hidden';
 
-export type WidgetId = 'city' | 'cooper' | 'mail' | 'house' | 'bixi' | 'metro' | 'sky' | 'journal';
+export type WidgetId = 'guard' | 'city' | 'cooper' | 'mail' | 'house' | 'bixi' | 'metro' | 'sky' | 'journal';
 
 export interface WidgetState {
     id: WidgetId;
@@ -20,7 +20,7 @@ export interface WidgetState {
 }
 
 /** Ordre du registre : il départage deux widgets de même pertinence. */
-export const WIDGET_ORDER: WidgetId[] = ['city', 'cooper', 'mail', 'house', 'bixi', 'metro', 'sky', 'journal'];
+export const WIDGET_ORDER: WidgetId[] = ['guard', 'city', 'cooper', 'mail', 'house', 'bixi', 'metro', 'sky', 'journal'];
 
 export interface WidgetMeta {
     label: string;
@@ -31,6 +31,7 @@ export interface WidgetMeta {
 }
 
 export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
+    guard: { label: 'Alarme', when: 'Quand le mode alarme ou vacances est actif' },
     city: { label: 'En ville', when: 'Alerte météo, collecte la veille au soir, avis du quartier' },
     cooper: { label: 'Cooper', when: 'Toujours affiché, en tête s’il est oublié' },
     mail: { label: 'Courrier', when: 'Du passage du facteur jusqu’à l’ouverture de la boîte' },
@@ -43,7 +44,7 @@ export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
 
 /** Cooper reste toujours une carte : c'est le widget préféré de la maison. */
 export const DEFAULT_PINS: Record<WidgetId, Pin> = {
-    city: 'auto', cooper: 'always', mail: 'auto', house: 'auto', bixi: 'auto', metro: 'auto', sky: 'auto', journal: 'auto',
+    guard: 'auto', city: 'auto', cooper: 'always', mail: 'auto', house: 'auto', bixi: 'auto', metro: 'auto', sky: 'auto', journal: 'auto',
 };
 
 /** Cartes pleines au plus dans « Maintenant », Cooper compris. */
@@ -60,6 +61,19 @@ export const isCommute = (d: Date) => d.getDay() >= 1 && d.getDay() <= 5 && d.ge
 export const isEvening = (d: Date) => d.getHours() >= 18 || d.getHours() < 1;
 
 // ── Un widget à la fois ──────────────────────────────────────────────────────
+
+interface GuardIn {
+    mode: string | null;
+    events: { at: number }[];
+}
+export function guardRelevance(v: GuardIn | null, now = Date.now()): WidgetState {
+    if (!v) return state('guard', 'hidden', 'alarme pas encore lue');
+    if (!v.mode) return state('guard', 'calm', 'désactivée');
+    const label = v.mode === 'vacation' ? 'mode vacances' : 'mode alarme';
+    // Un passage dans la dernière demi-heure : la carte passe en tête
+    if (v.events.some((e) => now - e.at < 30 * 60_000)) return state('guard', 'alert', `passage, ${label}`);
+    return state('guard', 'now', `${label} actif`);
+}
 
 interface CityIn {
     enabled: boolean;

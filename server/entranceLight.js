@@ -5,7 +5,12 @@
  *
  * Elle ne touche pas à une lampe allumée à la main : si l'ampoule était déjà allumée,
  * ou si on l'a réglée entre-temps (luminosité, teinte), elle reste comme elle est.
- * La nuit, lumière douce pour ne pas éblouir.
+ * La nuit, blanc plus chaud.
+ *
+ * Le matin, autour de la sortie (même plage que lightSignals), elle montre d'abord
+ * quelques secondes la couleur de ce qui attend dehors (pluie, orage, verglas, BIXI,
+ * courrier), une fois par matin, puis passe en blanc. En mode alarme ou vacances
+ * (guard.js), elle clignote en rouge à chaque allumage.
  */
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dataFile } from './dataDir.js';
@@ -14,6 +19,7 @@ import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
 import * as journal from './journal.js';
 import * as yeelight from './yeelight.js';
+import * as lightSignals from './lightSignals.js';
 
 const FILE = dataFile('entrance-light.json');
 const TZ = process.env.TZ || 'America/Toronto';
@@ -28,7 +34,21 @@ const DEFAULTS = {
     nightTo: '06:30',
     day: { ct: 4000, bright: 100 },
     night: { ct: 2700, bright: 100 },
+    morningColors: true,
+    colorsShownOn: null, // date locale du dernier signal du matin
 };
+
+// Couleurs Yeelight (0xRRGGBB), mêmes sens que les lampes-signal Hue
+export const COLORS = {
+    rain: 0x1e5cff, // pluie
+    storm: 0xff9000, // orage, tempête
+    ice: 0x9fdcff, // verglas, neige, grand froid
+    bixi: 0xff2a00, // plus de BIXI
+    aurora: 0x20ff70, // aurores
+    alert: 0xff5a00, // alerte en ville
+    mail: 0xffd000, // courrier qui attend
+};
+const ALARM_RED = 0xff0000;
 
 let config = { ...DEFAULTS };
 try {
@@ -65,6 +85,22 @@ const localMinutes = (ts) => {
 
 /** Réglage d'allumage selon l'heure. */
 export const sceneFor = (ts, cfg = config) => (inRange(localMinutes(ts), cfg.nightFrom, cfg.nightTo) ? { ...cfg.night, mode: 'night' } : { ...cfg.day, mode: 'day' });
+
+/**
+ * Animation Yeelight (set_scene « cf ») : chaque couleur tenue 3 s, ou le rouge qui clignote.
+ * Renvoie { count, expr, ms } ; count = nombre d'étapes, la lampe reste sur la dernière.
+ */
+export const flowFor = (kinds) => {
+    const steps = [];
+    if (kinds.includes('alarm')) {
+        for (let i = 0; i < 8; i++) steps.push([300, 1, ALARM_RED, 100], [300, 1, ALARM_RED, 1]);
+    } else {
+        for (const k of kinds) if (COLORS[k] != null) steps.push([300, 1, COLORS[k], 100], [2700, 7, 0, 0]);
+    }
+    return { count: steps.length, expr: steps.flat().join(','), ms: steps.reduce((t, s) => t + s[0], 0) };
+};
+
+const localDate = (ts) => new Date(ts).toLocaleDateString('en-CA', { timeZone: TZ });
 
 /** La lampe est-elle encore telle qu'on l'a laissée ? Sinon quelqu'un l'a prise en main. */
 export const untouched = (props, scene) =>
@@ -144,6 +180,24 @@ const turnOff = async () => {
     }
 };
 
+// Mode alarme ou vacances actif ? (branché par guard.js)
+let alarmActive = () => false;
+export const setAlarmCheck = (fn) => {
+    alarmActive = fn;
+};
+
+const within = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]);
+
+/** Couleurs à montrer avant le blanc : rouge en alarme, sinon le signal du matin (une fois par jour). */
+const colorsFor = async (now) => {
+    if (alarmActive()) return ['alarm'];
+    if (!config.morningColors || config.colorsShownOn === localDate(now) || !lightSignals.inMorningWindow(now)) return [];
+    const kinds = (await within(lightSignals.leaveKinds().catch(() => []), 2000)) || [];
+    const mailbox = await import('./mailbox.js');
+    if (mailbox.getView(now).waiting) kinds.push('mail');
+    return kinds;
+};
+
 const turnOn = async (source) => {
     lastTrigger.at = Date.now();
     lastTrigger.source = source;
@@ -152,6 +206,21 @@ const turnOn = async (source) => {
         await withBulb(async (ip) => {
             const props = await yeelight.getProps(ip);
             if (props.power === 'on') return; // allumée à la main : pas touche
+            const now = Date.now();
+            const kinds = await colorsFor(now);
+            if (kinds.length) {
+                const flow = flowFor(kinds);
+                // Ampoule sans couleur : l'animation échoue, on passe directement au blanc
+                const ok = await yeelight.command(ip, 'set_scene', ['cf', flow.count, 1, flow.expr]).then(() => true, () => false);
+                if (ok) {
+                    if (!kinds.includes('alarm')) {
+                        config.colorsShownOn = localDate(now);
+                        save();
+                        journal.log({ kind: 'system', title: `Lampe de l’entrée : ${kinds.join(', ')} (matin)`, data: { kinds } });
+                    }
+                    await new Promise((r) => setTimeout(r, flow.ms + 200));
+                }
+            }
             const scene = sceneFor(Date.now());
             // Ampoule blanche simple : pas de température de couleur, juste la luminosité
             await yeelight.setWhite(ip, scene.ct, scene.bright).catch(async () => {
@@ -191,6 +260,8 @@ export const start = () => {
         const e = entranceMotion(device.ieeeAddr);
         if (e) trigger(e.name);
     });
+    // Le matin, c'est elle qui montre la météo : le salon ne « respire » plus à l'ouverture de la porte
+    lightSignals.setDoorDelegate(() => config.enabled && config.morningColors && Boolean(config.ip));
     if (config.enabled && !config.ip) {
         const retry = () =>
             locate()
@@ -211,6 +282,8 @@ export const getStatus = () => ({
     nightTo: config.nightTo,
     day: config.day,
     night: config.night,
+    morningColors: config.morningColors,
+    colorsShownOn: config.colorsShownOn,
     lit: Boolean(owned),
     lastTrigger: lastTrigger.at ? { ...lastTrigger } : null,
 });
@@ -223,6 +296,7 @@ const level = (v, cur) => ({
 
 export const update = (patch = {}) => {
     if (patch.enabled !== undefined) config.enabled = Boolean(patch.enabled);
+    if (patch.morningColors !== undefined) config.morningColors = Boolean(patch.morningColors);
     if (patch.ip !== undefined) {
         if (patch.ip !== null && !/^\d{1,3}(\.\d{1,3}){3}$/.test(String(patch.ip))) throw new Error('Adresse IP invalide');
         config.ip = patch.ip;
@@ -244,8 +318,14 @@ export const update = (patch = {}) => {
 };
 
 /** Essai depuis l'interface : allume comme si quelqu'un passait. */
-export const test = async () => {
+export const test = async (kind) => {
     if (!config.ip) await locate();
+    if (kind) {
+        if (!COLORS[kind] && kind !== 'alarm') throw new Error('Couleur inconnue');
+        const flow = flowFor([kind]);
+        await withBulb((ip) => yeelight.command(ip, 'set_scene', ['cf', flow.count, 0, flow.expr]));
+        return getStatus();
+    }
     await trigger('essai');
     return getStatus();
 };

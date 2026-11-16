@@ -10,6 +10,7 @@ import { CooperCard } from '../../cooper/CooperCard';
 import { MailboxCard } from '../../mailbox/MailboxCard';
 import { BixiCard } from '../../bixi/BixiCard';
 import { SkyCard } from '../../sky/SkyCard';
+import { GuardCard } from '../../guard/GuardCard';
 import { WIDGET_META } from './relevance';
 import type { WidgetId, WidgetState } from './relevance';
 import './Widgets.css';
@@ -25,6 +26,7 @@ export interface WidgetCtx {
 }
 
 const RENDER: Record<WidgetId, (ctx: WidgetCtx) => ReactNode> = {
+    guard: () => <GuardCard />,
     city: () => <CityCard />,
     cooper: () => <CooperCard />,
     mail: () => <MailboxCard />,
@@ -36,7 +38,7 @@ const RENDER: Record<WidgetId, (ctx: WidgetCtx) => ReactNode> = {
 };
 
 const CHIP_ICON: Record<WidgetId, IconName | null> = {
-    city: 'city', cooper: null, mail: 'mail', house: 'home', bixi: 'bike', metro: 'metro', sky: 'moon', journal: 'list',
+    guard: 'shield', city: 'city', cooper: null, mail: 'mail', house: 'home', bixi: 'bike', metro: 'metro', sky: 'moon', journal: 'list',
 };
 
 /** Les cartes pleines des widgets demandés, dans l'ordre donné. */
