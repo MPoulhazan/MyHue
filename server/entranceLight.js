@@ -317,6 +317,7 @@ export const update = (patch = {}) => {
         if (patch.ip !== null && !/^\d{1,3}(\.\d{1,3}){3}$/.test(String(patch.ip))) throw new Error('Adresse IP invalide');
         if (patch.ip !== config.ip) config.bulbId = null; // autre ampoule : on réapprend son identifiant
         config.ip = patch.ip;
+        if (config.ip) setTimeout(() => locate().catch(() => null), 0);
     }
     if (patch.offAfterSec !== undefined) {
         const s = Number(patch.offAfterSec);
