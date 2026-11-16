@@ -70,10 +70,12 @@ const setSessionCookie = (req, res) => {
 // À monter avant toutes les routes protégées
 export const installAuth = (app, express) => {
     // Le token peut figurer dans l'URL (/login?token, /mcp/<token>) : jamais de Referer
-    app.use((_req, res, next) => {
+    app.use((req, res, next) => {
         res.setHeader('Referrer-Policy', 'no-referrer');
         res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('X-Frame-Options', 'DENY');
+        // Le Nest Hub affiche MyHue dans le cadre de DashCast : on l'autorise sur le LAN,
+        // déjà libre d'accès, et on garde l'interdiction pour l'accès distant à token
+        if (isRemote(req)) res.setHeader('X-Frame-Options', 'DENY');
         next();
     });
 
