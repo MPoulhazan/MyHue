@@ -27,7 +27,7 @@ const DEFAULTS = {
     nightFrom: '22:30',
     nightTo: '06:30',
     day: { ct: 4000, bright: 100 },
-    night: { ct: 2700, bright: 12 },
+    night: { ct: 2700, bright: 100 },
 };
 
 let config = { ...DEFAULTS };
