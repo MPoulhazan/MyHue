@@ -126,6 +126,26 @@ router.post('/api/signals/test', async (req, res) => {
     }
 });
 
+// --- Lampe de l'entrée (Yeelight) ---
+
+router.get('/api/entrance-light', (_req, res) => res.json(entranceLight.getStatus()));
+
+router.put('/api/entrance-light', (req, res) => {
+    try {
+        res.json(entranceLight.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.post('/api/entrance-light/test', async (_req, res) => {
+    try {
+        res.json(await entranceLight.test());
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 // --- Widgets de l'accueil : Auto / Toujours / Masqué ---
 
 router.get('/api/home-widgets', (_req, res) => res.json(homeWidgets.getPins()));
