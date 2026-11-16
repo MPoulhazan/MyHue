@@ -24,6 +24,7 @@ import * as lightSignals from '../lightSignals.js';
 import * as circadian from '../circadian.js';
 import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
+import * as entranceLight from '../entranceLight.js';
 import * as weeklyDigest from '../weeklyDigest.js';
 import * as homeWidgets from '../homeWidgets.js';
 import * as cube from '../cube.js';
