@@ -308,6 +308,58 @@ const loadMedia = (mediaChannel, mediaUrl, contentType, metadata) => {
     });
 };
 
+// --- Page web sur un écran (Nest Hub) via DashCast ---
+
+export const DASHCAST_APP_ID = '84912283';
+// Le récepteur DashCast annonce ce canal ; « es.offd.dashcast » ne fait rien
+const DASHCAST_NS = 'urn:x-cast:com.madmod.dashcast';
+
+/** Applis ouvertes sur l'appareil, sans l'écran d'accueil (vide = l'appareil ne fait rien). */
+export const getApps = async (deviceId) => {
+    const { conn } = await connectDevice(deviceId);
+    try {
+        const status = await readReceiverStatus(conn.receiver);
+        return (status.applications || [])
+            .filter((a) => a.appId !== BACKDROP_APP_ID && !a.isIdleScreen)
+            .map((a) => ({ appId: a.appId, sessionId: a.sessionId, name: a.displayName }));
+    } finally {
+        conn.cleanup();
+    }
+};
+
+/** Ouvre une page web en plein écran sur un Nest Hub. */
+export const showPage = async (deviceId, url) => {
+    const { device, conn: { client, receiver, cleanup } } = await connectDevice(deviceId);
+    try {
+        const app = await launchApp(receiver, DASHCAST_APP_ID);
+        client.createChannel('sender-0', app.transportId, CONNECTION_NS, 'JSON').send({ type: 'CONNECT' });
+        client.createChannel('sender-0', app.transportId, DASHCAST_NS, 'JSON')
+            .send({ url, force: true, reload: false, reload_time: 0 });
+        await new Promise((r) => setTimeout(r, 1500));
+        return { device: device.name, url };
+    } finally {
+        cleanup();
+    }
+};
+
+/** Ferme une appli ouverte sur l'appareil (retour à son écran d'accueil). */
+export const stopApp = async (deviceId, sessionId) => {
+    const { conn } = await connectDevice(deviceId);
+    try {
+        conn.receiver.send({ type: 'STOP', sessionId, requestId: 9 });
+        await new Promise((r) => setTimeout(r, 800));
+    } finally {
+        conn.cleanup();
+    }
+};
+
+/** Adresse IPv4 de ce serveur sur le même réseau que l'hôte donné. */
+export const localAddressFor = (host) => {
+    const prefix = String(host).split('.').slice(0, 3).join('.');
+    const addrs = Object.values(os.networkInterfaces()).flat().filter((a) => a && a.family === 'IPv4' && !a.internal);
+    return (addrs.find((a) => a.address.startsWith(`${prefix}.`)) || addrs.find((a) => /^(192\.168|10)\./.test(a.address)))?.address || null;
+};
+
 // --- Public API ---
 
 export const castMedia = async (deviceId, mediaUrl, contentType = 'audio/mpeg', metadata = {}) => {

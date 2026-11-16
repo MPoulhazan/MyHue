@@ -4,6 +4,7 @@ import { Music } from './pages/Music';
 import { Rules } from './pages/Rules';
 import { Remote } from './pages/Remote';
 import { Dashboard } from './pages/Dashboard';
+import { KitchenShell } from './pages/Kitchen';
 import { Lights } from './pages/Lights';
 import { Climate } from './pages/Climate';
 import { Weather } from './pages/Weather';
@@ -17,6 +18,8 @@ function App() {
     return (
         <Router>
             <Routes>
+                {/* Écran du Nest Hub de la cuisine : sans rail ni barre d'agent */}
+                <Route path="/cuisine" element={<KitchenShell />} />
                 <Route element={<AppShell />}>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/lights" element={<Lights />} />

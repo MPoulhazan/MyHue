@@ -26,6 +26,7 @@ import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
 import * as entranceLight from '../entranceLight.js';
 import * as guard from '../guard.js';
+import * as kitchenDisplay from '../kitchenDisplay.js';
 import * as alarm from '../alarm.js';
 import * as weeklyDigest from '../weeklyDigest.js';
 import * as homeWidgets from '../homeWidgets.js';
@@ -160,6 +161,26 @@ router.put('/api/guard', async (req, res) => {
         res.json(guard.update(body));
     } catch (err) {
         res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Écran de la cuisine (Nest Hub) ---
+
+router.get('/api/kitchen-display', (_req, res) => res.json(kitchenDisplay.getView()));
+
+router.put('/api/kitchen-display', (req, res) => {
+    try {
+        res.json(kitchenDisplay.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.post('/api/kitchen-display/show', async (_req, res) => {
+    try {
+        res.json(await kitchenDisplay.showNow());
+    } catch (err) {
+        res.status(502).json({ error: err.message });
     }
 });
 

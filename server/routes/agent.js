@@ -17,6 +17,8 @@ import { getSky, isSkyQuestion, skySpeech } from '../astro.js';
 import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
 import * as guard from '../guard.js';
+import * as kitchenDisplay from '../kitchenDisplay.js';
+import { isKitchenShowCommand } from '../kitchenDisplayLogic.js';
 import * as bixi from '../bixi.js';
 import { bixiSpeech, isBixiQuestion } from '../bixiLogic.js';
 import * as city from '../city.js';
@@ -110,6 +112,18 @@ router.post('/api/agent', async (req, res) => {
                     : view.mode === 'vacation' ? 'Mode vacances activé. Je préviens au moindre passage, et le salon s’allumera le soir.' : 'Mode alarme activé. Je préviens au moindre passage.';
             }
             return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'guard' });
+        }
+
+        // Niveau 0 : « Affiche MyHue dans la cuisine » → vue /cuisine sur le Nest Hub
+        if (isKitchenShowCommand(message)) {
+            let speech;
+            try {
+                await kitchenDisplay.showNow();
+                speech = 'C’est affiché dans la cuisine.';
+            } catch (err) {
+                speech = `Je n’arrive pas à afficher l’écran de la cuisine : ${err.message}.`;
+            }
+            return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'kitchen-display' });
         }
 
         // Niveau 0 : « Il y a des BIXI ? », d'après le flux BIXI relu tout de suite

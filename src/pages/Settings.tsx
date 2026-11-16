@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useHomeData } from '../hooks/useHome';
 import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
+import { KitchenDisplaySettings } from '../components/kitchen/KitchenDisplaySettings';
 import './Dashboard.css';
 import './Settings.css';
 
@@ -43,6 +44,7 @@ export function Settings() {
                     </Link>
                 ))}
             </nav>
+            <KitchenDisplaySettings />
         </div>
     );
 }
