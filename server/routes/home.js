@@ -142,6 +142,16 @@ router.put('/api/entrance-light', (req, res) => {
     }
 });
 
+// La lampe sur les pages Lumières et Accueil
+router.get('/api/entrance-light/state', async (_req, res) => res.json(await entranceLight.getLight()));
+router.put('/api/entrance-light/state', async (req, res) => {
+    try {
+        res.json(await entranceLight.setLight(req.body || {}));
+    } catch (err) {
+        res.status(502).json({ error: err.message });
+    }
+});
+
 router.post('/api/entrance-light/test', async (req, res) => {
     try {
         res.json(await entranceLight.test(req.body?.kind));

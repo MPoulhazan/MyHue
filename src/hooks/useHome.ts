@@ -33,6 +33,48 @@ export const SWATCHES: Swatch[] = [
     { label: 'Vert', hex: '#2FD98A' },
 ];
 
+// ── Yeelight de l'entrée (server/entranceLight.js) ───────────────────────────
+export const YEELIGHT_ID = 'yl-entree';
+
+interface YeelightState {
+    present: boolean;
+    reachable?: boolean;
+    on?: boolean;
+    bright?: number;
+    ct?: number | null; // kelvins
+    rgb?: number | null;
+    mode?: 'white' | 'color';
+}
+
+interface HueBody {
+    on?: boolean;
+    bri?: number;
+    ct?: number; // mireds
+    xy?: number[];
+    _hex?: string;
+}
+
+const yeelightToLight = (y: YeelightState): DashLight => ({
+    id: YEELIGHT_ID,
+    name: 'Lampe entrée',
+    room: 'Entrée',
+    color: y.mode === 'color' && y.rgb ? `#${y.rgb.toString(16).padStart(6, '0').toUpperCase()}` : ctToHex(Math.round(1e6 / (y.ct || 4000))),
+    level: y.on ? Math.max(1, y.bright || 100) : 0,
+    reachable: y.reachable !== false,
+    dimmable: true,
+    colorable: true,
+});
+
+/** Ordre au format Hue → ordre pour la Yeelight (luminosité 1-100, blanc en kelvins, couleur en 0xRRGGBB). */
+const toYeelight = (b: HueBody, hex?: string) => {
+    if (b.on === false) return { on: false };
+    return {
+        on: true,
+        ...(b.bri != null ? { bright: Math.max(1, Math.round((b.bri / 254) * 100)) } : {}),
+        ...(b.ct ? { ct: Math.round(1e6 / b.ct) } : hex ? { rgb: parseInt(hex.replace('#', ''), 16) } : {}),
+    };
+};
+
 export interface LogEntry {
     id: number;
     t: string;
@@ -194,14 +236,17 @@ export function useHome() {
         setLog((l) => [{ id: ++logSeq, t: now(), msg, color, href }, ...l].slice(0, 40));
     }, []);
 
-    // --- Hue ---
+    // --- Hue (et la Yeelight de l'entrée, ajoutée à la liste comme une lampe de plus) ---
     const loadLights = useCallback(async () => {
+        const yeelight = axios.get('/api/entrance-light/state').then(({ data }) => data as YeelightState).catch(() => null);
         try {
             const { data } = await axios.get('/api/hue/lights');
+            const yl = await yeelight;
             setOnline((o) => ({ ...o, hue: true }));
             setLights((prev) => {
                 const byId = Object.fromEntries(prev.map((l) => [l.id, l]));
-                return Object.entries<any>(data).map(([id, l]) => {
+                const extra = !yl?.present ? [] : byId[YEELIGHT_ID] && Date.now() - (editing.current[YEELIGHT_ID] || 0) < 2500 ? [byId[YEELIGHT_ID]] : [yeelightToLight(yl)];
+                return [...Object.entries<any>(data).map(([id, l]) => {
                     // Ne pas écraser une lampe que l'utilisateur est en train de régler
                     if (byId[id] && Date.now() - (editing.current[id] || 0) < 2500) return byId[id];
                     const dimmable = l.state.bri !== undefined;
@@ -215,7 +260,7 @@ export function useHome() {
                         dimmable,
                         colorable: Boolean(l.state.colormode),
                     };
-                });
+                }), ...extra];
             });
         } catch {
             setOnline((o) => ({ ...o, hue: false }));
@@ -253,10 +298,16 @@ export function useHome() {
         return () => clearInterval(t);
     }, [loadGroups, loadLights]);
 
-    const sendState = useCallback((id: string, body: object, delay = 120) => {
+    // body au format Hue ; _hex = la couleur voulue, pour la Yeelight qui ne parle pas en xy
+    const sendState = useCallback((id: string, body: HueBody, delay = 120) => {
         clearTimeout(pending.current[id]);
         pending.current[id] = setTimeout(() => {
-            axios.put(`/api/hue/lights/${id}/state`, { ...body, transitiontime: 2 }).catch(() => {});
+            const { _hex, ...hue } = body;
+            if (id === YEELIGHT_ID) {
+                axios.put('/api/entrance-light/state', toYeelight(hue, _hex)).catch(() => {});
+                return;
+            }
+            axios.put(`/api/hue/lights/${id}/state`, { ...hue, transitiontime: 2 }).catch(() => {});
         }, delay);
     }, []);
 
@@ -279,7 +330,7 @@ export function useHome() {
             editing.current[l.id] = Date.now();
             const level = l.level || 60;
             // Décalage par lampe : la couleur se propage en vague
-            sendState(l.id, { on: true, bri: pctToBri(level), ...(sw.ct ? { ct: sw.ct } : { xy: hexToXy(sw.hex) }) }, i * 60);
+            sendState(l.id, { on: true, bri: pctToBri(level), ...(sw.ct ? { ct: sw.ct } : { xy: hexToXy(sw.hex), _hex: sw.hex }) }, i * 60);
         });
         const set = new Set(targets.map((l) => l.id));
         setLights((ls) => ls.map((l) => (set.has(l.id) ? { ...l, color: sw.hex, level: l.level || 60 } : l)));
@@ -289,7 +340,7 @@ export function useHome() {
         const targets = lightsRef.current.filter((l) => ids.includes(l.id) && l.reachable);
         targets.forEach((l, i) => {
             editing.current[l.id] = Date.now();
-            const color = !l.colorable ? {} : a.ct ? { ct: a.ct } : a.hex ? { xy: hexToXy(a.hex) } : {};
+            const color = !l.colorable ? {} : a.ct ? { ct: a.ct } : a.hex ? { xy: hexToXy(a.hex), _hex: a.hex } : {};
             sendState(l.id, l.dimmable ? { on: true, bri: pctToBri(a.level), ...color } : { on: true }, i * 60);
         });
         const set = new Set(targets.map((l) => l.id));

@@ -166,6 +166,10 @@ const withBulb = async (fn) => {
 // --- Allumage / extinction ---
 
 let owned = null; // { scene } quand c'est nous qui l'avons allumée
+// Allumée à la main depuis MyHue (page Lumières) : on la laisse tranquille jusqu'à cette heure
+let manualUntil = 0;
+export const MANUAL_HOLD_MS = 15 * 60_000;
+const manualHold = () => Date.now() < manualUntil;
 let offTimer = null;
 let busy = Promise.resolve();
 const lastTrigger = { at: null, source: null };
@@ -181,7 +185,7 @@ const scheduleOff = (delayMs = config.offAfterSec * 1000) => {
 };
 
 const turnOff = async () => {
-    if (!owned) return;
+    if (!owned || manualHold()) return;
     try {
         await withBulb((ip) => yeelight.setPower(ip, false, 800));
         owned = null;
@@ -218,6 +222,7 @@ const colorsFor = async (now) => {
 const turnOn = async (source) => {
     lastTrigger.at = Date.now();
     lastTrigger.source = source;
+    if (manualHold()) return; // réglée à la main : un passage ne change ni la couleur ni l'intensité
     if (owned) return scheduleOff(); // déjà allumée par nous : on repousse l'extinction
     try {
         await withBulb(async (ip) => {
@@ -256,7 +261,7 @@ const turnOn = async (source) => {
 const SWEEP_MS = 60_000;
 let sweepFailing = false;
 const sweep = async () => {
-    if (!config.enabled || !config.ip || !shouldSweep(Date.now(), lastTrigger.at, config.offAfterSec, owned)) return;
+    if (!config.enabled || !config.ip || manualHold() || !shouldSweep(Date.now(), lastTrigger.at, config.offAfterSec, owned)) return;
     try {
         const props = await yeelight.getProps(config.ip);
         sweepFailing = false;
@@ -309,6 +314,64 @@ export const start = () => {
         setTimeout(retry, 8000);
     }
     console.log(`💡 Lampe de l’entrée ${config.enabled ? 'active' : 'désactivée'}${config.ip ? ` (Yeelight ${config.ip})` : ' (Yeelight à trouver)'}`);
+};
+
+// --- Lampe sur les pages Lumières et Accueil ---
+
+let lightCache = { at: 0, value: null }; // dernière lecture réussie
+let lastAsk = 0;
+
+/** État de l'ampoule (relu au plus toutes les 2 s) : { present, reachable, on, bright, ct, rgb, mode, manualUntil } */
+export const getLight = async () => {
+    if (!config.ip) return { present: false };
+    const withHold = (v) => ({ ...v, manualUntil: manualHold() ? manualUntil : null });
+    if (Date.now() - lastAsk < 2000 && lightCache.value) return withHold(lightCache.value);
+    lastAsk = Date.now();
+    try {
+        const p = await yeelight.getProps(config.ip, ['power', 'bright', 'ct', 'rgb', 'color_mode']);
+        lightCache = {
+            at: Date.now(),
+            value: {
+                present: true,
+                reachable: true,
+                on: p.power === 'on',
+                bright: Number(p.bright) || 0,
+                ct: Number(p.ct) || null,
+                rgb: Number(p.rgb) || null,
+                mode: p.color_mode === '1' ? 'color' : 'white',
+            },
+        };
+        return withHold(lightCache.value);
+    } catch {
+        // Wi-Fi capricieux : la dernière lecture vaut encore 20 s avant de la dire injoignable
+        if (lightCache.value && Date.now() - lightCache.at < 20_000) return withHold(lightCache.value);
+        return withHold({ present: true, reachable: false, on: false, bright: 0, ct: null, rgb: null, mode: 'white' });
+    }
+};
+
+/**
+ * Réglage à la main : { on, bright 1-100, ct en kelvins, rgb 0xRRGGBB }.
+ * Allumée ainsi, elle reste allumée MANUAL_HOLD_MS, puis la règle « éteinte 2 min après le dernier passage » reprend.
+ */
+export const setLight = async ({ on, bright, ct, rgb } = {}) => {
+    const lit = on !== false;
+    await withBulb(async (ip) => {
+        if (!lit) {
+            await yeelight.setPower(ip, false, 400);
+            return;
+        }
+        const b = Math.max(1, Math.min(100, Math.round(Number(bright) || lightCache.value?.bright || 100)));
+        if (rgb != null) await yeelight.setColor(ip, Number(rgb) & 0xffffff, b);
+        else if (ct != null) await yeelight.setWhite(ip, Math.max(1700, Math.min(6500, Math.round(Number(ct)))), b);
+        else if (bright != null) await yeelight.command(ip, 'set_scene', ['ct', lightCache.value?.ct || 4000, b]);
+        else await yeelight.setPower(ip, true, 300);
+    });
+    clearTimeout(offTimer);
+    owned = null;
+    // Éteinte à la main : la règle normale reprend tout de suite
+    manualUntil = lit ? Date.now() + MANUAL_HOLD_MS : 0;
+    lastAsk = 0;
+    return getLight();
 };
 
 // --- API ---
