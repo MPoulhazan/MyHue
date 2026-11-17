@@ -360,7 +360,7 @@ function Rooms({ rooms, target, nowDevice, busy, onPick, onVolume, onMove }: {
                         <div key={r.id} className={`mz-room ${selected ? 'selected' : ''} ${playing ? 'playing' : ''}`}>
                             <button type="button" role="radio" aria-checked={selected} className="mz-room-pick" onClick={() => onPick(r.id)}>
                                 <span className="mz-room-name">{r.name}{playing && <Equalizer />}</span>
-                                <span className="muted">{playing ? 'En lecture' : r.busy ? (r.app || 'Occupée') : 'Libre'}</span>
+                                <span className="muted">{playing ? 'En lecture' : r.busy ? (r.app === 'DashCast' ? 'Écran affiché' : r.app || 'Occupée') : 'Libre'}</span>
                             </button>
                             <div className="mz-room-vol" role="group" aria-label={`Volume ${r.name}`}>
                                 <button type="button" aria-label={`Baisser le volume ${r.name}`} onClick={() => onVolume(r, Math.max(0, (r.volume ?? 50) - VOLUME_STEP))}><Icon name="minus" size={18} strokeWidth={2.4} /></button>

@@ -379,7 +379,8 @@ export const search = async (query, limit = 20) => {
         const url = `${API}/search?part=snippet&type=video&videoCategoryId=10&maxResults=${limit}&q=${encodeURIComponent(q)}${token ? '' : `&key=${apiKey}`}`;
         const data = await (await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })).json();
         if (data.error) throw new Error(data.error.message);
-        return (data.items || []).map((item) => ({
+        // L'API glisse parfois une chaîne parmi les vidéos : on ne garde que les titres lisibles
+        return (data.items || []).filter((item) => item.id?.videoId).map((item) => ({
             videoId: item.id.videoId,
             title: decodeEntities(item.snippet.title),
             artist: cleanArtist(decodeEntities(item.snippet.channelTitle)),
