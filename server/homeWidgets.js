@@ -8,7 +8,7 @@ import { dataFile } from './dataDir.js';
 
 const FILE = dataFile('home-widgets.json');
 
-export const WIDGET_IDS = ['guard', 'city', 'cooper', 'mail', 'house', 'bixi', 'metro', 'sky', 'journal'];
+export const WIDGET_IDS = ['guard', 'city', 'cooper', 'mail', 'music', 'house', 'bixi', 'metro', 'sky', 'journal'];
 export const PINS = ['auto', 'always', 'hidden'];
 
 // Cooper reste une carte par défaut : c'est le widget préféré de la maison

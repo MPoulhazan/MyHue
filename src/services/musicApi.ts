@@ -58,6 +58,8 @@ export interface MusicHome {
     suggestion: Suggestion;
     state: MusicState;
     recent: RecentEntry[];
+    /** Enceinte utilisée quand on n'en choisit pas */
+    device: { id: string; name: string } | null;
 }
 
 export interface Room {

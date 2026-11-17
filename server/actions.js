@@ -9,6 +9,7 @@ import * as broadlinkService from './broadlinkService.js';
 import * as circadian from './circadian.js';
 import { hueClient, ensureHueConfigured, clamp, rgbToXy, getHueScenes } from './hue.js';
 import { getYtDlpAudioUrl } from './ytdlp.js';
+import * as musicPlayer from './musicPlayer.js';
 
 const findCastDevice = (name) => {
     const device = castService.findDevice(name);
@@ -119,6 +120,19 @@ const runAction = async (action, source) => {
             const audioUrl = await getYtDlpAudioUrl(action.videoId);
             const result = await castService.castYouTube(device.id, action.videoId, audioUrl);
             return { action, result };
+        }
+        // Écran Musique : suggestion du moment, ambiance ou radio ; enceinte citée, sinon celle par défaut
+        case 'music_play': {
+            const deviceId = action.deviceName ? findCastDevice(action.deviceName).id : musicPlayer.defaultDevice()?.id;
+            if (!deviceId) throw new Error('Aucune enceinte joignable');
+            const result = action.what === 'suggestion'
+                ? await musicPlayer.playSuggestion(deviceId)
+                : await musicPlayer.play({ deviceId, kind: action.what === 'radio' ? 'radio' : 'mood', id: action.id });
+            return { action, result: { source: result.source } };
+        }
+        case 'music_skip': {
+            const result = await musicPlayer.skip(action.delta < 0 ? -1 : 1);
+            return { action, result: { index: result.index } };
         }
         case 'cast_control': {
             const device = findCastDevice(action.deviceName);

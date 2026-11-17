@@ -64,3 +64,19 @@ test('les commandes existantes ne changent pas', () => {
     assert.deepEqual(parseIntent('éteins tout', ctx).actions, [{ type: 'toggle_all', on: false }]);
     assert.equal(parseIntent('allume le salon dans 10 minutes', ctx), null);
 });
+
+test('musique : lancer la suggestion, une ambiance ou une radio', () => {
+    const play = (t) => parseIntent(t, ctx)?.actions;
+    assert.deepEqual(play('Jean-Claude mets de la musique'), [{ type: 'music_play', what: 'suggestion' }]);
+    assert.deepEqual(play('mets de la musique zen dans la cuisine'), [{ type: 'music_play', what: 'mood', id: 'zen', deviceName: 'Cuisine' }]);
+    assert.deepEqual(play('lance de la musique pour dormir'), [{ type: 'music_play', what: 'mood', id: 'dodo' }]);
+    assert.deepEqual(play('mets la radio jazz'), [{ type: 'music_play', what: 'radio', id: 'jazz' }]);
+    assert.deepEqual(play('musique pour travailler'), [{ type: 'music_play', what: 'mood', id: 'focus' }]);
+});
+
+test('musique : suivant / précédent, et les commandes ne relancent pas', () => {
+    assert.deepEqual(parseIntent('chanson suivante', ctx).actions, [{ type: 'music_skip', delta: 1 }]);
+    assert.deepEqual(parseIntent('remets le morceau précédent', ctx).actions, [{ type: 'music_skip', delta: -1 }]);
+    assert.deepEqual(parseIntent('mets la musique en pause', ctx).actions, [{ type: 'cast_control', deviceName: 'Salon', command: 'pause' }]);
+    assert.equal(parseIntent('mets le son à 30', ctx).actions[0].type, 'cast_volume');
+});

@@ -25,7 +25,27 @@ const DIM_UP = /\b(monte[rz]?|augmente[rz]?|plus fort)\b/;
 const DIM_DOWN = /\b(baisse[rz]?|diminue[rz]?|tamise[rz]?|moins fort)\b/;
 const DIM_STEP = 64; // un quart de la plage Hue
 const ALL = /\b(tout|toutes?|partout|la maison)\b/;
-const MUSIC_WORD = /\b(musique|son|volume|pause|reprends?|reprendre|chanson)\b/;
+const MUSIC_WORD = /\b(musique|son|volume|pause|reprends?|reprendre|chanson|morceau|radio)\b/;
+const PLAY_WORD = /\b(mets?|mettre|lance[rz]?|joue[rz]?|demarre[rz]?|envoie[rz]?)\b/;
+// Ambiances de l'écran Musique (server/musicPlayer.js), mots normalisés
+const MUSIC_MOODS = [
+    { id: 'zen', words: /\b(zen|calme|douce|relaxante?|detente)\b/ },
+    { id: 'focus', words: /\b(focus|concentr\w*|travail(ler)?)\b/ },
+    { id: 'energie', words: /\b(energie|energique|dynamique|menage|sport)\b/ },
+    { id: 'diner', words: /\b(diner|souper|repas)\b/ },
+    { id: 'soiree', words: /\b(soiree|fete|ambiance)\b/ },
+    { id: 'dodo', words: /\b(dodo|dormir|endormir|sommeil|nuit)\b/ },
+];
+const MUSIC_RADIOS = [
+    { id: 'lofi', words: /\blo ?fi\b/ },
+    { id: 'jazz', words: /\bjazz\b/ },
+    { id: 'electronic', words: /\b(electro|electronique)\b/ },
+    { id: 'ambient', words: /\bambient\b/ },
+    { id: 'piano', words: /\bpiano\b/ },
+    { id: 'rock', words: /\brock\b/ },
+    { id: 'classical', words: /\bclassique\b/ },
+    { id: 'chillout', words: /\bchill ?out\b/ },
+];
 const VOLUME_STEP = 10;
 const SCENE_WORD = /\b(scene|ambiance|lance[rz]?|active[rz]?)\b/;
 const HEATING_WORD = /\b(chauffage|clim|climatisation|pompe a chaleur|chauffe)\b/;
@@ -269,6 +289,30 @@ const parseLights = (text, lights, groups) => {
 const parseMusic = (text, { devices = [], nowPlaying = null } = {}) => {
     const { matches } = findEntities(text, devices);
     const playing = nowPlaying && devices.find((d) => d.id === nowPlaying.deviceId);
+    const cited = matches[0]?.name;
+    const where = cited ? ` sur ${cited}` : '';
+
+    // « mets de la musique », « musique zen dans la cuisine », « lance la radio jazz »
+    // « mets la musique en pause », « monte le son » : des commandes, pas une nouvelle lecture
+    const isControl = /\b(pause|arrete[rz]?|stop|coupe[rz]?|volume|son|baisse[rz]?|monte[rz]?|reprends?|reprendre)\b/.test(text);
+    if (!isControl && (PLAY_WORD.test(text) || /^(de la )?musique\b/.test(text))) {
+        const radio = /\bradio\b/.test(text) && MUSIC_RADIOS.find((r) => r.words.test(text));
+        const mood = !radio && MUSIC_MOODS.find((m) => m.words.test(text));
+        if (radio || mood || /\bmusique\b/.test(text)) {
+            const play = radio ? { what: 'radio', id: radio.id } : mood ? { what: 'mood', id: mood.id } : { what: 'suggestion' };
+            return {
+                intent: 'music',
+                actions: [{ type: 'music_play', ...play, ...(cited ? { deviceName: cited } : {}) }],
+                message: `Musique lancée${where}.`,
+            };
+        }
+    }
+    // « chanson suivante », « passe au morceau suivant », « titre précédent »
+    if (/\b(suivante?|passe[rz]?|precedente?)\b/.test(text) && /\b(musique|chanson|morceau|titre)\b/.test(text)) {
+        const back = /\bprecedente?\b/.test(text);
+        return { intent: 'music', actions: [{ type: 'music_skip', delta: back ? -1 : 1 }], message: back ? 'Titre précédent.' : 'Titre suivant.' };
+    }
+
     const device = matches[0] || playing;
     if (!device) return null;
     const name = device.name;

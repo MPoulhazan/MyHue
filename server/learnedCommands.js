@@ -19,6 +19,8 @@ const REPLAYABLE = new Set([
     'cast_youtube',
     'cast_control',
     'cast_volume',
+    'music_play',
+    'music_skip',
     'set_heating',
     'set_circadian',
 ]);

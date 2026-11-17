@@ -65,6 +65,16 @@ export const TOOLS = [
         ['scene_id'],
     ),
     tool(
+        'play_music',
+        'Lance de la musique sur une enceinte : la suggestion du moment, une ambiance ou une radio. Pour « mets de la musique », sans précision : what=suggestion.',
+        {
+            what: { type: 'string', enum: ['suggestion', 'mood', 'radio', 'next', 'previous'] },
+            id: { type: 'string', description: 'ambiance : zen, focus, energie, diner, soiree, dodo ; radio : lofi, jazz, electronic, ambient, piano, rock, classical, chillout' },
+            device_name: { type: 'string', description: 'facultatif : enceinte citée' },
+        },
+        ['what'],
+    ),
+    tool(
         'cast_youtube',
         'Lit une vidéo YouTube sur un appareil Cast.',
         {
@@ -188,6 +198,9 @@ export const toolCallToActions = (name, args) => {
         }
         case 'activate_scene':
             return [{ type: 'activate_scene', sceneId: String(args.scene_id) }];
+        case 'play_music':
+            if (args.what === 'next' || args.what === 'previous') return [{ type: 'music_skip', delta: args.what === 'next' ? 1 : -1 }];
+            return [{ type: 'music_play', what: ['mood', 'radio'].includes(args.what) && args.id ? args.what : 'suggestion', id: args.id, ...(args.device_name ? { deviceName: args.device_name } : {}) }];
         case 'cast_youtube':
             return [{ type: 'cast_youtube', deviceName: args.device_name, videoId: args.video_id }];
         case 'cast_control':
@@ -302,6 +315,7 @@ const parseArgs = (raw) => {
 const DONE_LABELS = {
     control_lights: 'lumières',
     activate_scene: 'scène',
+    play_music: 'musique lancée',
     cast_youtube: 'musique lancée',
     cast_control: 'lecture',
     cast_volume: 'volume',

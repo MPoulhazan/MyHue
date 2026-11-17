@@ -10,7 +10,7 @@ export type Relevance = 'alert' | 'now' | 'calm' | 'hidden';
 /** Réglage par widget : Auto suit la pertinence, Toujours garde la carte, Masqué l'enlève. */
 export type Pin = 'auto' | 'always' | 'hidden';
 
-export type WidgetId = 'guard' | 'city' | 'cooper' | 'mail' | 'house' | 'bixi' | 'metro' | 'sky' | 'journal';
+export type WidgetId = 'guard' | 'city' | 'cooper' | 'mail' | 'music' | 'house' | 'bixi' | 'metro' | 'sky' | 'journal';
 
 export interface WidgetState {
     id: WidgetId;
@@ -20,7 +20,7 @@ export interface WidgetState {
 }
 
 /** Ordre du registre : il départage deux widgets de même pertinence. */
-export const WIDGET_ORDER: WidgetId[] = ['guard', 'city', 'cooper', 'mail', 'house', 'bixi', 'metro', 'sky', 'journal'];
+export const WIDGET_ORDER: WidgetId[] = ['guard', 'city', 'cooper', 'mail', 'music', 'house', 'bixi', 'metro', 'sky', 'journal'];
 
 export interface WidgetMeta {
     label: string;
@@ -35,6 +35,7 @@ export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
     city: { label: 'En ville', when: 'Alerte météo, collecte la veille au soir, avis du quartier' },
     cooper: { label: 'Cooper', when: 'Toujours affiché, en tête s’il est oublié' },
     mail: { label: 'Courrier', when: 'Du passage du facteur jusqu’à l’ouverture de la boîte' },
+    music: { label: 'Musique', when: 'Quand tu as l’habitude d’écouter à ce moment, et de 7 h à 9 h' },
     house: { label: 'Maison', when: 'Une porte ou une fenêtre ouverte, une pile faible' },
     bixi: { label: 'BIXI', when: 'De 7 h à 9 h en semaine' },
     metro: { label: 'Métro', when: 'Hors saison BIXI : de 7 h à 9 h en semaine, ou si une ligne est perturbée' },
@@ -44,7 +45,7 @@ export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
 
 /** Cooper reste toujours une carte : c'est le widget préféré de la maison. */
 export const DEFAULT_PINS: Record<WidgetId, Pin> = {
-    guard: 'auto', city: 'auto', cooper: 'always', mail: 'auto', house: 'auto', bixi: 'auto', metro: 'auto', sky: 'auto', journal: 'auto',
+    guard: 'auto', city: 'auto', cooper: 'always', mail: 'auto', music: 'auto', house: 'auto', bixi: 'auto', metro: 'auto', sky: 'auto', journal: 'auto',
 };
 
 /** Cartes pleines au plus dans « Maintenant », Cooper compris. */
@@ -174,6 +175,19 @@ export function skyRelevance(v: SkyIn | null, now = new Date()): WidgetState {
     // Le soir, sauf si le ciel est bouché et qu'il n'y a rien d'autre que la lune
     const worth = v.night?.quality.level !== 'bad' || v.highlight.kind !== 'moon';
     return state('sky', isEvening(now) && worth ? 'now' : 'calm', said);
+}
+
+interface MusicIn {
+    suggestion: { habit: boolean; name: string };
+}
+/** Une habitude d'écoute sur ce créneau, ou le matin : la carte propose de lancer la musique. */
+export function musicRelevance(v: MusicIn | null, playing: boolean, now = new Date()): WidgetState {
+    if (!v) return state('music', 'hidden', 'pas encore lu');
+    if (playing) return state('music', 'calm', 'en lecture');
+    const name = v.suggestion.name;
+    if (v.suggestion.habit) return state('music', 'now', name);
+    const morning = now.getHours() >= 7 && now.getHours() < 9;
+    return state('music', morning ? 'now' : 'calm', `${name} proposé`);
 }
 
 /** Le journal ne devient jamais une carte en Auto : pastille seulement. */

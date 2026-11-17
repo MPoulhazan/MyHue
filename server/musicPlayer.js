@@ -292,3 +292,28 @@ export function suggestion(now = Date.now()) {
     }
     return s;
 }
+
+/**
+ * Enceinte par défaut quand on n'en cite pas : celle qui joue, sinon la dernière utilisée,
+ * sinon la plus utilisée du journal, sinon la première joignable.
+ */
+export function defaultDevice() {
+    const online = cast.getDevices().filter((d) => d.online);
+    const byId = (id) => online.find((d) => d.id === id);
+    const now = cast.getNowPlaying();
+    if (now && byId(now.deviceId)) return byId(now.deviceId);
+    if (session?.deviceId && byId(session.deviceId)) return byId(session.deviceId);
+    const counts = new Map();
+    for (const e of habits.getEntries().slice(-200)) if (e.deviceId) counts.set(e.deviceId, (counts.get(e.deviceId) || 0) + 1);
+    const usual = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => byId(id)).find(Boolean);
+    return usual || online[0] || null;
+}
+
+/** Lance la suggestion du moment (habitude ou ambiance de l'heure). */
+export async function playSuggestion(deviceId) {
+    const id = deviceId || defaultDevice()?.id;
+    if (!id) throw new Error('Aucune enceinte joignable');
+    const s = suggestion();
+    const result = await play({ deviceId: id, kind: s.kind, id: s.id, name: s.name, thumbnail: s.thumbnail });
+    return { ...result, suggestion: s };
+}

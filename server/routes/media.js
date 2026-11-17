@@ -195,10 +195,16 @@ router.get('/api/music/home', (_req, res) => {
         suggestion: musicPlayer.suggestion(),
         state: musicPlayer.state(),
         recent: musicHabits.recent(8),
+        device: (({ id, name } = {}) => (id ? { id, name } : null))(musicPlayer.defaultDevice() || undefined),
     });
 });
 
 router.get('/api/music/state', (_req, res) => res.json(musicPlayer.state()));
+
+// Carte de l'accueil : lance la suggestion du moment sur l'enceinte par défaut
+router.post('/api/music/play-suggestion', async (req, res) => {
+    try { res.json(await musicPlayer.playSuggestion(req.body?.deviceId)); } catch (e) { fail(res, e); }
+});
 
 router.post('/api/music/play', async (req, res) => {
     try { res.json(await musicPlayer.play(req.body || {})); } catch (e) { fail(res, e); }

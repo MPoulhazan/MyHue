@@ -6,6 +6,7 @@ import { musicApi, type Mood, type MusicHome, type PlayRequest, type Room, type 
 import { Icon, type IconName } from '../components/Icon';
 import { Equalizer } from '../components/shell/MiniPlayer';
 import './Dashboard.css';
+import '../components/music/tones.css';
 import './Music.css';
 
 const VOLUME_STEP = 10;

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     arrange, bixiRelevance, cityRelevance, cooperRelevance, houseRelevance,
-    journalRelevance, mailRelevance, metroRelevance, skyRelevance,
+    journalRelevance, mailRelevance, metroRelevance, musicRelevance, skyRelevance,
 } from '../src/components/home/widgets/relevance.ts';
 
 const s = (id, relevance) => ({ id, relevance, summary: '' });
@@ -117,4 +117,14 @@ test('Cooper reste une carte à toute heure, même quand tout est calme', () => 
         skyRelevance({ aurora: null, highlight: { kind: 'planet' }, night: { quality: { level: 'good' } } }, at(14)),
     ]);
     assert.deepEqual(r.cards, ['cooper']);
+});
+
+test('musicRelevance : habitude du créneau ou matin en carte, rien pendant la lecture', () => {
+    const habit = { suggestion: { habit: true, name: 'Zen' } };
+    const plain = { suggestion: { habit: false, name: 'Dîner' } };
+    assert.equal(musicRelevance(null, false, NOON).relevance, 'hidden');
+    assert.deepEqual(musicRelevance(habit, false, NOON), { id: 'music', relevance: 'now', summary: 'Zen' });
+    assert.equal(musicRelevance(plain, false, NOON).relevance, 'calm');
+    assert.equal(musicRelevance(plain, false, at(7)).relevance, 'now', 'le matin, on propose');
+    assert.deepEqual(musicRelevance(habit, true, at(7)), { id: 'music', relevance: 'calm', summary: 'en lecture' });
 });

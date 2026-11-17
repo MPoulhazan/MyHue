@@ -1,0 +1,14 @@
+/* Carte « Musique » de la colonne Maintenant (couleurs : tones.css) */
+.music-card { background: var(--tone-bg); color: var(--tone-fg); gap: 12px; }
+.music-card-head { display: flex; align-items: center; justify-content: space-between; }
+.music-card-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; opacity: 0.8; }
+.music-card-more { min-height: 32px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 700; color: inherit; opacity: 0.8; }
+.music-card-body { display: flex; align-items: center; gap: 14px; }
+.music-card-icon, .music-card-art { width: 56px; height: 56px; flex: none; border-radius: 16px; object-fit: cover; display: inline-flex; align-items: center; justify-content: center; background: var(--tone-deep); }
+.music-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.music-card-text strong { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.1; }
+.music-card-text span { font-size: 13px; line-height: 1.3; opacity: 0.85; }
+.music-card-play { width: 60px; height: 60px; flex: none; border: none; border-radius: 999px; background: #141513; color: #c8f560; display: inline-flex; align-items: center; justify-content: center; }
+.music-card-play svg { margin-left: 3px; }
+.music-card-play:disabled { opacity: 0.6; cursor: default; }
+.music-card-foot { font-size: 12px; font-weight: 600; opacity: 0.75; }

@@ -2,16 +2,6 @@
 
 .home.music { padding-bottom: 0; }
 
-/* Couleurs des ambiances et radios : fond clair, texte sombre (contraste > 7:1) */
-.tone-mint { --tone-bg: #b9e4c9; --tone-fg: #13241a; --tone-deep: #9ed4b3; }
-.tone-sky { --tone-bg: #a9c9ff; --tone-fg: #0f1d33; --tone-deep: #8fb6f5; }
-.tone-amber { --tone-bg: #ffb547; --tone-fg: #2b1a00; --tone-deep: #f2a12b; }
-.tone-peach { --tone-bg: #f2c4a0; --tone-fg: #2b1608; --tone-deep: #e6b088; }
-.tone-lilac { --tone-bg: #c7b3ff; --tone-fg: #1c1236; --tone-deep: #b49ef5; }
-.tone-night { --tone-bg: #262f4a; --tone-fg: #dfe6ff; --tone-deep: #313c5e; }
-.tone-lime { --tone-bg: #c8f560; --tone-fg: #141513; --tone-deep: #b5e24a; }
-.tone-dark { --tone-bg: var(--h-surface); --tone-fg: var(--h-text); --tone-deep: var(--h-surface-2); }
-
 /* En-tête */
 .mz-top { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .mz-top h1 { margin: 2px 0 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
