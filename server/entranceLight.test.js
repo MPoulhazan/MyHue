@@ -1,7 +1,7 @@
 // node --test server/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inRange, sceneFor, untouched } from './entranceLight.js';
+import { inRange, sceneFor, shouldSweep } from './entranceLight.js';
 import { parseAdvert } from './yeelight.js';
 
 const ts = (hhmm) => Date.parse(`2026-11-16T${hhmm}:00-05:00`);
@@ -22,13 +22,12 @@ test('sceneFor : douce la nuit, franche le jour', () => {
     assert.equal(sceneFor(ts('07:00'), cfg).ct, 4000);
 });
 
-test('untouched : on n’éteint pas une lampe réglée à la main', () => {
-    const scene = { ct: 2700, bright: 12 };
-    assert.equal(untouched({ power: 'on', bright: '12', ct: '2700', color_mode: '2' }, scene), true);
-    assert.equal(untouched({ power: 'on', bright: '60', ct: '2700', color_mode: '2' }, scene), false, 'luminosité changée');
-    assert.equal(untouched({ power: 'on', bright: '12', ct: '2700', color_mode: '1' }, scene), false, 'passée en couleur');
-    assert.equal(untouched({ power: 'on', bright: '12', ct: '5000', color_mode: '2' }, scene), false, 'teinte changée');
-    assert.equal(untouched({ power: 'off', bright: '12', ct: '2700', color_mode: '2' }, scene), false, 'déjà éteinte');
+test('shouldSweep : on éteint une lampe allumée sans passage récent', () => {
+    const now = 1_000_000;
+    assert.equal(shouldSweep(now, null, 120, null), true, 'aucun passage depuis le démarrage');
+    assert.equal(shouldSweep(now, now - 121_000, 120, null), true, 'dernier passage il y a plus de 2 min');
+    assert.equal(shouldSweep(now, now - 30_000, 120, null), false, 'quelqu’un vient de passer');
+    assert.equal(shouldSweep(now, now - 500_000, 120, { scene: {} }), false, 'extinction déjà programmée');
 });
 
 test('parseAdvert : réponse SSDP Yeelight', () => {

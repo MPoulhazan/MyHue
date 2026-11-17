@@ -3,9 +3,9 @@
  * capteur de mouvement de l'entrée voit quelqu'un, à toute heure, et s'éteint 2 min
  * après le dernier passage.
  *
- * Elle ne touche pas à une lampe allumée à la main : si l'ampoule était déjà allumée,
- * ou si on l'a réglée entre-temps (luminosité, teinte), elle reste comme elle est.
- * La nuit, blanc plus chaud.
+ * L'interrupteur est bloqué sur ON : l'ampoule s'éteint toujours 2 min après le dernier
+ * passage, même allumée autrement (appli, retour du courant) ; une ronde chaque minute
+ * rattrape ces cas. La nuit, blanc plus chaud.
  *
  * Le matin, autour de la sortie (même plage que lightSignals), elle montre d'abord
  * quelques secondes la couleur de ce qui attend dehors (pluie, orage, verglas, BIXI,
@@ -102,12 +102,11 @@ export const flowFor = (kinds) => {
 
 const localDate = (ts) => new Date(ts).toLocaleDateString('en-CA', { timeZone: TZ });
 
-/** La lampe est-elle encore telle qu'on l'a laissée ? Sinon quelqu'un l'a prise en main. */
-export const untouched = (props, scene) =>
-    props.power === 'on' &&
-    Number(props.bright) === scene.bright &&
-    !['1', '3'].includes(String(props.color_mode)) && // passée en couleur
-    (String(props.color_mode) !== '2' || Math.abs(Number(props.ct) - scene.ct) <= 50);
+/**
+ * Ronde : faut-il vérifier que l'ampoule est bien éteinte ? Oui dès qu'aucun passage n'a eu
+ * lieu depuis le délai d'extinction et qu'on n'a pas déjà une extinction programmée.
+ */
+export const shouldSweep = (now, lastTriggerAt, offAfterSec, owned) => !owned && (!lastTriggerAt || now - lastTriggerAt >= offAfterSec * 1000);
 
 // --- Ampoule ---
 
@@ -183,13 +182,8 @@ const scheduleOff = (delayMs = config.offAfterSec * 1000) => {
 
 const turnOff = async () => {
     if (!owned) return;
-    const { scene } = owned;
     try {
-        await withBulb(async (ip) => {
-            const props = await yeelight.getProps(ip);
-            if (!untouched(props, scene)) return; // réglée à la main entre-temps : on la laisse
-            await yeelight.setPower(ip, false, 800);
-        });
+        await withBulb((ip) => yeelight.setPower(ip, false, 800));
         owned = null;
     } catch (err) {
         // Ampoule injoignable : on la garde à notre charge et on réessaie, sinon elle resterait
@@ -227,8 +221,7 @@ const turnOn = async (source) => {
     if (owned) return scheduleOff(); // déjà allumée par nous : on repousse l'extinction
     try {
         await withBulb(async (ip) => {
-            const props = await yeelight.getProps(ip);
-            if (props.power === 'on') return; // allumée à la main : pas touche
+            // Même déjà allumée (interrupteur, appli), on la prend en charge : elle s'éteindra après le délai
             const now = Date.now();
             const kinds = await colorsFor(now);
             if (kinds.length) {
@@ -258,6 +251,24 @@ const turnOn = async (source) => {
     }
 };
 
+// Ronde chaque minute : l'ampoule est toujours alimentée (interrupteur bloqué sur ON). Si elle
+// est allumée sans passage récent (courant revenu, extinction ratée, appli), on l'éteint.
+const SWEEP_MS = 60_000;
+let sweepFailing = false;
+const sweep = async () => {
+    if (!config.enabled || !config.ip || !shouldSweep(Date.now(), lastTrigger.at, config.offAfterSec, owned)) return;
+    try {
+        const props = await yeelight.getProps(config.ip);
+        sweepFailing = false;
+        if (props.power !== 'on' || owned) return;
+        await yeelight.setPower(config.ip, false, 800);
+        console.log('💡 Lampe de l’entrée allumée sans passage : éteinte');
+    } catch (err) {
+        if (!sweepFailing) console.warn('⚠️  Lampe de l’entrée (ronde):', err.message);
+        sweepFailing = true;
+    }
+};
+
 export const trigger = (source) => {
     if (!config.enabled) return busy;
     busy = busy.then(() => turnOn(source), () => turnOn(source));
@@ -283,6 +294,9 @@ export const start = () => {
         const e = entranceMotion(device.ieeeAddr);
         if (e) trigger(e.name);
     });
+    setInterval(() => {
+        busy = busy.then(sweep, sweep);
+    }, SWEEP_MS);
     // Le matin, c'est elle qui montre la météo : le salon ne « respire » plus à l'ouverture de la porte
     lightSignals.setDoorDelegate(() => config.enabled && config.morningColors && Boolean(config.ip));
     // Adresse donnée à la main : on apprend l'identifiant de l'ampoule pour la retrouver si l'adresse change
