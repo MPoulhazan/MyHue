@@ -171,25 +171,35 @@ let offTimer = null;
 let busy = Promise.resolve();
 const lastTrigger = { at: null, source: null };
 
-const scheduleOff = () => {
+const OFF_RETRY_MS = 30_000;
+const OFF_MAX_TRIES = 40; // ~20 min de Wi-Fi capricieux avant d'abandonner
+
+const scheduleOff = (delayMs = config.offAfterSec * 1000) => {
     clearTimeout(offTimer);
     offTimer = setTimeout(() => {
         busy = busy.then(turnOff, turnOff);
-    }, config.offAfterSec * 1000);
+    }, delayMs);
 };
 
 const turnOff = async () => {
     if (!owned) return;
     const { scene } = owned;
-    owned = null;
     try {
         await withBulb(async (ip) => {
             const props = await yeelight.getProps(ip);
             if (!untouched(props, scene)) return; // réglée à la main entre-temps : on la laisse
             await yeelight.setPower(ip, false, 800);
         });
+        owned = null;
     } catch (err) {
-        console.warn('⚠️  Lampe de l’entrée (extinction):', err.message);
+        // Ampoule injoignable : on la garde à notre charge et on réessaie, sinon elle resterait
+        // allumée et le prochain passage la prendrait pour une lampe allumée à la main.
+        owned.offTries = (owned.offTries || 0) + 1;
+        console.warn(`⚠️  Lampe de l’entrée (extinction, essai ${owned.offTries}):`, err.message);
+        if (owned.offTries >= OFF_MAX_TRIES) {
+            owned = null;
+            journal.log({ kind: 'system', title: 'Lampe de l’entrée injoignable : extinction abandonnée', data: { error: err.message } });
+        } else scheduleOff(OFF_RETRY_MS);
     }
 };
 
