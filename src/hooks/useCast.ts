@@ -16,6 +16,10 @@ export interface NowPlaying {
     thumbnail: string | null;
     paused: boolean;
     volume: number | null; // 0-100
+    /** File d'attente : l'enceinte enchaîne les titres (suivant / précédent possibles) */
+    queue?: boolean;
+    position?: number; // s
+    duration?: number; // s
 }
 
 export interface CastMedia {
@@ -88,7 +92,16 @@ export function useCast(push: (msg: string, color?: string) => void) {
         }
     }, [now, fail, loadNow]);
 
-    return { speakers, now, play, control, volume, refresh: loadNow };
+    const skip = useCallback(async (delta: 1 | -1) => {
+        try {
+            await axios.post(delta > 0 ? '/api/music/next' : '/api/music/prev');
+        } catch {
+            fail(delta > 0 ? 'titre suivant impossible' : 'titre précédent impossible');
+        }
+        loadNow();
+    }, [fail, loadNow]);
+
+    return { speakers, now, play, control, volume, skip, refresh: loadNow, refreshSpeakers: loadSpeakers };
 }
 
 export type Cast = ReturnType<typeof useCast>;

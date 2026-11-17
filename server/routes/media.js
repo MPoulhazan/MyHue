@@ -7,6 +7,8 @@ import * as castService from '../castService.js';
 import * as youtubeService from '../youtubeService.js';
 import * as googleHomeService from '../googleHomeService.js';
 import { getYtDlpAudioUrl } from '../ytdlp.js';
+import * as musicPlayer from '../musicPlayer.js';
+import * as musicHabits from '../musicHabits.js';
 
 export const router = express.Router();
 
@@ -83,8 +85,8 @@ router.post('/api/youtube/auth/cancel', (_req, res) => {
     res.json({ ok: true });
 });
 
-router.post('/api/youtube/auth/logout', (_req, res) => {
-    youtubeService.logout();
+router.post('/api/youtube/auth/logout', (req, res) => {
+    youtubeService.logout(req.body?.accountId);
     res.json({ ok: true });
 });
 
@@ -113,6 +115,11 @@ router.get('/api/youtube/playlist/:id', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error?.message || 'Failed to fetch playlist' });
     }
+});
+
+router.post('/api/youtube/playlist/remove', (req, res) => {
+    youtubeService.removeCustomPlaylist(String(req.body?.id || ''));
+    res.json({ ok: true });
 });
 
 router.post('/api/youtube/playlist/add', async (req, res) => {
@@ -174,6 +181,56 @@ router.get('/api/youtube/stream/:videoId', async (req, res) => {
             res.status(500).json({ error: error?.message || 'Stream failed' });
         }
     }
+});
+
+// --- Lecteur de musique (file d'attente, ambiances, habitudes) ---
+
+const fail = (res, error, status = 500) => res.status(status).json({ error: error?.message || String(error) });
+
+// Tout ce qu'il faut pour afficher l'écran Musique en un appel
+router.get('/api/music/home', (_req, res) => {
+    res.json({
+        radios: musicPlayer.RADIOS.map(({ id, name, description }) => ({ id, name, description })),
+        moods: musicPlayer.getMoods(),
+        suggestion: musicPlayer.suggestion(),
+        state: musicPlayer.state(),
+        recent: musicHabits.recent(8),
+    });
+});
+
+router.get('/api/music/state', (_req, res) => res.json(musicPlayer.state()));
+
+router.post('/api/music/play', async (req, res) => {
+    try { res.json(await musicPlayer.play(req.body || {})); } catch (e) { fail(res, e); }
+});
+router.post('/api/music/next', async (_req, res) => {
+    try { res.json(await musicPlayer.skip(1)); } catch (e) { fail(res, e); }
+});
+router.post('/api/music/prev', async (_req, res) => {
+    try { res.json(await musicPlayer.skip(-1)); } catch (e) { fail(res, e); }
+});
+router.post('/api/music/jump', async (req, res) => {
+    try { res.json(await musicPlayer.jumpTo(Number(req.body?.index))); } catch (e) { fail(res, e); }
+});
+router.post('/api/music/enqueue', async (req, res) => {
+    try { res.json(await musicPlayer.enqueue(req.body?.deviceId, req.body?.tracks)); } catch (e) { fail(res, e); }
+});
+router.post('/api/music/transfer', async (req, res) => {
+    try { res.json(await musicPlayer.transfer(req.body?.deviceId)); } catch (e) { fail(res, e); }
+});
+router.post('/api/music/sleep', (req, res) => {
+    res.json(musicPlayer.setSleep(req.body?.minutes));
+});
+router.post('/api/music/mood-link', (req, res) => {
+    try { res.json({ moods: musicPlayer.linkMood(req.body?.moodId, req.body?.playlist) }); } catch (e) { fail(res, e, 400); }
+});
+router.get('/api/music/search', async (req, res) => {
+    try { res.json({ results: await youtubeService.search(req.query.q) }); } catch (e) { fail(res, e); }
+});
+
+// Volume et activité de chaque enceinte
+router.get('/api/cast/rooms', async (_req, res) => {
+    try { res.json({ rooms: await castService.getRoomStates() }); } catch (e) { fail(res, e); }
 });
 
 // --- Google Home ---

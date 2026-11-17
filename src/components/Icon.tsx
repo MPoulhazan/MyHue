@@ -8,7 +8,8 @@ export type IconName =
     | 'chevron' | 'back' | 'alert'
     | 'play' | 'pause' | 'stop' | 'volume' | 'minus' | 'radio' | 'list'
     | 'trash' | 'drop' | 'wifi' | 'refresh' | 'chat'
-    | 'mail' | 'bike' | 'metro' | 'city' | 'shield' | 'flame' | 'dice';
+    | 'mail' | 'bike' | 'metro' | 'city' | 'shield' | 'flame' | 'dice'
+    | 'next' | 'prev' | 'shuffle' | 'search' | 'leaf' | 'target' | 'bolt' | 'bowl' | 'timer' | 'waves' | 'user' | 'heart';
 
 const PATHS: Record<IconName, string> = {
     home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
@@ -58,6 +59,18 @@ const PATHS: Record<IconName, string> = {
     shield: 'M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6zM9 12l2 2 4-4',
     flame: 'M12 3c2.5 3 5 5.5 5 9.5a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 1.5.8 2.8 2 3.2-.5-3 .3-5.8 1-8.2z',
     dice: 'M4 4h16v16H4zM8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01',
+    next: 'M5 4l10 8-10 8zM19 5v14',
+    prev: 'M19 20L9 12l10-8zM5 19V5',
+    shuffle: 'M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5',
+    search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5',
+    leaf: 'M12 22c5-3 8-7 8-12a8 8 0 0 0-16 0c0 5 3 9 8 12zM12 22V10',
+    target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 12h.01',
+    bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
+    bowl: 'M4 11h16a8 8 0 0 1-16 0zM8 4c0 1 1 1 1 2s-1 1-1 2M12 4c0 1 1 1 1 2s-1 1-1 2M16 4c0 1 1 1 1 2s-1 1-1 2',
+    timer: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2 2M9 2h6',
+    waves: 'M4 12a8 8 0 0 1 16 0M7.5 12a4.5 4.5 0 0 1 9 0M12 12v8',
+    user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
+    heart: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z',
     city: 'M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13M14 10h2M14 14h2M14 18h2M7 12h1M7 16h1',
 };
 

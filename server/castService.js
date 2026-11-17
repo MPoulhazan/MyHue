@@ -180,7 +180,8 @@ const readReceiverStatus = (receiver) => new Promise((resolve, reject) => {
 
 const volumePct = (status) => (status?.volume?.level != null ? Math.round(status.volume.level * 100) : null);
 
-// Recale l'état sur l'enceinte : arrêtée depuis la voix ou une autre appli, le mini-lecteur disparaît
+// Recale l'état sur l'enceinte : arrêtée depuis la voix ou une autre appli, le mini-lecteur disparaît.
+// Pour une file d'attente, on suit aussi le titre en cours (l'enceinte enchaîne toute seule).
 const syncNowPlaying = async () => {
     if (!nowPlaying) return;
     const device = discoveredDevices.get(nowPlaying.deviceId);
@@ -191,14 +192,47 @@ const syncNowPlaying = async () => {
         const status = await readReceiverStatus(conn.receiver);
         if (!nowPlaying) return;
         const apps = (status.applications || []).filter((a) => a.appId !== BACKDROP_APP_ID && !a.isIdleScreen);
-        if (!apps.length) nowPlaying = null;
-        else if (volumePct(status) != null) nowPlaying.volume = volumePct(status);
+        if (!apps.length) { nowPlaying = null; return; }
+        if (volumePct(status) != null) nowPlaying.volume = volumePct(status);
+        if (nowPlaying.queue && apps[0].appId === DEFAULT_MEDIA_RECEIVER_APP_ID) {
+            const media = await readMediaStatus(conn.client, apps[0].transportId);
+            if (!nowPlaying) return;
+            if (!media || (media.playerState === 'IDLE' && media.idleReason === 'FINISHED')) { nowPlaying = null; return; }
+            applyMediaStatus(media);
+        }
     } catch {
         // enceinte momentanément injoignable : on garde l'état
     } finally {
         conn?.cleanup();
     }
 };
+
+// Titre courant d'une file : l'enceinte renvoie les métadonnées de l'élément en lecture
+const applyMediaStatus = (media) => {
+    if (!nowPlaying || !media) return;
+    const meta = media.media?.metadata;
+    if (media.media?.contentId) nowPlaying.contentId = media.media.contentId;
+    if (meta?.title) nowPlaying.title = meta.title;
+    if (meta) nowPlaying.subtitle = meta.artist || meta.subtitle || '';
+    if (meta?.images?.[0]?.url) nowPlaying.thumbnail = meta.images[0].url;
+    if (media.playerState) nowPlaying.paused = media.playerState === 'PAUSED';
+    if (media.currentTime != null) nowPlaying.position = Math.round(media.currentTime);
+    if (media.media?.duration) nowPlaying.duration = Math.round(media.media.duration);
+};
+
+const readMediaStatus = (client, transportId) => new Promise((resolve) => {
+    const { media } = connectToApp(client, transportId);
+    const handler = (data) => {
+        if (data.type === 'MEDIA_STATUS') {
+            clearTimeout(timer);
+            media.removeListener('message', handler);
+            resolve(data.status?.[0] || null);
+        }
+    };
+    const timer = setTimeout(() => { media.removeListener('message', handler); resolve(null); }, 4000);
+    media.on('message', handler);
+    media.send({ type: 'GET_STATUS', requestId: 11 });
+});
 
 export const findDevice = (nameQuery) => {
     const q = nameQuery.toLowerCase();
@@ -391,6 +425,117 @@ export const castMedia = async (deviceId, mediaUrl, contentType = 'audio/mpeg', 
     }
 };
 
+// --- File d'attente (l'enceinte enchaîne les titres elle-même) ---
+
+const queueItem = (it) => ({
+    media: {
+        contentId: it.url,
+        contentType: it.contentType || 'audio/mp4',
+        streamType: 'BUFFERED',
+        metadata: {
+            type: 0,
+            metadataType: 3, // musique
+            title: it.title || 'Titre',
+            artist: it.artist || '',
+            ...(it.thumbnail ? { images: [{ url: it.thumbnail }] } : {}),
+        },
+    },
+    autoplay: true,
+    preloadTime: 20, // l'enceinte prépare le titre suivant 20 s avant la fin
+});
+
+/** Charge une liste de titres sur l'enceinte et démarre à startIndex. */
+export const castQueue = async (deviceId, items, startIndex = 0, info = {}) => {
+    if (!items.length) throw new Error('Empty queue');
+    const start = Math.max(0, Math.min(items.length - 1, startIndex));
+    const { device, conn: { client, receiver, cleanup } } = await connectDevice(deviceId);
+    try {
+        const app = await launchApp(receiver, DEFAULT_MEDIA_RECEIVER_APP_ID);
+        const { media } = connectToApp(client, app.transportId);
+        const status = await new Promise((resolve, reject) => {
+            const handler = (data) => {
+                if (data.type === 'MEDIA_STATUS' && data.status?.length > 0) {
+                    clearTimeout(timer);
+                    media.removeListener('message', handler);
+                    resolve(data.status[0]);
+                } else if (data.type === 'LOAD_FAILED' || data.type === 'INVALID_REQUEST') {
+                    clearTimeout(timer);
+                    media.removeListener('message', handler);
+                    reject(new Error(data.reason || data.type));
+                }
+            };
+            const timer = setTimeout(() => { media.removeListener('message', handler); reject(new Error('Queue load timeout')); }, 20000);
+            media.on('message', handler);
+            media.send({ type: 'QUEUE_LOAD', requestId: 12, items: items.map(queueItem), startIndex: start, repeatMode: 'REPEAT_OFF' });
+        });
+        const receiverStatus = await readReceiverStatus(receiver).catch(() => null);
+        const first = items[start];
+        nowPlaying = {
+            deviceId: device.id,
+            device: device.name,
+            title: first.title || 'Lecture',
+            subtitle: first.artist || '',
+            thumbnail: first.thumbnail || null,
+            paused: false,
+            volume: volumePct(receiverStatus),
+            since: Date.now(),
+            queue: true,
+            source: info.source || null,
+            contentId: first.url,
+        };
+        applyMediaStatus(status);
+        setTimeout(() => cleanup(), 2000);
+        return { device: device.name, status: 'playing', count: items.length };
+    } catch (err) {
+        cleanup();
+        throw err;
+    }
+};
+
+// Envoie une commande de file sur la session média en cours
+const queueCommand = async (deviceId, build) => {
+    const { device, conn: { client, receiver, cleanup } } = await connectDevice(deviceId);
+    try {
+        const status = await readReceiverStatus(receiver);
+        const app = (status.applications || []).find((a) => a.appId === DEFAULT_MEDIA_RECEIVER_APP_ID);
+        if (!app) throw new Error('No active queue');
+        const current = await readMediaStatus(client, app.transportId);
+        if (!current) throw new Error('No active media');
+        const { media } = connectToApp(client, app.transportId);
+        media.send({ requestId: 13, mediaSessionId: current.mediaSessionId, ...build(current) });
+        await new Promise((r) => setTimeout(r, 1500));
+        const after = await readMediaStatus(client, app.transportId);
+        if (nowPlaying?.deviceId === device.id) applyMediaStatus(after);
+        return { device: device.name, status: 'ok' };
+    } finally {
+        cleanup();
+    }
+};
+
+/** Saute de `delta` titres dans la file (1 = suivant, -1 = précédent). */
+export const queueJump = (deviceId, delta) => queueCommand(deviceId, () => ({ type: 'QUEUE_UPDATE', jump: delta }));
+
+/** Ajoute des titres à la fin de la file. */
+export const queueAppend = (deviceId, items) => queueCommand(deviceId, () => ({ type: 'QUEUE_INSERT', items: items.map(queueItem) }));
+
+/** Volume et activité de chaque enceinte joignable (pour la liste des pièces). */
+export const getRoomStates = async () => {
+    const devices = getDevices().filter((d) => d.online);
+    return Promise.all(devices.map(async (d) => {
+        let conn;
+        try {
+            conn = await createCastConnection(d.host);
+            const status = await readReceiverStatus(conn.receiver);
+            const apps = (status.applications || []).filter((a) => a.appId !== BACKDROP_APP_ID && !a.isIdleScreen);
+            return { id: d.id, name: d.name, volume: volumePct(status), busy: apps.length > 0, app: apps[0]?.displayName || null };
+        } catch {
+            return { id: d.id, name: d.name, volume: null, busy: false, app: null };
+        } finally {
+            conn?.cleanup();
+        }
+    }));
+};
+
 // Titre, chaîne et vignette d'une vidéo, sans clé d'API (oEmbed) ; à défaut « YouTube »
 const youtubeInfo = async (videoId) => {
     try {
@@ -492,4 +637,4 @@ export const setVolume = async (deviceId, level) => {
 startDiscovery();
 setTimeout(() => refreshDevices({ force: true }), 3000);
 setInterval(() => refreshDevices(), 2 * 60_000).unref?.();
-setInterval(() => syncNowPlaying(), 30_000).unref?.();
+setInterval(() => syncNowPlaying(), 10_000).unref?.();

@@ -33,6 +33,11 @@ export function MiniPlayer({ cast }: { cast: Cast }) {
                     onClick={() => cast.control(n.paused ? 'play' : 'pause')}>
                     <Icon name={n.paused ? 'play' : 'pause'} size={20} strokeWidth={2.4} />
                 </button>
+                {n.queue && (
+                    <button type="button" className="mini-btn" aria-label="Titre suivant" onClick={() => cast.skip(1)}>
+                        <Icon name="next" size={18} strokeWidth={2.2} />
+                    </button>
+                )}
                 <button type="button" className="mini-btn" aria-label="Arrêter" onClick={() => cast.control('stop')}>
                     <Icon name="stop" size={18} strokeWidth={2.4} />
                 </button>
