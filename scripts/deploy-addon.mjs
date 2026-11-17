@@ -1,53 +1,59 @@
-// Met à jour l'add-on MyHue sur Home Assistant : recharge la boutique puis installe la dernière version.
-// Usage : node scripts/deploy-addon.mjs   (lit HA_TOKEN et HA_WS_URL dans .env, n'affiche jamais le jeton)
+// Met à jour l'add-on MyHue sur Home Assistant (Supervisor, via l'API WebSocket de HA).
+// Usage : node scripts/deploy-addon.mjs   (lit HA_TOKEN dans .env ; pousser sur master d'abord)
 import { readFileSync } from 'fs';
+
+const ADDON = 'f9d59efd_myhue';
+const HA_WS = process.env.HA_WS || 'ws://192.168.0.17/api/websocket';
 
 const env = Object.fromEntries(
     readFileSync(new URL('../.env', import.meta.url), 'utf8')
         .split(/\r?\n/)
-        .filter((l) => /^\s*[A-Z_]+\s*=/.test(l))
-        .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim().replace(/^["']|["']$/g, '')]),
+        .filter((l) => l.includes('=') && !l.trim().startsWith('#'))
+        .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]),
 );
-if (!env.HA_TOKEN) {
-    console.error('HA_TOKEN absent du .env');
-    process.exit(1);
-}
+if (!env.HA_TOKEN) throw new Error('HA_TOKEN manquant dans .env');
 
-const ADDON = 'f9d59efd_myhue';
-const steps = [
-    ['Rechargement de la boutique', { endpoint: '/store/reload', method: 'post' }],
-    ['Mise à jour de l’add-on', { endpoint: `/store/addons/${ADDON}/update`, method: 'post', timeout: 900 }],
-    ['Version installée', { endpoint: `/addons/${ADDON}/info`, method: 'get' }],
-];
-
-const ws = new WebSocket(env.HA_WS_URL || 'ws://192.168.0.17/api/websocket');
-let id = 0;
-let current = null;
-const next = () => {
-    current = steps.shift();
-    if (!current) return ws.close();
-    ws.send(JSON.stringify({ id: ++id, type: 'supervisor/api', ...current[1] }));
+const ws = new WebSocket(HA_WS);
+let nextId = 1;
+const pending = new Map();
+const call = (endpoint, method = 'post') =>
+    new Promise((resolve) => {
+        const id = nextId++;
+        pending.set(id, resolve);
+        ws.send(JSON.stringify({ id, type: 'supervisor/api', endpoint, method, timeout: 900 }));
+    });
+const info = async () => {
+    const r = await call(`/addons/${ADDON}/info`, 'get');
+    return { version: r.result?.version, latest: r.result?.version_latest, state: r.result?.state };
 };
-ws.onmessage = (e) => {
+
+ws.onmessage = async (e) => {
     const m = JSON.parse(e.data);
     if (m.type === 'auth_required') return ws.send(JSON.stringify({ type: 'auth', access_token: env.HA_TOKEN }));
     if (m.type === 'auth_invalid') {
         console.error('Jeton HA refusé');
-        process.exitCode = 1;
+        process.exit(1);
+    }
+    if (m.type === 'auth_ok') {
+        const reload = await call('/store/reload');
+        if (!reload.success) console.warn('store/reload:', reload.error?.message);
+        const before = await info();
+        console.log('Avant :', before);
+        if (before.version === before.latest) {
+            console.log('Déjà à jour.');
+            return ws.close();
+        }
+        const up = await call(`/store/addons/${ADDON}/update`);
+        console.log('Mise à jour :', up.success ? 'ok' : up.error?.message);
+        console.log('Après :', await info());
         return ws.close();
     }
-    if (m.type === 'auth_ok') return next();
-    if (m.type !== 'result') return;
-    if (!m.success) {
-        console.error(`${current[0]} : échec`, JSON.stringify(m.error));
-        process.exitCode = 1;
-        return ws.close();
+    if (pending.has(m.id)) {
+        pending.get(m.id)(m);
+        pending.delete(m.id);
     }
-    if (current[1].endpoint.endsWith('/info')) console.log(`${current[0]} : ${m.result?.version} (dernière : ${m.result?.version_latest}, état : ${m.result?.state})`);
-    else console.log(`${current[0]} : ok`);
-    next();
 };
-ws.onerror = () => {
-    console.error('Home Assistant injoignable');
-    process.exitCode = 1;
+ws.onerror = (e) => {
+    console.error('WebSocket HA :', e.message || e);
+    process.exit(1);
 };
