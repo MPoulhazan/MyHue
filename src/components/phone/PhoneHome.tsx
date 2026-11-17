@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import type { DashLight, Home } from '../../hooks/useHome';
 import { Icon } from '../Icon';
-import type { IconName } from '../Icon';
+import { MomentButton } from '../MomentButton';
 import { HueStatus, RoomCard, fmt } from '../home/cards';
 import { HomeWidgets, WidgetChips } from '../home/widgets/registry';
 import { WIDGET_META } from '../home/widgets/relevance';
@@ -41,11 +41,7 @@ export function PhoneHome({ home, roomLights, onAdd, widgets }: {
 
             {home.moments.length > 0 && (
                 <div className="phone-moments">
-                    {home.moments.map((m) => (
-                        <button key={m.id} type="button" onClick={() => home.runMoment(m.id)}>
-                            <Icon name={m.icon as IconName} size={18} />{m.label}
-                        </button>
-                    ))}
+                    {home.moments.map((m) => <MomentButton key={m.id} moment={m} onRun={home.runMoment} iconSize={18} />)}
                 </div>
             )}
 

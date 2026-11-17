@@ -96,6 +96,13 @@ const runAction = async (action, source) => {
             return { action };
         }
 
+        // Teintes de la maison (Neutre, Chaud, Très chaud, Aléatoire) et autres moments
+        case 'run_moment': {
+            const moments = await import('./moments.js'); // import tardif : moments.js importe ce fichier
+            const result = await moments.run(action.id, { same: Boolean(action.same) });
+            return { action, result };
+        }
+
         // Google Cast
         case 'cast_media': {
             const device = findCastDevice(action.deviceName);

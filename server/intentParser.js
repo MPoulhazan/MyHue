@@ -184,6 +184,31 @@ const parseScene = (text, scenes, groups) => {
     };
 };
 
+// Teintes de toute la maison : « lumière très chaude », « couleurs au hasard »
+const RANDOM_WORD = /\b(aleatoires?|au hasard)\b/;
+const MOOD_WORD = /\b(lumieres?|lampes?|blanc|eclairage|couleurs?)\b/;
+const parseMood = (text, lights, groups) => {
+    if (!MOOD_WORD.test(text) || ON.test(text) || OFF.test(text)) return null;
+    let action = null;
+    let message = '';
+    if (RANDOM_WORD.test(text)) {
+        const same = /\b(meme couleur|une (seule )?couleur)\b/.test(text);
+        action = { type: 'run_moment', id: 'aleatoire', ...(same ? { same: true } : {}) };
+        message = same ? 'Une couleur au hasard partout.' : 'Couleurs au hasard.';
+    } else {
+        // Une pièce ou une lampe citée : réglage ciblé, géré par parseLights
+        if (findEntities(text, [...groups, ...lights]).matches.length) return null;
+        if (/\btres chaude?s?\b/.test(text)) [action, message] = [{ type: 'run_moment', id: 'tres-chaud' }, 'Lumière très chaude.'];
+        else if (/\bchaude?s?\b/.test(text)) [action, message] = [{ type: 'run_moment', id: 'chaud' }, 'Lumière chaude.'];
+        else if (/\bneutres?\b/.test(text)) [action, message] = [{ type: 'run_moment', id: 'neutre' }, 'Lumière neutre.'];
+    }
+    if (!action) return null;
+    if (lights.length && !lights.some((l) => l.on)) {
+        return { intent: 'mood', actions: [], message: 'Aucune lampe n’est allumée, je n’ai rien changé.' };
+    }
+    return { intent: 'mood', actions: [action], message };
+};
+
 const parseLights = (text, lights, groups) => {
     const qc = LIGHT_WORD.test(text);
     const isOff = OFF.test(text) || (qc && QC_OFF.test(text));
@@ -292,6 +317,7 @@ export const parseIntent = (rawText, context = {}) => {
     return (
         parseSensorQuery(text, sensors) ||
         parseScene(text, scenes, roomGroups) ||
+        parseMood(text, lights, roomGroups) ||
         parseLights(text, lights, roomGroups)
     );
 };

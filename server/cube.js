@@ -6,7 +6,7 @@
  * - Tourner à plat = luminosité du salon ; volume de l'enceinte si de la musique joue dessus.
  * - Double tape sur la table = pause / lecture sur l'enceinte du salon.
  * - Secouer = salon éteint, ou rallumé sur l'ambiance de la face du dessus.
- * - Glisser = moment Cinéma.
+ * - Glisser = couleurs au hasard dans toute la maison.
  * - Chute = petite plainte sur l'enceinte (pas la nuit).
  */
 import { readFileSync, writeFileSync, existsSync } from 'fs';
@@ -40,8 +40,8 @@ const DEFAULTS = {
         0: { label: 'Lumineux', scene: 'Lumineux' },
         1: { label: 'Lecture', scene: 'Lecture' },
         2: { label: 'Détente', scene: 'Détente' },
-        3: { label: 'Cinéma', moment: 'cinema' },
-        4: { label: 'Apéro', moment: 'apero' },
+        3: { label: 'Très chaud', moment: 'tres-chaud' },
+        4: { label: 'Aléatoire', moment: 'aleatoire' },
         5: { label: 'Bougie', scene: 'Bougie' },
     },
 };
@@ -51,6 +51,10 @@ try {
     if (existsSync(FILE)) {
         const saved = JSON.parse(readFileSync(FILE, 'utf8'));
         config = { ...config, ...saved, faces: { ...DEFAULTS.faces, ...(saved.faces || {}) } };
+        // Anciennes faces par défaut Cinéma / Apéro (boutons retirés) : remplacées par les teintes
+        for (const [n, old] of [[3, 'cinema'], [4, 'apero']]) {
+            if (config.faces[n]?.moment === old) config.faces[n] = DEFAULTS.faces[n];
+        }
     }
 } catch (err) {
     console.error('❌ cube.json illisible, réglages par défaut:', err.message);
@@ -86,10 +90,12 @@ const remember = (gesture, text) => {
     last = { at: Date.now(), gesture, text };
 };
 
-const applyFace = async (n) => {
+// turnOn : salon éteint qu'on rallume (secouer) ; les teintes ne touchent que les lampes allumées
+const applyFace = async (n, { turnOn = false } = {}) => {
     const def = config.faces[n];
     if (!def) return null;
     if (def.moment) {
+        if (turnOn) await executeActions([{ type: 'set_group_state', id: config.groupId, state: { on: true } }], 'cube');
         await moments.run(def.moment);
         return def.label;
     }
@@ -151,15 +157,15 @@ const handle = async ({ gesture, face: side, angle }) => {
                 await executeActions([{ type: 'set_group_state', id: config.groupId, state: { on: false } }], 'cube');
                 remember('shake', 'Salon éteint');
             } else {
-                const label = Number.isInteger(face) ? await applyFace(face).catch(() => null) : null;
+                const label = Number.isInteger(face) ? await applyFace(face, { turnOn: true }).catch(() => null) : null;
                 if (!label) await executeActions([{ type: 'set_group_state', id: config.groupId, state: { on: true } }], 'cube');
                 remember('shake', `Salon rallumé${label ? ` : ${label}` : ''}`);
             }
             return;
         }
         case 'slide':
-            await moments.run('cinema');
-            remember('slide', 'Moment Cinéma');
+            await moments.run('aleatoire');
+            remember('slide', 'Couleurs au hasard');
             return;
         case 'fall': {
             remember('fall', 'Le cube est tombé');

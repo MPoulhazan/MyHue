@@ -367,9 +367,11 @@ export function useHome() {
         return () => clearInterval(t);
     }, []);
 
-    const runMoment = useCallback(async (id: string) => {
+    /** same : Aléatoire en une seule couleur partout (appui long) */
+    const runMoment = useCallback(async (id: string, opts: { same?: boolean } = {}) => {
         try {
-            await axios.post(`/api/moments/${id}`);
+            const { data } = await axios.post(`/api/moments/${id}`, opts.same ? { same: true } : {});
+            if (data?.empty) push('Aucune lampe allumée');
         } catch {
             push('Moment · échec', '#FF3B5C');
         }

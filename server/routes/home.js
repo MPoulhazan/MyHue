@@ -723,13 +723,13 @@ router.get('/api/presence', (_req, res) => {
     res.json({ anyoneHome: presence.anyoneHome(), people: presence.getPeople() });
 });
 
-// --- Moments (Cinéma, Dodo, Je pars...) ---
+// --- Moments (boutons de teinte ; Cinéma, Dodo, Je pars restent pour la voix et les automatismes) ---
 
-router.get('/api/moments', (_req, res) => res.json({ moments: moments.list() }));
+router.get('/api/moments', (_req, res) => res.json({ moments: moments.list({ visible: true }) }));
 
 router.post('/api/moments/:id', async (req, res) => {
     try {
-        res.json(await moments.run(req.params.id));
+        res.json(await moments.run(req.params.id, { same: Boolean(req.body?.same) }));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

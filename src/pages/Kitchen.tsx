@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { HomeContext, useHome, useHomeData } from '../hooks/useHome';
 import { Icon } from '../components/Icon';
+import { MomentButton } from '../components/MomentButton';
 import type { IconName } from '../components/Icon';
 import { RoomCard, fmt, hhmm, useClock } from '../components/home/cards';
 import { HomeWidgets } from '../components/home/widgets/registry';
@@ -83,10 +84,9 @@ function Kitchen() {
                             onLevel={(v) => home.setLevel(kitchenLights.map((l) => l.id), v)}
                             onOpen={() => {}} />
                     )}
-                    {home.moments.slice(0, 3).map((m) => (
-                        <button key={m.id} type="button" className="kitchen-btn" onClick={() => home.runMoment(m.id)}>
-                            <Icon name={m.icon as IconName} size={22} />{m.label}
-                        </button>
+                    {/* Trois boutons tiennent sur le Hub : le blanc neutre reste sur la tablette */}
+                    {home.moments.filter((m) => m.id !== 'neutre').slice(0, 3).map((m) => (
+                        <MomentButton key={m.id} moment={m} onRun={home.runMoment} className="kitchen-btn" iconSize={22} />
                     ))}
                     {anyOn && (
                         <button type="button" className="kitchen-btn" onClick={() => home.setLevel(home.lights.map((l) => l.id), 0)}>

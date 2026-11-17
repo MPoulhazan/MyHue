@@ -5,6 +5,7 @@ import { useHomeData } from '../hooks/useHome';
 import type { DashLight } from '../hooks/useHome';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { Icon } from '../components/Icon';
+import { MomentButton } from '../components/MomentButton';
 import type { IconName } from '../components/Icon';
 import { AddSensorSheet } from '../components/home/AddSensorSheet';
 import { OUTSIDE_ROOM } from '../components/home/RoomPicker';
@@ -130,13 +131,9 @@ export function Dashboard() {
 
                     {home.moments.length > 0 && (
                         <>
-                            <h2 className="moments-title">Moments</h2>
+                            <h2 className="moments-title">Teintes</h2>
                             <div className="moments">
-                                {home.moments.map((m) => (
-                                    <button key={m.id} type="button" onClick={() => home.runMoment(m.id)}>
-                                        <Icon name={m.icon as IconName} size={20} />{m.label}
-                                    </button>
-                                ))}
+                                {home.moments.map((m) => <MomentButton key={m.id} moment={m} onRun={home.runMoment} />)}
                             </div>
                         </>
                     )}
