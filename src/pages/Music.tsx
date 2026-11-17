@@ -53,9 +53,10 @@ export function Music() {
     const live = cast.speakers.filter((s) => s.online);
 
     const [picked, setPicked] = useState<string | null>(null);
-    const target = live.find((s) => s.id === picked) ?? live.find((s) => s.id === now?.deviceId) ?? live[0] ?? null;
 
     const [home, setHome] = useState<MusicHome | null>(null);
+    // Choisie à la main, sinon celle qui joue, sinon l'enceinte par défaut de la maison (le Salon)
+    const target = live.find((s) => s.id === picked) ?? live.find((s) => s.id === now?.deviceId) ?? live.find((s) => s.id === home?.device?.id) ?? live[0] ?? null;
     const [rooms, setRooms] = useState<Room[]>([]);
     const [busy, setBusy] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);

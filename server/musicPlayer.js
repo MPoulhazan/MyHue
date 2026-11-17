@@ -293,15 +293,20 @@ export function suggestion(now = Date.now()) {
     return s;
 }
 
+// Enceinte de la maison par défaut (option music_default_speaker de l'add-on)
+const DEFAULT_SPEAKER = (process.env.MUSIC_DEFAULT_SPEAKER || 'Salon').trim().toLowerCase();
+
 /**
- * Enceinte par défaut quand on n'en cite pas : celle qui joue, sinon la dernière utilisée,
- * sinon la plus utilisée du journal, sinon la première joignable.
+ * Enceinte par défaut quand on n'en cite pas : celle qui joue, sinon le Salon,
+ * sinon la dernière utilisée, la plus utilisée du journal, ou la première joignable.
  */
 export function defaultDevice() {
     const online = cast.getDevices().filter((d) => d.online);
     const byId = (id) => online.find((d) => d.id === id);
     const now = cast.getNowPlaying();
     if (now && byId(now.deviceId)) return byId(now.deviceId);
+    const home = online.find((d) => d.name.toLowerCase() === DEFAULT_SPEAKER || d.id === DEFAULT_SPEAKER);
+    if (home) return home;
     if (session?.deviceId && byId(session.deviceId)) return byId(session.deviceId);
     const counts = new Map();
     for (const e of habits.getEntries().slice(-200)) if (e.deviceId) counts.set(e.deviceId, (counts.get(e.deviceId) || 0) + 1);
