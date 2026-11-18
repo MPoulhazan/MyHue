@@ -1,0 +1,197 @@
+import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
+import { Icon } from '../components/Icon';
+import './Dashboard.css';
+import './MyDay.css';
+
+// « Ma journée » : le check-up du matin d'une personne (maquette A, 2026-11-17)
+
+interface Person { id: string; name: string; initial: string; color: string; mails: boolean }
+interface Thing { kind: string; title: string; detail: string }
+interface Mail { id: string; from: string; subject: string; summary: string; receivedAt: number | null; draft: string | null; draftUrl: string | null; threadUrl: string | null }
+interface Idea { id: string; kind: 'event' | 'museum' | 'resto' | 'activity'; title: string; when: string | null; where: string | null; why: string | null; url: string | null }
+interface DayView {
+    person: Person;
+    people: Person[];
+    default: { id: string; reason: 'home' | 'first' };
+    weather: { temp: number; feels: number; rainAt: number | null } | null;
+    headline: { greeting: string; text: string };
+    things: Thing[];
+    mails: { at: number | null; items: Mail[] } | null;
+    outing: { idea: Idea; left: number } | null;
+    liked: (Idea & { at: number }) | null;
+    touch: { who: string; line: string } | null;
+}
+
+// Le choix d'une personne sur la tablette tient 10 minutes, puis on revient au profil par défaut
+const PICK_KEY = 'myday.pick';
+const PICK_MS = 10 * 60_000;
+const readPick = (): string | null => {
+    try {
+        const p = JSON.parse(localStorage.getItem(PICK_KEY) || 'null');
+        return p && Date.now() - p.at < PICK_MS ? p.id : null;
+    } catch {
+        return null;
+    }
+};
+const savePick = (id: string) => {
+    try {
+        localStorage.setItem(PICK_KEY, JSON.stringify({ id, at: Date.now() }));
+    } catch { /* stockage indisponible : le choix vaut pour cette visite */ }
+};
+
+const KIND_LABEL: Record<Idea['kind'], string> = { event: 'Événement', museum: 'Musée', resto: 'Resto', activity: 'Activité' };
+const deg = (n: number) => `${n < 0 ? '−' : ''}${Math.abs(n)}°`;
+const hm = (ts: number) => new Date(ts).toLocaleTimeString('fr-CA', { hour: 'numeric', minute: '2-digit' }).replace(':', ' h ');
+const today = () => new Date().toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long' });
+
+const claudeLink = (m: Mail) =>
+    `https://claude.ai/new?q=${encodeURIComponent(`Dans mon Gmail, trouve le mail « ${m.subject} » de ${m.from} et prépare une réponse dans mes brouillons (ne l’envoie pas).`)}`;
+
+function MailItem({ mail }: { mail: Mail }) {
+    const [open, setOpen] = useState(false);
+    const gmail = mail.draftUrl || mail.threadUrl;
+    return (
+        <li className="md-mail">
+            <span className="md-meta">{mail.from}{mail.receivedAt ? ` · ${hm(mail.receivedAt)}` : ''}</span>
+            <strong>{mail.subject}</strong>
+            {mail.summary && <span className="md-sub">{mail.summary}</span>}
+            {open && mail.draft && (
+                <div className="md-draft">
+                    <span className="md-draft-label">Réponse prête dans tes brouillons</span>
+                    <p>{mail.draft}</p>
+                </div>
+            )}
+            <div className="md-actions">
+                {mail.draft ? (
+                    <button className="md-btn primary" onClick={() => setOpen(!open)}>{open ? 'Masquer la réponse' : 'Voir la réponse'}</button>
+                ) : (
+                    <a className="md-btn primary" href={claudeLink(mail)} target="_blank" rel="noreferrer">Préparer une réponse</a>
+                )}
+                {gmail && <a className="md-btn" href={gmail} target="_blank" rel="noreferrer">Ouvrir dans Gmail</a>}
+            </div>
+        </li>
+    );
+}
+
+export function MyDay() {
+    const [personId, setPersonId] = useState<string | null>(readPick);
+    const [data, setData] = useState<DayView | null>(null);
+    const [error, setError] = useState(false);
+
+    const load = useCallback(() => {
+        axios.get<DayView>('/api/day', { params: { person: personId || '' } })
+            .then(({ data }) => { setData(data); setError(false); })
+            .catch(() => setError(true));
+    }, [personId]);
+
+    useEffect(() => {
+        load();
+        const t = setInterval(() => {
+            // Choix expiré : retour au profil par défaut
+            if (personId && !readPick()) setPersonId(null);
+            else load();
+        }, 60_000);
+        return () => clearInterval(t);
+    }, [load, personId]);
+
+    const pick = (id: string) => {
+        savePick(id);
+        setPersonId(id);
+    };
+
+    const react = async (id: string, action: 'like' | 'next' | 'done') => {
+        await axios.post(`/api/day/outings/${id}/${action}`).catch(() => {});
+        load();
+    };
+
+    if (!data) {
+        return <div className="home md"><p className="muted">{error ? 'Impossible de charger ta journée.' : 'Chargement…'}</p></div>;
+    }
+
+    const { person, people, things, mails, outing, liked, touch, weather } = data;
+    const auto = !personId && data.default.reason === 'home';
+
+    return (
+        <div className={`home md tone-${person.color}`}>
+            <header className="md-top">
+                <div className="md-people" role="group" aria-label="Qui regarde ?">
+                    {people.map((p) => (
+                        <button key={p.id} className={`md-avatar c-${p.color} ${p.id === person.id ? 'on' : ''}`}
+                            aria-pressed={p.id === person.id} aria-label={p.name} onClick={() => pick(p.id)}>
+                            {p.initial}
+                        </button>
+                    ))}
+                    <span className="muted md-who">{person.name}{auto ? ' · seul à la maison' : ''}</span>
+                </div>
+                <div className="md-when">
+                    <span className="muted md-date">{today()}</span>
+                    {weather && <span className="md-pill">{deg(weather.temp)}{weather.rainAt != null ? ` · pluie vers ${weather.rainAt} h` : ''}</span>}
+                </div>
+            </header>
+
+            <section className="md-hero">
+                <span className="md-greet">{data.headline.greeting}</span>
+                <h1>{data.headline.text}</h1>
+            </section>
+
+            <div className={`md-grid ${mails ? '' : 'two'}`}>
+                <section className="md-card">
+                    <h2>{person.mails ? 'Tes' : 'Les'} {things.length || ''} chose{things.length > 1 ? 's' : ''}</h2>
+                    {things.length ? (
+                        <ol className="md-things">
+                            {things.map((t, i) => (
+                                <li key={t.kind + i}>
+                                    <span className="md-num">{i + 1}</span>
+                                    <div><strong>{t.title}</strong><span className="md-sub">{t.detail}</span></div>
+                                </li>
+                            ))}
+                        </ol>
+                    ) : <p className="md-sub">Rien à retenir aujourd’hui.</p>}
+                    {things.length > 0 && <span className="md-sub md-end">Rien d’autre aujourd’hui.</span>}
+                </section>
+
+                {mails && (
+                    <section className="md-card">
+                        <div className="md-head"><h2>Mails importants</h2>{mails.at && <span className="muted">triés à {hm(mails.at)}</span>}</div>
+                        {mails.items.length ? (
+                            <ul className="md-mails">{mails.items.slice(0, 3).map((m) => <MailItem key={m.id} mail={m} />)}</ul>
+                        ) : (
+                            <p className="md-sub">{mails.at ? 'Rien d’important, seulement de la pub.' : 'Le tri arrive chaque matin vers 6 h 30.'}</p>
+                        )}
+                    </section>
+                )}
+
+                <section className="md-card md-outing">
+                    <div className="md-head"><h2>Pour vous deux</h2>{outing && <span className="md-kind">{KIND_LABEL[outing.idea.kind]}</span>}</div>
+                    {outing ? (
+                        <>
+                            <strong className="md-idea">{outing.idea.title}</strong>
+                            {(outing.idea.when || outing.idea.where) && <span className="md-sub">{[outing.idea.when, outing.idea.where].filter(Boolean).join(' · ')}</span>}
+                            {outing.idea.why && <p className="md-why">{outing.idea.why}</p>}
+                            <div className="md-actions md-end">
+                                {liked?.id === outing.idea.id ? (
+                                    <span className="md-liked"><Icon name="check" size={18} strokeWidth={2.5} />Ça vous tente</span>
+                                ) : (
+                                    <button className="md-btn primary" onClick={() => react(outing.idea.id, 'like')}>Ça nous tente</button>
+                                )}
+                                {outing.left > 0 && <button className="md-btn" onClick={() => react(outing.idea.id, 'next')}>Autre idée</button>}
+                                <button className="md-btn quiet" onClick={() => react(outing.idea.id, 'done')}>Déjà fait</button>
+                                {outing.idea.url && <a className="md-btn quiet" href={outing.idea.url} target="_blank" rel="noreferrer">Voir</a>}
+                            </div>
+                        </>
+                    ) : (
+                        <p className="md-sub">Les idées de sortie arrivent chaque mercredi matin.</p>
+                    )}
+                </section>
+            </div>
+
+            {touch && (
+                <footer className="md-touch">
+                    <img src="/cooper.jpg" alt="" className="md-touch-photo" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <span>« {touch.line} »</span>
+                </footer>
+            )}
+        </div>
+    );
+}

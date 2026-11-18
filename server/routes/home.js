@@ -36,6 +36,7 @@ import * as bixi from '../bixi.js';
 import * as city from '../city.js';
 import * as collecte from '../collecte.js';
 import * as health from '../health.js';
+import * as myDay from '../myDay.js';
 
 export const router = express.Router();
 
@@ -382,6 +383,52 @@ router.post('/api/cube/test', async (req, res) => {
         res.json({ ok: true, label: await cube.test(req.body?.face) });
     } catch (err) {
         res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Ma journée (une page par personne) ---
+
+const fail = (res, err, code = 400) => res.status(code).json({ error: err.message });
+
+router.get('/api/day/people', (_req, res) => res.json({ people: myDay.getPeople(), default: myDay.defaultPerson() }));
+
+router.put('/api/day/people', (req, res) => {
+    try {
+        res.json({ people: myDay.setPeople(req.body?.people) });
+    } catch (err) {
+        fail(res, err);
+    }
+});
+
+router.get('/api/day', async (req, res) => {
+    try {
+        res.json(await myDay.getDay(String(req.query.person || '')));
+    } catch (err) {
+        fail(res, err, 503);
+    }
+});
+
+router.put('/api/day/mails', (req, res) => {
+    try {
+        res.json(myDay.setMails(req.body?.person, req.body?.items));
+    } catch (err) {
+        fail(res, err);
+    }
+});
+
+router.put('/api/day/outings', (req, res) => {
+    try {
+        res.json(myDay.setOutings(req.body?.ideas));
+    } catch (err) {
+        fail(res, err);
+    }
+});
+
+router.post('/api/day/outings/:id/:action', (req, res) => {
+    try {
+        res.json(myDay.reactOuting(req.params.id, req.params.action));
+    } catch (err) {
+        fail(res, err);
     }
 });
 

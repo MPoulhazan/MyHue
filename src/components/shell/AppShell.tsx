@@ -21,6 +21,7 @@ interface Destination {
 
 const MAIN: Destination[] = [
     { to: '/', label: 'Maison', icon: 'home' },
+    { to: '/journee', label: 'Ma journée', icon: 'user' },
     { to: '/lights', label: 'Lumières', icon: 'lights' },
     { to: '/climate', label: 'Climat', icon: 'thermo' },
     { to: '/music', label: 'Musique', icon: 'music' },
