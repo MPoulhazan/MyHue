@@ -9,6 +9,7 @@ import { EventEmitter } from 'events';
 import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
 import * as journal from './journal.js';
+import * as sensorPause from './sensorPause.js';
 
 export const bus = new EventEmitter();
 bus.setMaxListeners(50);
@@ -19,12 +20,17 @@ zigbeeService.emitter.on('change', ({ ieee, key, value, prev }) => {
     const sensor = { did: entry.ieee, name: entry.name, type: entry.type };
     const ts = Date.now();
 
+    // Capteur en pause : son état reste visible, mais les événements « déclencheurs » ne partent plus
+    const paused = sensorPause.isPaused(entry.ieee);
+    if (paused && key === 'occupancy' && value === true) sensorPause.noteIgnored(entry.ieee, 'Mouvement');
+    if (paused && ['occupancy', 'water_leak', 'smoke'].includes(key)) return;
+
     if (key === 'contact') {
         const isOpen = !value;
-        bus.emit('sensor', { sensor, prop: 'isOpen', value: isOpen, prev: !prev, ts });
+        if (!paused) bus.emit('sensor', { sensor, prop: 'isOpen', value: isOpen, prev: !prev, ts });
         journal.log({
             kind: 'door',
-            title: `${entry.name} : ${isOpen ? 'ouverte' : 'fermée'}`,
+            title: `${entry.name} : ${isOpen ? 'ouverte' : 'fermée'}${paused ? ' (en pause, ignoré)' : ''}`,
             data: { did: entry.ieee, isOpen },
         });
         return;

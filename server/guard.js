@@ -10,6 +10,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dataFile } from './dataDir.js';
 import { bus } from './events.js';
+import * as sensorPause from './sensorPause.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
 import * as journal from './journal.js';
@@ -111,6 +112,7 @@ export const getView = () => ({
     events: config.events.slice(-8).reverse(),
     simulate: config.simulate,
     sim: config.sim,
+    pausedSensors: sensorPause.list(), // capteurs qui ne déclencheront pas d'alerte
     simToday: config.mode === 'vacation' && config.simulate && config.simDay ? { onAt: config.simDay.onAt, offAt: config.simDay.offAt, lit: config.simDay.lit } : null,
 });
 
@@ -124,7 +126,9 @@ export const setMode = async (mode, by = 'écran') => {
     config.events = mode ? (before ? config.events : []) : [];
     config.simDay = null;
     save();
-    const text = mode ? `🛡️ ${LABEL[mode]} activé (${by}).` : `🏠 ${LABEL[before]} désactivé (${by}).`;
+    const paused = mode ? sensorPause.list() : [];
+    const warn = paused.length ? ` ⚠️ En pause, non surveillé : ${paused.map((p) => p.name).join(', ')}.` : '';
+    const text = mode ? `🛡️ ${LABEL[mode]} activé (${by}).${warn}` : `🏠 ${LABEL[before]} désactivé (${by}).`;
     journal.log({ kind: 'system', title: text, data: { mode, by } });
     notifier.notify({ text, silent: true }).catch(() => {});
     if (mode === 'vacation') tick();
@@ -234,7 +238,7 @@ export const start = () => {
         const device = zigbeeService.getDevice(name);
         if (device?.state?.occupancy !== true || Date.now() - (device.lastSeen || 0) > 5000) return;
         const entry = sensorRegistry.find(device.ieeeAddr);
-        if (entry?.type === 'motion') alert(entry, 'motion');
+        if (entry?.type === 'motion' && !sensorPause.isPaused(entry.ieee)) alert(entry, 'motion');
     });
     setInterval(tick, TICK_MS).unref?.();
     console.log(`🛡️  Mode alarme/vacances : ${config.mode ? LABEL[config.mode] : 'désactivé'}`);

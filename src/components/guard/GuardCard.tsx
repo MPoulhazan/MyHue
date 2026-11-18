@@ -13,6 +13,8 @@ export interface GuardView {
     simulate: boolean;
     sim: { onFrom: string; onTo: string; offFrom: string; offTo: string };
     simToday: { onAt: number; offAt: number; lit: boolean } | null;
+    /** Capteurs en pause : ils ne déclencheront pas d'alerte */
+    pausedSensors?: { ieee: string; name: string }[];
 }
 
 const hm = (ts: number) => {
@@ -45,6 +47,21 @@ export function GuardCard() {
         }
     };
 
+    const paused = view.pausedSensors ?? [];
+    const resumeAll = async () => {
+        setBusy(true);
+        await Promise.all(paused.map((p) => axios.delete(`/api/sensors/${encodeURIComponent(p.ieee)}/pause`).catch(() => {})));
+        await guardPoll.load();
+        setBusy(false);
+    };
+    // Une pause oubliée ne doit pas faire un trou dans la surveillance
+    const pausedWarning = paused.length > 0 && (
+        <div className="guard-paused" role="status">
+            <span>⚠️ En pause, {view.mode ? 'non surveillé' : 'ne sera pas surveillé'} : <b>{paused.map((p) => p.name).join(', ')}</b></span>
+            <button type="button" className="guard-btn" disabled={busy} onClick={resumeAll}>Réactiver</button>
+        </div>
+    );
+
     if (!view.mode) {
         return (
             <section className="card guard-card" aria-label="Alarme">
@@ -53,6 +70,7 @@ export function GuardCard() {
                     <span className="guard-pill off">Désactivée</span>
                 </div>
                 <p className="guard-line">Porte ou mouvement pendant votre absence : un Telegram tout de suite.</p>
+                {pausedWarning}
                 <div className="guard-actions">
                     <button type="button" className="guard-btn" disabled={busy} onClick={() => put({ mode: 'alarm' })}>Mode alarme</button>
                     <button type="button" className="guard-btn" disabled={busy} onClick={() => put({ mode: 'vacation' })}>Mode vacances</button>
@@ -68,6 +86,7 @@ export function GuardCard() {
                 <span className="card-title">{LABEL[view.mode]}</span>
                 <span className="guard-pill">Actif{view.since ? ` depuis ${day(view.since)}` : ''}</span>
             </div>
+            {pausedWarning}
             {view.events.length ? (
                 <ul className="guard-events">
                     {view.events.slice(0, 4).map((e) => (

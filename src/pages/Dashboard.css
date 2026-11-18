@@ -302,3 +302,11 @@ a.weather-pill:hover { background: var(--h-surface-2); }
     .journal ul { flex: 1; min-height: 0; max-height: none; }
 }
 .warn-line .row-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+/* Capteur en pause : pastille de rappel, la toucher réactive */
+.paused-pill { border: 1px dashed var(--h-muted); color: var(--h-text); min-height: 44px; cursor: pointer; }
+.paused-pill svg { color: var(--h-muted); }
+.paused-pill:hover { background: var(--h-surface-2); }
+.paused-pill-action { color: var(--h-light); font-weight: 600; font-size: 14px; }
+.phone-paused { display: flex; flex-wrap: wrap; gap: 8px; }
+.phone-paused:empty { display: none; }

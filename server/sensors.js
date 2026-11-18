@@ -4,6 +4,7 @@
  */
 import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
+import * as sensorPause from './sensorPause.js';
 import * as haService from './haService.js';
 
 export const getSensors = async () => {
@@ -20,6 +21,7 @@ export const getSensors = async () => {
             icon: entry.icon || '📡',
             room: entry.room || null,
             outside: Boolean(entry.outside),
+            pausedUntil: sensorPause.isPaused(entry.ieee) ? sensorPause.get(entry.ieee).until ?? 'forever' : null,
             isOnline: device ? device.available !== false : false,
             mac: entry.ieee,
             zigbeeName: device?.friendlyName || entry.ieee,

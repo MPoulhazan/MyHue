@@ -107,3 +107,10 @@ button.item-row:hover { background: var(--h-surface-2); }
     .widget-seg { width: 100%; }
     .widget-seg button { flex: 1; min-width: 0; }
 }
+
+/* Capteur en pause */
+.item-row.paused .item-icon,
+.item-row.paused .item-text strong { opacity: 0.5; }
+.pause-badge { display: inline-flex; align-items: center; gap: 4px; color: var(--h-muted); }
+.pause-box { display: grid; gap: 10px; }
+.pause-box p { margin: 0; font-size: 14px; color: var(--h-muted); }

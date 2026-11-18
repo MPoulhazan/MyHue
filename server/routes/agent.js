@@ -17,6 +17,9 @@ import { getSky, isSkyQuestion, skySpeech } from '../astro.js';
 import * as cooper from '../cooper.js';
 import * as mailbox from '../mailbox.js';
 import * as guard from '../guard.js';
+import * as sensorRegistry from '../sensorRegistry.js';
+import * as sensorPause from '../sensorPause.js';
+import { parseSensorPauseCommand } from '../sensorPauseLogic.js';
 import * as kitchenDisplay from '../kitchenDisplay.js';
 import { isKitchenShowCommand } from '../kitchenDisplayLogic.js';
 import * as bixi from '../bixi.js';
@@ -97,6 +100,27 @@ router.post('/api/agent', async (req, res) => {
         if (mailbox.isMailQuestion(message) && /\?|est-ce|passé|arrivé|du courrier|y a/i.test(message)) {
             const speech = mailbox.mailSpeech(mailbox.getView());
             return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'mailbox' });
+        }
+
+        // Niveau 0 : « Mets l'escalier en pause pour la soirée », « Réactive l'escalier »
+        const pauseCmd = parseSensorPauseCommand(message, sensorRegistry.getAll());
+        if (pauseCmd) {
+            let speech;
+            if (pauseCmd.action === 'unknown') speech = 'Je ne sais pas quel capteur mettre en pause.';
+            else if (pauseCmd.action === 'resume') {
+                speech = sensorPause.resume(pauseCmd.sensor.ieee, 'à la voix')
+                    ? `${pauseCmd.sensor.name} est réactivé.`
+                    : `${pauseCmd.sensor.name} n’était pas en pause.`;
+            } else {
+                try {
+                    const p = sensorPause.pause(pauseCmd.sensor.ieee, pauseCmd.duration, { source: 'Jarvis' });
+                    const d = p.until ? new Date(p.until) : null;
+                    speech = `${pauseCmd.sensor.name} en pause ${d ? `jusqu’à ${d.getHours()} h ${String(d.getMinutes()).padStart(2, '0')}` : 'jusqu’à ce que tu le réactives'}.`;
+                } catch (err) {
+                    speech = err.message;
+                }
+            }
+            return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'sensor-pause' });
         }
 
         // Niveau 0 : « Active le mode vacances », « On est rentrés », « L'alarme est activée ? »

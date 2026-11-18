@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import type { DashLight, Home } from '../../hooks/useHome';
+import { PausedSensors } from '../home/PausedSensors';
 import { Icon } from '../Icon';
 import { MomentButton } from '../MomentButton';
 import { HueStatus, RoomCard, fmt } from '../home/cards';
@@ -38,6 +39,8 @@ export function PhoneHome({ home, roomLights, onAdd, widgets }: {
                     <span>{openDoors.map((s) => s.name).join(', ')} ouverte{openDoors.length > 1 ? 's' : ''}</span>
                 </div>
             )}
+
+            <div className="phone-paused"><PausedSensors sensors={home.sensors} /></div>
 
             {home.moments.length > 0 && (
                 <div className="phone-moments">

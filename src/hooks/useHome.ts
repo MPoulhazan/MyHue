@@ -127,6 +127,8 @@ export interface Sensor {
     type: string;
     room: string | null;
     outside: boolean;
+    /** En pause : échéance (ms), 'forever' sans fin, null sinon */
+    pausedUntil: number | 'forever' | null;
     isOnline: boolean;
     lastUpdated: string | null;
     props: { temperature: number | null; humidity: number | null; pressure: number | null; battery: number | null; isOpen: boolean | null; leak?: boolean | null; smoke?: boolean | null };
@@ -315,7 +317,8 @@ export function useHome() {
     lightsRef.current = lights;
 
     const setLevel = useCallback((ids: string[], pct: number) => {
-        const targets = lightsRef.current.filter((l) => ids.includes(l.id) && l.reachable);
+        // La Yeelight décroche souvent du Wi-Fi : une extinction lui est toujours envoyée, le serveur la retente
+        const targets = lightsRef.current.filter((l) => ids.includes(l.id) && (l.reachable || (pct === 0 && l.id === YEELIGHT_ID)));
         targets.forEach((l) => {
             editing.current[l.id] = Date.now();
             sendState(l.id, pct === 0 ? { on: false } : l.dimmable ? { on: true, bri: pctToBri(pct) } : { on: true });

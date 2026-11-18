@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dataFile } from './dataDir.js';
 import { bus } from './events.js';
+import * as sensorPause from './sensorPause.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
 import * as journal from './journal.js';
@@ -174,8 +175,8 @@ let offTimer = null;
 let busy = Promise.resolve();
 const lastTrigger = { at: null, source: null };
 
-const OFF_RETRY_MS = 30_000;
-const OFF_MAX_TRIES = 40; // ~20 min de Wi-Fi capricieux avant d'abandonner
+const OFF_RETRY_MS = 10_000; // l'ampoule ne répond que par moments : on retente souvent
+const OFF_MAX_TRIES = 120; // ~20 min de Wi-Fi capricieux avant d'abandonner
 
 const scheduleOff = (delayMs = config.offAfterSec * 1000) => {
     clearTimeout(offTimer);
@@ -297,7 +298,7 @@ export const start = () => {
         const device = zigbeeService.getDevice(name);
         if (device?.state?.occupancy !== true || Date.now() - (device.lastSeen || 0) > 5000) return;
         const e = entranceMotion(device.ieeeAddr);
-        if (e) trigger(e.name);
+        if (e && !sensorPause.isPaused(e.ieee)) trigger(e.name);
     });
     setInterval(() => {
         busy = busy.then(sweep, sweep);
@@ -355,12 +356,26 @@ export const getLight = async () => {
  */
 export const setLight = async ({ on, bright, ct, rgb } = {}) => {
     const lit = on !== false;
-    await withBulb(async (ip) => {
-        if (!lit) {
-            await yeelight.setPower(ip, false, 400);
-            return;
+    if (!lit) {
+        clearTimeout(offTimer);
+        manualUntil = 0;
+        try {
+            await withBulb((ip) => yeelight.setPower(ip, false, 400));
+            owned = null;
+        } catch (err) {
+            // Wi-Fi de l'ampoule capricieux : l'extinction demandée n'est pas perdue,
+            // on la retente en tâche de fond (toutes les 10 s, ~20 min) comme l'extinction automatique
+            console.warn('⚠️  Lampe de l’entrée (extinction à la main), nouvel essai en tâche de fond:', err.message);
+            owned = { scene: null, offTries: 0 };
+            scheduleOff(10_000);
+            lastAsk = 0;
+            return { ...(await getLight()), pendingOff: true };
         }
-        const b = Math.max(1, Math.min(100, Math.round(Number(bright) || lightCache.value?.bright || 100)));
+        lastAsk = 0;
+        return getLight();
+    }
+    await withBulb(async (ip) => {
+        const b =Math.max(1, Math.min(100, Math.round(Number(bright) || lightCache.value?.bright || 100)));
         if (rgb != null) await yeelight.setColor(ip, Number(rgb) & 0xffffff, b);
         else if (ct != null) await yeelight.setWhite(ip, Math.max(1700, Math.min(6500, Math.round(Number(ct)))), b);
         else if (bright != null) await yeelight.command(ip, 'set_scene', ['ct', lightCache.value?.ct || 4000, b]);
@@ -368,8 +383,7 @@ export const setLight = async ({ on, bright, ct, rgb } = {}) => {
     });
     clearTimeout(offTimer);
     owned = null;
-    // Éteinte à la main : la règle normale reprend tout de suite
-    manualUntil = lit ? Date.now() + MANUAL_HOLD_MS : 0;
+    manualUntil = Date.now() + MANUAL_HOLD_MS;
     lastAsk = 0;
     return getLight();
 };

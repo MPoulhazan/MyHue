@@ -34,6 +34,17 @@ const reading = (s: Sensor) => {
     return '';
 };
 
+/** « en pause jusqu’à 07:00 », « en pause »… */
+const pauseLabel = (until: number | 'forever' | null) => {
+    if (until == null) return '';
+    if (until === 'forever') return 'en pause';
+    const d = new Date(until);
+    const today = d.toDateString() === new Date().toDateString();
+    return `en pause jusqu’à ${today ? '' : 'demain '}${hhmm(d)}`;
+};
+const NOT_PAUSABLE = new Set(['temperature_humidity']);
+const SAFETY = new Set(['smoke', 'water_leak']);
+
 const updated = (iso: string | null) => {
     if (!iso) return 'jamais mis à jour';
     const d = new Date(iso);
@@ -95,11 +106,12 @@ export function Sensors() {
                             const t = typeOf(s.type);
                             const low = s.props.battery != null && s.props.battery < 20;
                             return (
-                                <button key={s.did} type="button" className="item-row" onClick={() => setEditing(s)}>
+                                <button key={s.did} type="button" className={`item-row ${s.pausedUntil ? 'paused' : ''}`} onClick={() => setEditing(s)}>
                                     <span className={`item-icon ${s.type === 'door' && s.props.isOpen ? 'amber' : ''}`}><Icon name={t.icon} size={22} strokeWidth={2} /></span>
                                     <span className="item-text">
                                         <strong>{s.name}</strong>
                                         <span className="muted">
+                                            {s.pausedUntil && <><span className="pause-badge"><Icon name="pause" size={13} strokeWidth={2.4} />{pauseLabel(s.pausedUntil)}</span> · </>}
                                             {s.isOnline ? updated(s.lastUpdated) : <span className="warn">hors ligne</span>}
                                             {s.props.battery != null && <> · <span className={low ? 'warn' : ''}>pile {s.props.battery} %</span></>}
                                         </span>
@@ -190,6 +202,8 @@ function SensorSheet({ sensor, rooms, onClose }: { sensor: Sensor; rooms: string
                     </label>
                 )}
 
+                {!NOT_PAUSABLE.has(sensor.type) && <PauseBox sensor={sensor} onDone={onClose} />}
+
                 <div className="card-foot">
                     <div><span>État</span><span className={sensor.isOnline ? '' : 'warn'}>{sensor.isOnline ? updated(sensor.lastUpdated) : 'hors ligne'}</span></div>
                     {sensor.props.battery != null && <div><span>Pile</span><span>{sensor.props.battery} %</span></div>}
@@ -203,6 +217,63 @@ function SensorSheet({ sensor, rooms, onClose }: { sensor: Sensor; rooms: string
                     <button type="button" className="primary-btn" disabled={!name.trim() || saving} onClick={save}>Enregistrer</button>
                 </div>
             </motion.div>
+        </div>
+    );
+}
+
+/** Pause : le capteur reste visible mais ne déclenche plus rien (automatismes, lampe, garde). */
+function PauseBox({ sensor, onDone }: { sensor: Sensor; onDone: () => void }) {
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
+    const [armed, setArmed] = useState(false); // détecteurs de sécurité : second toucher pour confirmer
+    const safety = SAFETY.has(sensor.type);
+    const url = `/api/sensors/${encodeURIComponent(sensor.did)}/pause`;
+
+    // Le nouvel état arrive par le flux des capteurs (SSE), il suffit de fermer
+    const run = async (fn: () => Promise<unknown>) => {
+        setBusy(true);
+        setErr(null);
+        try {
+            await fn();
+            onDone();
+        } catch (e) {
+            setErr((axios.isAxiosError(e) && e.response?.data?.error) || 'Échec, réessaie.');
+            setBusy(false);
+        }
+    };
+    const pause = (duration: string) => {
+        if (safety && !armed) return setArmed(true);
+        run(() => axios.post(url, { duration, force: safety }));
+    };
+
+    if (sensor.pausedUntil) {
+        return (
+            <div className="field pause-box">
+                <span>Pause</span>
+                <p>{sensor.name} est {pauseLabel(sensor.pausedUntil)} : il ne déclenche plus rien.</p>
+                <div className="chips">
+                    <button type="button" className="active" disabled={busy} onClick={() => run(() => axios.delete(url))}>Réactiver maintenant</button>
+                </div>
+                {err && <div className="warn-line">{err}</div>}
+            </div>
+        );
+    }
+    return (
+        <div className="field pause-box">
+            <span>Mettre en pause</span>
+            <p>{safety
+                ? armed ? 'Détecteur de sécurité : touche encore pour confirmer. 1 h au plus, il se réactive tout seul.' : 'Détecteur de sécurité : pause d’1 h au plus, avec confirmation.'
+                : 'Il continue de remonter son état, mais plus rien n’y réagit (automatismes, lampe de l’entrée, garde).'}</p>
+            <div className="chips">
+                {safety
+                    ? <button type="button" className={armed ? 'active' : ''} disabled={busy} onClick={() => pause('1h')}>{armed ? 'Confirmer 1 h' : '1 h'}</button>
+                    : <>
+                        <button type="button" disabled={busy} onClick={() => pause('1h')}>1 h</button>
+                        <button type="button" disabled={busy} onClick={() => pause('morning')}>Jusqu’à 7 h</button>
+                        <button type="button" disabled={busy} onClick={() => pause('forever')}>Jusqu’à réactivation</button>
+                    </>}
+            </div>
+            {err && <div className="warn-line">{err}</div>}
         </div>
     );
 }

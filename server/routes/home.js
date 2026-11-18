@@ -8,6 +8,7 @@ import * as companion from '../companion.js';
 import * as broadlinkService from '../broadlinkService.js';
 import * as zigbeeService from '../zigbeeService.js';
 import * as sensorRegistry from '../sensorRegistry.js';
+import * as sensorPause from '../sensorPause.js';
 import * as haService from '../haService.js';
 import * as journal from '../journal.js';
 import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
@@ -589,7 +590,7 @@ router.get('/api/sensors/events', async (req, res) => {
 });
 
 let sseBroadcastTimer = null;
-zigbeeService.emitter.on('update', () => {
+const broadcastSensors = () => {
     // Regroupe les mises à jour rapprochées (200 ms)
     if (sseBroadcastTimer) return;
     sseBroadcastTimer = setTimeout(async () => {
@@ -600,6 +601,26 @@ zigbeeService.emitter.on('update', () => {
             for (const client of sseClients) client.write(data);
         } catch { /* ignore */ }
     }, 200);
+};
+zigbeeService.emitter.on('update', broadcastSensors);
+sensorPause.emitter.on('change', broadcastSensors);
+
+// --- Pause d'un capteur ---
+
+router.get('/api/sensors/pauses', (_req, res) => res.json({ pauses: sensorPause.list() }));
+
+// { duration: '1h' | 'morning' | 'forever' | minutes, force?: true (détecteurs de sécurité) }
+router.post('/api/sensors/:ieee/pause', (req, res) => {
+    try {
+        const { duration = 'morning', force } = req.body || {};
+        res.json(sensorPause.pause(decodeURIComponent(req.params.ieee), duration, { force: Boolean(force) }));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.delete('/api/sensors/:ieee/pause', (req, res) => {
+    res.json({ ok: sensorPause.resume(decodeURIComponent(req.params.ieee)) });
 });
 
 // --- Zigbee (zigbee2mqtt via Mosquitto) ---
