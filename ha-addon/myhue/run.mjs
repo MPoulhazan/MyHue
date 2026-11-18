@@ -63,4 +63,41 @@ function run(script) {
 run('server/agentServer.js');
 if (opts.telegram_bot_token) run('server/telegramBot.js');
 
+// --- Tailscale Funnel : seul /mcp est public, et il passe par le port 5175 où le token est toujours exigé ---
+// Une panne de Tailscale ne doit jamais arrêter MyHue : rien ici n'est dans `children`.
+const TS_DIR = '/data/tailscale';
+const TS_SOCK = '/tmp/tailscaled.sock';
+const ts = (...args) =>
+    new Promise((resolve) => {
+        const p = spawn('tailscale', [`--socket=${TS_SOCK}`, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+        let out = '';
+        p.stdout.on('data', (d) => (out += d));
+        p.stderr.on('data', (d) => (out += d));
+        p.on('error', (err) => resolve({ code: 1, out: err.message }));
+        p.on('exit', (code) => resolve({ code, out: out.trim() }));
+    });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function startFunnel() {
+    const { existsSync, mkdirSync } = await import('fs');
+    const loggedIn = existsSync(`${TS_DIR}/tailscaled.state`);
+    if (!opts.tailscale_authkey && !loggedIn) return console.log('[tailscale] pas de clé : accès distant désactivé');
+    if (!opts.myhue_token) return console.warn('[tailscale] myhue_token vide : /mcp ne serait pas protégé, Funnel non ouvert');
+    mkdirSync(TS_DIR, { recursive: true });
+    const daemon = spawn('tailscaled', ['--tun=userspace-networking', `--statedir=${TS_DIR}`, `--socket=${TS_SOCK}`], { stdio: 'ignore' });
+    daemon.on('exit', (code) => console.error(`[tailscale] tailscaled arrêté (code ${code})`));
+    process.on('SIGTERM', () => daemon.kill('SIGTERM'));
+    for (let i = 0; i < 30 && !existsSync(TS_SOCK); i++) await sleep(500);
+
+    const up = await ts('up', '--hostname=myhue', '--accept-dns=false', ...(opts.tailscale_authkey ? [`--authkey=${opts.tailscale_authkey}`] : []));
+    if (up.code !== 0) return console.error('[tailscale] connexion impossible :', up.out);
+    // On repart de zéro à chaque démarrage : aucune autre route ne reste ouverte
+    await ts('serve', 'reset');
+    const funnel = await ts('funnel', '--bg', '--set-path=/mcp', 'http://127.0.0.1:5175/mcp');
+    if (funnel.code !== 0) return console.error('[tailscale] Funnel refusé :', funnel.out);
+    const status = await ts('funnel', 'status');
+    console.log('[tailscale] Funnel ouvert sur /mcp seulement\n' + status.out);
+}
+startFunnel().catch((err) => console.error('[tailscale]', err.message));
+
 process.on('SIGTERM', () => children.forEach((c) => c.kill('SIGTERM')));

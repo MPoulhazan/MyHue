@@ -27,6 +27,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
     && chmod +x /usr/local/bin/yt-dlp
+# Tailscale (dépôt officiel) : Funnel n'expose que /mcp, pour le connecteur et les tâches Claude
+RUN curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg -o /usr/share/keyrings/tailscale-archive-keyring.gpg \
+    && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list -o /etc/apt/sources.list.d/tailscale.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends tailscale \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app /app
 COPY run.mjs /run.mjs
