@@ -21,8 +21,11 @@ const isRemote = (req) => {
 };
 
 const sha = (value) => createHash('sha256').update(String(value)).digest();
-export const isValidToken = (candidate) =>
-    Boolean(TOKEN && candidate) && timingSafeEqual(sha(candidate), sha(TOKEN));
+// Trim : le clavier d'un téléphone ajoute souvent un espace final après un collage
+export const isValidToken = (candidate) => {
+    const value = String(candidate ?? '').trim();
+    return Boolean(TOKEN && value) && timingSafeEqual(sha(value), sha(TOKEN.trim()));
+};
 
 const readCookie = (req, name) => {
     const header = req.headers.cookie || '';
@@ -53,7 +56,7 @@ p{margin:0;color:#f87171}
 <form method="post" action="/login">
 <h1>MyHue</h1>
 ${error ? '<p>Token invalide.</p>' : ''}
-<input name="token" type="password" placeholder="Token d'accès" autocomplete="current-password" autofocus>
+<input name="token" type="password" placeholder="Token d'accès" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus>
 <button type="submit">Entrer</button>
 </form></body></html>`;
 
