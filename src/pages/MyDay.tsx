@@ -6,7 +6,7 @@ import './MyDay.css';
 
 // « Ma journée » : le check-up du matin d'une personne (maquette A, 2026-11-17)
 
-interface Person { id: string; name: string; initial: string; color: string; mails: boolean }
+interface Person { id: string; name: string; initial: string; color: string; mails: boolean; calendar: boolean; calendarStatus: { at: number | null; error: string | null; count: number } | null }
 interface Thing { kind: string; title: string; detail: string }
 interface Mail { id: string; from: string; subject: string; summary: string; receivedAt: number | null; draft: string | null; draftUrl: string | null; threadUrl: string | null }
 interface Idea { id: string; kind: 'event' | 'museum' | 'resto' | 'activity'; title: string; when: string | null; where: string | null; why: string | null; url: string | null }
@@ -74,10 +74,56 @@ function MailItem({ mail }: { mail: Mail }) {
     );
 }
 
+function CalendarSheet({ person, onClose, onSaved }: { person: Person; onClose: () => void; onSaved: () => void }) {
+    const [url, setUrl] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+    const save = async (value: string | null) => {
+        setBusy(true);
+        setError(null);
+        try {
+            await axios.put('/api/day/calendar', { person: person.id, url: value });
+            onSaved();
+            onClose();
+        } catch (err) {
+            setError(axios.isAxiosError(err) ? err.response?.data?.error || 'Enregistrement impossible' : 'Enregistrement impossible');
+        } finally {
+            setBusy(false);
+        }
+    };
+    return (
+        <div className="sheet-backdrop" onClick={onClose}>
+            <div className="sheet md-sheet" role="dialog" aria-modal="true" aria-label="Agenda" onClick={(e) => e.stopPropagation()}>
+                <div className="sheet-head">
+                    <div className="sheet-title"><h2>Agenda de {person.name}</h2></div>
+                    <button type="button" className="round-btn" aria-label="Fermer" onClick={onClose}><Icon name="close" size={22} strokeWidth={2} /></button>
+                </div>
+                <ol className="md-steps">
+                    <li>Sur un ordinateur, ouvre <strong>calendar.google.com</strong>, puis la roue dentée › <strong>Paramètres</strong>.</li>
+                    <li>À gauche, clique sur ton agenda sous « Paramètres de mes agendas ».</li>
+                    <li>Descends jusqu’à <strong>Intégrer l’agenda</strong> et copie l’<strong>adresse secrète au format iCal</strong>.</li>
+                    <li>Colle-la ici. Elle reste sur le serveur de la maison et n’est jamais réaffichée.</li>
+                </ol>
+                <label className="md-field">
+                    <span>Adresse secrète iCal</span>
+                    <input type="url" inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"
+                        value={url} onChange={(e) => setUrl(e.target.value)} />
+                </label>
+                {error && <p className="md-error">{error}</p>}
+                <div className="md-actions">
+                    <button className="md-btn primary" disabled={busy || !url.trim()} onClick={() => save(url.trim())}>{busy ? 'Lecture de l’agenda…' : 'Brancher'}</button>
+                    {person.calendar && <button className="md-btn quiet" disabled={busy} onClick={() => save(null)}>Débrancher</button>}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function MyDay() {
     const [personId, setPersonId] = useState<string | null>(readPick);
     const [data, setData] = useState<DayView | null>(null);
     const [error, setError] = useState(false);
+    const [calendarOpen, setCalendarOpen] = useState(false);
 
     const load = useCallback(() => {
         axios.get<DayView>('/api/day', { params: { person: personId || '' } })
@@ -148,7 +194,12 @@ export function MyDay() {
                             ))}
                         </ol>
                     ) : <p className="md-sub">Rien à retenir aujourd’hui.</p>}
-                    {things.length > 0 && <span className="md-sub md-end">Rien d’autre aujourd’hui.</span>}
+                    {things.length > 0 && <span className="md-sub">Rien d’autre aujourd’hui.</span>}
+                    <div className="md-end md-cal">
+                        {person.calendarStatus?.error
+                            ? <button className="md-btn quiet warn" onClick={() => setCalendarOpen(true)}>Agenda injoignable · vérifier</button>
+                            : <button className="md-btn quiet" onClick={() => setCalendarOpen(true)}>{person.calendar ? 'Agenda branché' : 'Brancher mon agenda'}</button>}
+                    </div>
                 </section>
 
                 {mails && (
@@ -185,6 +236,8 @@ export function MyDay() {
                     )}
                 </section>
             </div>
+
+            {calendarOpen && <CalendarSheet person={person} onClose={() => setCalendarOpen(false)} onSaved={load} />}
 
             {touch && (
                 <footer className="md-touch">

@@ -77,3 +77,15 @@
     .md-hero h1 { font-size: 26px; }
     .md-grid, .md-grid.two { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Branchement de l'agenda */
+.md-cal { display: flex; }
+.md-btn.warn { color: var(--h-warn); border-color: #5a4320; }
+.md-btn:disabled { opacity: 0.5; cursor: default; }
+.md-sheet { max-width: 640px; gap: 18px; }
+.md-sheet .sheet-head h2 { font-size: 26px; }
+.md-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.45; color: #c9cac2; }
+.md-field { display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: var(--h-muted); }
+.md-field input { min-height: 52px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--h-line-2); background: var(--h-surface-2); color: var(--h-text); font-size: 15px; }
+.md-field input:focus { outline: 2px solid var(--h-accent); outline-offset: 1px; }
+.md-error { margin: 0; color: var(--h-warn); font-size: 14px; }

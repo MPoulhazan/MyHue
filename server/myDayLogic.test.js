@@ -27,6 +27,25 @@ test('au plus 3 choses, la tempête en premier', () => {
     assert.equal(r.rainAt, 17);
 });
 
+test('agenda : rendez-vous à venir, en cours, toute la journée ; les finis disparaissent', () => {
+    const now = Date.parse('2026-11-18T17:00:00Z'); // 12 h à Montréal
+    const r = dayItems({
+        ...base,
+        now,
+        events: [
+            { title: 'Fini', start: now - 7200_000, end: now - 3600_000, allDay: false },
+            { title: 'Anniversaire', start: now - 12 * 3600_000, end: now + 12 * 3600_000, allDay: true, location: null },
+            { title: 'Réunion', start: now - 600_000, end: now + 1800_000, allDay: false },
+            { title: 'Dentiste', start: Date.parse('2026-11-18T19:00:00Z'), end: Date.parse('2026-11-18T20:00:00Z'), allDay: false, location: 'Clinique, 123 rue X' },
+        ],
+    });
+    assert.deepEqual(r.items.map((i) => [i.title, i.detail]), [
+        ['Anniversaire', 'Toute la journée'],
+        ['Réunion', 'En cours, jusqu’à 12 h 30'],
+        ['Dentiste à 14 h', 'Clinique'],
+    ]);
+});
+
 test('bac déjà sorti et pluie passée : rien', () => {
     const r = dayItems({
         ...base,

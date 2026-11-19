@@ -25,6 +25,15 @@ export const dayItems = (f) => {
         items.push({ kind: 'storm', title: 'Tempête probable', detail: `Rafales jusqu’à ${s.maxGust} km/h${s.window ? `, à partir de ${hhmm(s.window.from, tz)}` : ''}` });
     }
 
+    // L'agenda d'abord : ce sont les choses à soi
+    const now = f.now ?? Date.now();
+    for (const e of (f.events || []).filter((x) => x.end > now)) {
+        const where = e.location ? ` · ${e.location.split(',')[0]}` : '';
+        if (e.allDay) items.push({ kind: 'event', title: e.title, detail: `Toute la journée${where}` });
+        else if (e.start <= now) items.push({ kind: 'event', title: e.title, detail: `En cours, jusqu’à ${hhmm(e.end, tz)}${where}` });
+        else items.push({ kind: 'event', title: `${e.title} à ${hhmm(e.start, tz)}`, detail: e.location ? e.location.split(',')[0] : `Jusqu’à ${hhmm(e.end, tz)}` });
+    }
+
     const peaks = (f.flex?.enabled ? f.flex.upcoming || [] : []).filter((e) => !e.skipped && f.dayOf(e.start) === f.today && e.end > Date.now());
     for (const e of peaks) {
         items.push({ kind: 'flex', title: `Pointe Flex D ${hhmm(e.start, tz)}–${hhmm(e.end, tz)}`, detail: 'Évite la sécheuse, le lave-vaisselle et le four' });

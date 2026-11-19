@@ -19,6 +19,8 @@ import * as mailbox from './mailbox.js';
 import * as city from './city.js';
 import { getWeatherDetails } from './weather.js';
 import { dayItems, headline, pickOuting } from './myDayLogic.js';
+import * as calendar from './calendar.js';
+import { freeEvenings, localMidnight } from './calendarLogic.js';
 
 const PEOPLE_FILE = dataFile('people.json');
 const STORE_FILE = dataFile('myday.json');
@@ -57,7 +59,23 @@ const clean = (s, max = 400) => (typeof s === 'string' ? s.trim().slice(0, max) 
 
 // --- Profils ---
 
-export const getPeople = () => people;
+/** Profils sans l'adresse iCal (un secret) : on dit seulement s'il y a un agenda. */
+export const getPeople = () => people.map(({ ical, ...p }) => ({ ...p, calendar: Boolean(ical), calendarStatus: ical ? calendar.status(p.id) : null }));
+
+/** Branche (ou débranche avec null) l'agenda Google d'une personne par son adresse iCal secrète. */
+export const setCalendar = async (personId, url) => {
+    const person = people.find((p) => p.id === personId);
+    if (!person) throw new Error(`Profil inconnu : ${personId}`);
+    if (url && !calendar.isCalendarUrl(url)) throw new Error('Adresse iCal invalide : elle commence par https:// et finit par .ics');
+    person.ical = url ? url.trim() : null;
+    writeJson(PEOPLE_FILE, people);
+    if (person.ical) await calendar.refresh(person.id);
+    else calendar.forget(person.id);
+    journal.log({ kind: 'system', title: `Ma journée : agenda ${person.ical ? 'branché' : 'débranché'}`, data: { person: personId } });
+    return getPeople().find((p) => p.id === personId);
+};
+
+export const start = () => calendar.start(() => people);
 
 export const setPeople = (list) => {
     if (!Array.isArray(list) || !list.length || list.length > 4) throw new Error('Entre 1 et 4 profils');
@@ -68,9 +86,10 @@ export const setPeople = (list) => {
         color: COLORS.includes(p.color) ? p.color : COLORS[i % COLORS.length],
         haPerson: clean(p.haPerson, 80) || null,
         mails: Boolean(p.mails),
+        ical: people.find((old) => old.id === (clean(p.id, 24) || `p${i + 1}`))?.ical ?? null,
     }));
     writeJson(PEOPLE_FILE, people);
-    return people;
+    return getPeople();
 };
 
 /** Profil proposé par défaut : la seule personne suivie qui est à la maison, sinon le premier. */
@@ -155,7 +174,9 @@ export const reactOuting = (id, action) => {
 
 /** Contexte pour la tâche Claude : profils, sorties déjà faites, jours où on sort. */
 export const getContextForClaude = () => ({
-    people: people.map(({ id, name, mails }) => ({ id, name, mails })),
+    people: people.map(({ id, name, mails, ical }) => ({ id, name, mails, calendar: Boolean(ical) })),
+    // Soirées du mercredi au samedi : libres ou prises, d'après les agendas branchés
+    evenings: freeEvenings(people.filter((p) => p.ical).map((p) => ({ id: p.id, name: p.name, events: calendar.eventsBetween(p.id, Date.now(), Date.now() + 8 * 86_400_000) }))),
     outings: {
         rules: 'Sorties à deux sur l’île de Montréal seulement (pas Laval ni Longueuil). Jamais dimanche, lundi ni mardi soir : proposer du mercredi au samedi.',
         alreadyDone: store.done.slice(-50),
@@ -180,14 +201,15 @@ export const getDay = async (personId) => {
         cityLine: city.briefingLine(),
         today: localDay(),
         dayOf: localDay,
+        events: person.ical ? calendar.eventsBetween(person.id, Date.now(), localMidnight(Date.now()) + 86_400_000) : [],
     };
     const things = dayItems(facts);
     const mailEntry = person.mails ? store.mails[person.id] : null;
     const mails = mailEntry && Date.now() - mailEntry.at < MAIL_MAX_AGE_MS ? mailEntry : null;
     const cooperView = cooper.getView();
     return {
-        person,
-        people,
+        person: getPeople().find((p) => p.id === person.id),
+        people: getPeople(),
         default: defaultPerson(),
         date: Date.now(),
         weather: weather && {

@@ -25,6 +25,7 @@ import * as bixi from './bixi.js';
 import * as city from './city.js';
 import * as collecte from './collecte.js';
 import * as weeklyDigest from './weeklyDigest.js';
+import * as myDay from './myDay.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as health from './health.js';
@@ -89,6 +90,7 @@ app.listen(PORT, () => {
     city.start();
     collecte.start();
     weeklyDigest.start();
+    myDay.start();
     broadlinkService.discover().catch((err) => console.warn('⚠️  Broadlink:', err.message));
     zigbeeService.start().catch((err) => console.warn('⚠️  Zigbee:', err.message));
     health.start();

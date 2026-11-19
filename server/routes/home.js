@@ -400,6 +400,14 @@ router.put('/api/day/people', (req, res) => {
     }
 });
 
+router.put('/api/day/calendar', async (req, res) => {
+    try {
+        res.json(await myDay.setCalendar(req.body?.person, req.body?.url || null));
+    } catch (err) {
+        fail(res, err);
+    }
+});
+
 router.get('/api/day', async (req, res) => {
     try {
         res.json(await myDay.getDay(String(req.query.person || '')));
