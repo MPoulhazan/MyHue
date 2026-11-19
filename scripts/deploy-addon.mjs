@@ -42,6 +42,15 @@ ws.onmessage = async (e) => {
         if (before.version !== before.latest) {
             const up = await call(`/store/addons/${ADDON}/update`);
             console.log('Mise à jour :', up.success ? 'ok' : up.error?.message);
+            if (!up.success) {
+                // Pistes sans lire les journaux : place sur le disque et problèmes signalés par le Supervisor
+                const host = await call('/host/info', 'get');
+                const r = host.result || {};
+                console.log('Disque :', { libre_Go: r.disk_free, total_Go: r.disk_total, utilise_Go: r.disk_used });
+                const res = await call('/resolution/info', 'get');
+                console.log('Problèmes signalés :', JSON.stringify({ issues: res.result?.issues, unhealthy: res.result?.unhealthy, unsupported: res.result?.unsupported }));
+                console.log('Le détail est dans Paramètres › Système › Journaux › Supervisor (illisible par cette API).');
+            }
         } else {
             console.log('Déjà à jour.');
         }
