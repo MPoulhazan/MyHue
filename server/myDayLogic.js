@@ -31,7 +31,10 @@ export const dayItems = (f) => {
         const where = e.location ? ` · ${e.location.split(',')[0]}` : '';
         if (e.allDay) items.push({ kind: 'event', title: e.title, detail: `Toute la journée${where}` });
         else if (e.start <= now) items.push({ kind: 'event', title: e.title, detail: `En cours, jusqu’à ${hhmm(e.end, tz)}${where}` });
-        else items.push({ kind: 'event', title: `${e.title} à ${hhmm(e.start, tz)}`, detail: e.location ? e.location.split(',')[0] : `Jusqu’à ${hhmm(e.end, tz)}` });
+        else if (e.departure) {
+            const late = e.departure.at < now;
+            items.push({ kind: 'event', title: `${e.title} à ${hhmm(e.start, tz)}`, detail: `${late ? 'Tu devais partir' : 'Pars'} à ${hhmm(e.departure.at, tz)}${e.departure.via ? ` · ${e.departure.via}` : ''}`, leaveAt: e.departure.at });
+        } else items.push({ kind: 'event', title: `${e.title} à ${hhmm(e.start, tz)}`, detail: e.location ? e.location.split(',')[0] : `Jusqu’à ${hhmm(e.end, tz)}` });
     }
 
     const peaks = (f.flex?.enabled ? f.flex.upcoming || [] : []).filter((e) => !e.skipped && f.dayOf(e.start) === f.today && e.end > Date.now());
@@ -100,7 +103,8 @@ export const personalSpeech = (d) => {
     if (!events.length) {
         parts.push(hourOf(now, tz) >= 17 ? 'Plus rien à ton agenda aujourd’hui.' : 'Rien à ton agenda aujourd’hui.');
     } else {
-        const said = timed.slice(0, 3).map((e) => (e.start <= now ? `${e.title}, en cours jusqu’à ${sayHour(e.end, tz)}` : `${e.title} à ${sayHour(e.start, tz)}`));
+        const leave = (e) => (e.departure && e.departure.at > now ? `, pars à ${sayHour(e.departure.at, tz)}${e.departure.via && !e.departure.walk ? ` en ${e.departure.via}` : ''}` : '');
+        const said = timed.slice(0, 3).map((e) => (e.start <= now ? `${e.title}, en cours jusqu’à ${sayHour(e.end, tz)}` : `${e.title} à ${sayHour(e.start, tz)}${leave(e)}`));
         if (timed.length === 1) parts.push(`À ton agenda : ${said[0]}.`);
         else if (timed.length > 1) parts.push(`Tu as ${timed.length} rendez-vous : ${joinFr(said)}${timed.length > 3 ? ', entre autres' : ''}.`);
         if (allDay.length) parts.push(`Aujourd’hui aussi : ${joinFr(allDay.slice(0, 2).map((e) => e.title))}.`);

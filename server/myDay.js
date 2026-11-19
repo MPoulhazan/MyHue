@@ -21,6 +21,7 @@ import { getWeatherDetails } from './weather.js';
 import { dayItems, headline, pickOuting, personalSpeech, isDayQuestion } from './myDayLogic.js';
 import * as briefing from './briefing.js';
 import * as calendar from './calendar.js';
+import * as departure from './departure.js';
 import { freeEvenings, localMidnight } from './calendarLogic.js';
 
 const PEOPLE_FILE = dataFile('people.json');
@@ -78,11 +79,17 @@ export const setCalendar = async (personId, url) => {
 
 export const start = () => {
     calendar.start(() => people);
+    // Rappel Telegram de départ : seulement pour le premier profil (celui qui reçoit le Telegram de la maison)
+    departure.start(() => people.filter((p) => p.ical).flatMap((p) =>
+        calendar.eventsBetween(p.id, Date.now(), localMidnight(Date.now()) + 86_400_000).map((e) => ({ ...e, remind: p.id === people[0].id }))));
     // Briefing du salon : l'agenda de la personne seule à la maison (ou du premier profil), sans les expéditeurs
     briefing.addExtra(() => personalLines(defaultPerson().id, { details: false }));
 };
 
-const todayEvents = (person) => (person.ical ? calendar.eventsBetween(person.id, Date.now(), localMidnight(Date.now()) + 86_400_000) : []);
+// Rendez-vous du jour, avec l'heure de départ quand elle est connue
+const todayEvents = (person) =>
+    (person.ical ? calendar.eventsBetween(person.id, Date.now(), localMidnight(Date.now()) + 86_400_000) : [])
+        .map((e) => ({ ...e, departure: departure.forEvent(e) }));
 const freshMails = (person) => {
     const m = person.mails ? store.mails[person.id] : null;
     return m && Date.now() - m.at < MAIL_MAX_AGE_MS ? m : null;

@@ -1,5 +1,5 @@
 name: MyHue
-version: "1.60.0"
+version: "1.61.0"
 slug: myhue
 description: Interface MyHue (lumières, capteurs Zigbee, chauffage, Cast, agent Groq)
 url: https://github.com/MPoulhazan/MyHue
@@ -36,6 +36,7 @@ options:
   youtube_client_secret: ""
   youtube_default_playlists: ""
   tailscale_authkey: ""
+  google_maps_api_key: ""
 schema:
   groq_api_key: password
   groq_model: str
@@ -51,3 +52,4 @@ schema:
   youtube_client_secret: password
   youtube_default_playlists: str
   tailscale_authkey: password
+  google_maps_api_key: password
