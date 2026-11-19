@@ -9,6 +9,7 @@ import * as broadlinkService from '../broadlinkService.js';
 import { parseIntent } from '../intentParser.js';
 import { runGroqAgent, needsClaude, buildEscalation } from '../groqAgent.js';
 import { handleMcpRequest } from '../mcpServer.js';
+import * as myDay from '../myDay.js';
 import { isValidToken } from '../auth.js';
 import { hueBaseUrl, getHueContext, getHueScenes } from '../hue.js';
 import * as journal from '../journal.js';
@@ -76,11 +77,15 @@ router.delete('/api/agent/learned', (req, res) => {
 
 router.post('/api/agent', async (req, res) => {
     try {
-        const { message, history } = req.body || {};
+        const { message, history, person } = req.body || {};
 
         if (!message || typeof message !== 'string') {
             return res.status(400).json({ error: 'Message is required.' });
         }
+
+        // Niveau 0 : « C'est quoi ma journée ? », « Qu'est-ce qu'on fait samedi ? »
+        const day = await myDay.voiceAnswer(message, typeof person === 'string' ? person : null).catch(() => null);
+        if (day) return res.json({ message: day, actions: [], actionResults: [], tier: 'local', intent: 'day' });
 
         // Niveau 0 : question sur le ciel, répondue par le calcul local (sans LLM)
         if (isSkyQuestion(message)) {

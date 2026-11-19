@@ -76,3 +76,51 @@ export const pickOuting = (store, now = Date.now(), tz = 'America/Toronto') => {
     const valid = (store.outings?.ideas || []).filter((o) => !skipped.has(o.id) && !done.has(o.title) && (!o.date || o.date >= today));
     return valid.length ? { idea: valid[0], left: valid.length - 1 } : null;
 };
+
+// --- Briefing personnel, lu à voix haute ---
+
+/** « 14 h 30 » → « 14 heures 30 », pour la synthèse vocale. */
+export const sayable = (text) => text.replace(/(\d{1,2}) h (\d{2})/g, '$1 heures $2').replace(/(\d{1,2}) h\b/g, '$1 heures');
+
+const sayHour = (ts, tz) => sayable(hhmm(ts, tz));
+const joinFr = (xs) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} et ${xs[xs.length - 1]}`);
+
+/**
+ * Ce que Jean-Claude dit à une personne : son agenda, ses mails, l'idée de sortie.
+ * @param d { name, events, mails: {at, items}|null, outing, now, tz, details }
+ *   details = false pour l'enceinte du salon : le nombre de mails, sans les expéditeurs
+ */
+export const personalSpeech = (d) => {
+    const tz = d.tz || 'America/Toronto';
+    const now = d.now ?? Date.now();
+    const parts = [];
+    const events = (d.events || []).filter((e) => e.end > now);
+    const timed = events.filter((e) => !e.allDay);
+    const allDay = events.filter((e) => e.allDay);
+    if (!events.length) {
+        parts.push(hourOf(now, tz) >= 17 ? 'Plus rien à ton agenda aujourd’hui.' : 'Rien à ton agenda aujourd’hui.');
+    } else {
+        const said = timed.slice(0, 3).map((e) => (e.start <= now ? `${e.title}, en cours jusqu’à ${sayHour(e.end, tz)}` : `${e.title} à ${sayHour(e.start, tz)}`));
+        if (timed.length === 1) parts.push(`À ton agenda : ${said[0]}.`);
+        else if (timed.length > 1) parts.push(`Tu as ${timed.length} rendez-vous : ${joinFr(said)}${timed.length > 3 ? ', entre autres' : ''}.`);
+        if (allDay.length) parts.push(`Aujourd’hui aussi : ${joinFr(allDay.slice(0, 2).map((e) => e.title))}.`);
+    }
+    if (d.mails?.at) {
+        const items = d.mails.items || [];
+        if (!items.length) parts.push('Pas de mail important.');
+        else {
+            const n = items.length === 1 ? 'Un mail important' : `${NUMBERS[Math.min(items.length, 3)]} mails importants`;
+            parts.push(d.details === false ? `${n}.` : `${n} : ${joinFr(items.slice(0, 3).map((m) => `de ${m.from}`))}.`);
+            if (items.some((m) => m.draft)) parts.push(items.filter((m) => m.draft).length > 1 ? 'Les réponses sont prêtes dans tes brouillons.' : 'Une réponse est prête dans tes brouillons.');
+        }
+    }
+    if (d.outing?.idea && d.details !== false) {
+        const o = d.outing.idea;
+        parts.push(`Une idée pour vous deux : ${o.title}${o.when ? `, ${sayable(o.when.toLowerCase())}` : ''}.`);
+    }
+    return parts.join(' ');
+};
+
+/** « C'est quoi ma journée ? », « Mon briefing », « Qu'est-ce qu'on fait samedi ? » */
+export const isDayQuestion = (text) =>
+    /\b(ma journ[ée]e|mon (briefing|programme|planning|agenda)|mon check.?up|qu.?est.?ce que j.?ai aujourd|on fait quoi (ce soir|ce week.?end|samedi|vendredi)|qu.?est.?ce qu.?on fait (ce soir|ce week.?end|samedi|vendredi|jeudi|mercredi)|une id[ée]e de sortie)\b/i.test(text);

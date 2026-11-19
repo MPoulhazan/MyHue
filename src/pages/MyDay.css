@@ -89,3 +89,4 @@
 .md-field input { min-height: 52px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--h-line-2); background: var(--h-surface-2); color: var(--h-text); font-size: 15px; }
 .md-field input:focus { outline: 2px solid var(--h-accent); outline-offset: 1px; }
 .md-error { margin: 0; color: var(--h-warn); font-size: 14px; }
+.md-btn.md-brief { gap: 8px; font-weight: 700; border-color: var(--md-tone); color: var(--md-tone-text); }

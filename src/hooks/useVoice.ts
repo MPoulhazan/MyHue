@@ -120,7 +120,7 @@ const speakBrowser = (text: string) =>
     });
 
 /** Lit la réponse avec Piper (voix française locale via HA), sinon avec la voix du navigateur. */
-const speak = async (text: string) => {
+export const speak = async (text: string) => {
     const clean = text.replace(/https?:\/\/\S+/g, '').trim();
     if (!clean) return;
     try {

@@ -400,6 +400,14 @@ router.put('/api/day/people', (req, res) => {
     }
 });
 
+router.get('/api/day/briefing', async (req, res) => {
+    try {
+        res.json({ text: await myDay.briefingFor(String(req.query.person || '')) });
+    } catch (err) {
+        fail(res, err, 503);
+    }
+});
+
 router.put('/api/day/calendar', async (req, res) => {
     try {
         res.json(await myDay.setCalendar(req.body?.person, req.body?.url || null));

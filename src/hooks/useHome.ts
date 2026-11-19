@@ -4,6 +4,7 @@ import { stateToHex, ctToHex, hexToXy, pctToBri, briToPct } from '../utils/hueCo
 import { scenesByRoom } from '../utils/hueScenes';
 import type { RoomScene } from '../utils/hueScenes';
 import { useCast } from './useCast';
+import { readDayPick } from '../pages/myDayPick';
 
 export interface DashLight {
     id: string;
@@ -518,7 +519,7 @@ export function useHome() {
         say('user', message);
         setThinking(true);
         try {
-            const { data } = await axios.post('/api/agent', { message, history });
+            const { data } = await axios.post('/api/agent', { message, history, person: readDayPick() });
             const reply: string = data.message || data.reply || 'OK';
             push(reply, '#C8F560', data.escalation?.url);
             say('assistant', reply, data.escalation?.url);

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Icon } from '../components/Icon';
+import { speak } from '../hooks/useVoice';
+import { readDayPick as readPick, saveDayPick as savePick } from './myDayPick';
 import './Dashboard.css';
 import './MyDay.css';
 
@@ -22,23 +24,6 @@ interface DayView {
     liked: (Idea & { at: number }) | null;
     touch: { who: string; line: string } | null;
 }
-
-// Le choix d'une personne sur la tablette tient 10 minutes, puis on revient au profil par défaut
-const PICK_KEY = 'myday.pick';
-const PICK_MS = 10 * 60_000;
-const readPick = (): string | null => {
-    try {
-        const p = JSON.parse(localStorage.getItem(PICK_KEY) || 'null');
-        return p && Date.now() - p.at < PICK_MS ? p.id : null;
-    } catch {
-        return null;
-    }
-};
-const savePick = (id: string) => {
-    try {
-        localStorage.setItem(PICK_KEY, JSON.stringify({ id, at: Date.now() }));
-    } catch { /* stockage indisponible : le choix vaut pour cette visite */ }
-};
 
 const KIND_LABEL: Record<Idea['kind'], string> = { event: 'Événement', museum: 'Musée', resto: 'Resto', activity: 'Activité' };
 const deg = (n: number) => `${n < 0 ? '−' : ''}${Math.abs(n)}°`;
@@ -124,6 +109,7 @@ export function MyDay() {
     const [data, setData] = useState<DayView | null>(null);
     const [error, setError] = useState(false);
     const [calendarOpen, setCalendarOpen] = useState(false);
+    const [speaking, setSpeaking] = useState(false);
 
     const load = useCallback(() => {
         axios.get<DayView>('/api/day', { params: { person: personId || '' } })
@@ -144,6 +130,17 @@ export function MyDay() {
     const pick = (id: string) => {
         savePick(id);
         setPersonId(id);
+    };
+
+    const playBriefing = async () => {
+        if (speaking || !data) return;
+        setSpeaking(true);
+        try {
+            const { data: b } = await axios.get<{ text: string }>('/api/day/briefing', { params: { person: data.person.id } });
+            await speak(b.text);
+        } catch { /* briefing indisponible : le bouton redevient actif */ } finally {
+            setSpeaking(false);
+        }
     };
 
     const react = async (id: string, action: 'like' | 'next' | 'done') => {
@@ -171,6 +168,9 @@ export function MyDay() {
                     <span className="muted md-who">{person.name}{auto ? ' · seul à la maison' : ''}</span>
                 </div>
                 <div className="md-when">
+                    <button className="md-btn md-brief" onClick={playBriefing} disabled={speaking} aria-live="polite">
+                        <Icon name={speaking ? 'volume' : 'play'} size={18} strokeWidth={2} />{speaking ? 'Jean-Claude parle…' : 'Mon briefing'}
+                    </button>
                     <span className="muted md-date">{today()}</span>
                     {weather && <span className="md-pill">{deg(weather.temp)}{weather.rainAt != null ? ` · pluie vers ${weather.rainAt} h` : ''}</span>}
                 </div>

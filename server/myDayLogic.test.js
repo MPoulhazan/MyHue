@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dayItems, headline, pickOuting } from './myDayLogic.js';
+import { dayItems, headline, pickOuting, personalSpeech, isDayQuestion } from './myDayLogic.js';
 
 const TZ = 'America/Toronto';
 const dayOf = (ts) => new Date(ts).toLocaleDateString('en-CA', { timeZone: TZ });
@@ -79,4 +79,26 @@ test('sortie : saute les idées écartées, faites ou passées', () => {
     };
     assert.deepEqual(pickOuting(store, now, TZ), { idea: store.outings.ideas[3], left: 0 });
     assert.equal(pickOuting({ outings: { ideas: [] } }, now, TZ), null);
+});
+
+test('briefing personnel : agenda, mails, sortie', () => {
+    const now = Date.parse('2026-11-18T13:00:00Z'); // 8 h
+    const text = personalSpeech({
+        now,
+        tz: TZ,
+        events: [
+            { title: 'Dentiste', start: Date.parse('2026-11-18T19:00:00Z'), end: Date.parse('2026-11-18T20:00:00Z'), allDay: false },
+            { title: 'Yoga', start: Date.parse('2026-11-18T23:30:00Z'), end: Date.parse('2026-11-19T00:30:00Z'), allDay: false },
+        ],
+        mails: { at: now, items: [{ from: 'Propriétaire', draft: 'ok' }] },
+        outing: { idea: { title: 'Werther', when: 'Samedi 19 h 30' } },
+    });
+    assert.equal(text, 'Tu as 2 rendez-vous : Dentiste à 14 heures et Yoga à 18 heures 30. Un mail important : de Propriétaire. Une réponse est prête dans tes brouillons. Une idée pour vous deux : Werther, samedi 19 heures 30.');
+    const salon = personalSpeech({ now, tz: TZ, events: [], mails: { at: now, items: [{ from: 'X' }, { from: 'Y' }] }, details: false, outing: { idea: { title: 'Z' } } });
+    assert.equal(salon, 'Rien à ton agenda aujourd’hui. Deux mails importants.');
+});
+
+test('questions sur la journée', () => {
+    for (const q of ['C’est quoi ma journée ?', 'Jean-Claude, mon briefing', 'qu’est-ce qu’on fait samedi', 'une idée de sortie']) assert.ok(isDayQuestion(q), q);
+    for (const q of ['allume le salon', 'est-ce que Cooper a mangé']) assert.ok(!isDayQuestion(q), q);
 });

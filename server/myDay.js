@@ -18,7 +18,8 @@ import * as cooper from './cooper.js';
 import * as mailbox from './mailbox.js';
 import * as city from './city.js';
 import { getWeatherDetails } from './weather.js';
-import { dayItems, headline, pickOuting } from './myDayLogic.js';
+import { dayItems, headline, pickOuting, personalSpeech, isDayQuestion } from './myDayLogic.js';
+import * as briefing from './briefing.js';
 import * as calendar from './calendar.js';
 import { freeEvenings, localMidnight } from './calendarLogic.js';
 
@@ -75,7 +76,43 @@ export const setCalendar = async (personId, url) => {
     return getPeople().find((p) => p.id === personId);
 };
 
-export const start = () => calendar.start(() => people);
+export const start = () => {
+    calendar.start(() => people);
+    // Briefing du salon : l'agenda de la personne seule à la maison (ou du premier profil), sans les expéditeurs
+    briefing.addExtra(() => personalLines(defaultPerson().id, { details: false }));
+};
+
+const todayEvents = (person) => (person.ical ? calendar.eventsBetween(person.id, Date.now(), localMidnight(Date.now()) + 86_400_000) : []);
+const freshMails = (person) => {
+    const m = person.mails ? store.mails[person.id] : null;
+    return m && Date.now() - m.at < MAIL_MAX_AGE_MS ? m : null;
+};
+
+/** L'agenda, les mails et la sortie d'une personne, en phrases. */
+export const personalLines = (personId, { details = true } = {}) => {
+    const person = people.find((p) => p.id === personId) || people[0];
+    return personalSpeech({ name: person.name, events: todayEvents(person), mails: freshMails(person), outing: pickOuting(store, Date.now(), TZ), details, tz: TZ });
+};
+
+/** Le briefing complet d'une personne : elle, puis la maison (météo, Flex D, ville, ciel, courrier). */
+export const briefingFor = async (personId) => {
+    const person = people.find((p) => p.id === personId) || people[0];
+    const hour = Number(new Date().toLocaleTimeString('fr-CA', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }).slice(0, 2));
+    const house = await briefing.preview({ personal: false }).catch(() => '');
+    const rest = house.replace(/^Bonjour ! /, '').replace(/ Bonne journée !$/, '');
+    return `${hour >= 17 ? 'Bonsoir' : 'Bonjour'} ${person.name}. ${personalLines(person.id)} ${rest} ${hour >= 17 ? 'Bonne soirée !' : 'Bonne journée !'}`.replace(/\s+/g, ' ').trim();
+};
+
+/** Réponse de Jean-Claude à « C'est quoi ma journée ? » (null si ce n'est pas la question). */
+export const voiceAnswer = async (text, personId = null) => {
+    if (!isDayQuestion(text)) return null;
+    const id = personId && people.some((p) => p.id === personId) ? personId : defaultPerson().id;
+    if (/sortie|ce soir|week.?end|samedi|vendredi|jeudi|mercredi/i.test(text) && !/journ[ée]e|briefing/i.test(text)) {
+        const o = pickOuting(store, Date.now(), TZ);
+        return o ? personalSpeech({ events: [], mails: null, outing: o, tz: TZ }).replace(/^.*?Une idée/, 'Une idée') : 'Je n’ai pas encore d’idée de sortie cette semaine. Elles arrivent le mercredi matin.';
+    }
+    return briefingFor(id);
+};
 
 export const setPeople = (list) => {
     if (!Array.isArray(list) || !list.length || list.length > 4) throw new Error('Entre 1 et 4 profils');
@@ -201,7 +238,7 @@ export const getDay = async (personId) => {
         cityLine: city.briefingLine(),
         today: localDay(),
         dayOf: localDay,
-        events: person.ical ? calendar.eventsBetween(person.id, Date.now(), localMidnight(Date.now()) + 86_400_000) : [],
+        events: todayEvents(person),
     };
     const things = dayItems(facts);
     const mailEntry = person.mails ? store.mails[person.id] : null;
