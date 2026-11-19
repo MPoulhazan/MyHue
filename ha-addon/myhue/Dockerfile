@@ -8,8 +8,9 @@ RUN apt-get update \
 ARG REPO=https://github.com/MPoulhazan/MyHue.git
 ARG BRANCH=master
 
-# Invalide le cache Docker dès qu'un nouveau commit arrive sur la branche
-ADD https://api.github.com/repos/MPoulhazan/MyHue/commits/${BRANCH} /tmp/last-commit.json
+# Invalide le cache Docker dès qu'un nouveau commit arrive sur la branche.
+# Flux Atom de github.com plutôt que l'API : l'API refuse les requêtes sans User-Agent (Docker ADD), erreur 500/403 depuis 2026-11-18
+ADD https://github.com/MPoulhazan/MyHue/commits/${BRANCH}.atom /tmp/last-commit.atom
 
 RUN git clone --depth 1 --branch ${BRANCH} ${REPO} /app
 WORKDIR /app
