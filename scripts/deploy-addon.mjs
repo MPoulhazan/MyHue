@@ -39,13 +39,20 @@ ws.onmessage = async (e) => {
         if (!reload.success) console.warn('store/reload:', reload.error?.message);
         const before = await info();
         console.log('Avant :', before);
-        if (before.version === before.latest) {
+        if (before.version !== before.latest) {
+            const up = await call(`/store/addons/${ADDON}/update`);
+            console.log('Mise à jour :', up.success ? 'ok' : up.error?.message);
+        } else {
             console.log('Déjà à jour.');
-            return ws.close();
         }
-        const up = await call(`/store/addons/${ADDON}/update`);
-        console.log('Mise à jour :', up.success ? 'ok' : up.error?.message);
-        console.log('Après :', await info());
+        // Une mise à jour ne relance pas un add-on arrêté ou planté : on le démarre
+        let after = await info();
+        if (after.state !== 'started') {
+            const start = await call(`/addons/${ADDON}/start`);
+            console.log('Démarrage :', start.success ? 'ok' : start.error?.message);
+            after = await info();
+        }
+        console.log('Après :', after);
         return ws.close();
     }
     if (pending.has(m.id)) {

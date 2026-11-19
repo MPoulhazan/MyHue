@@ -91,7 +91,7 @@ export const composeBriefing = (w, flex, today, dayOf = (ts) => localParts(ts).d
     if (out && !out.past) {
         parts.push(`Pour sortir à ${out.hour} heures : ${things(out.items)}.`);
     }
-    if (back) {
+    if (back && !back.past) {
         const rain = back.rainProb >= 50 ? `, pluie probable à ${back.rainProb} pour cent` : '';
         const changed = !out || out.past || out.items.join() !== back.items.join();
         parts.push(`Au retour, vers ${back.hour} heures, ressenti ${deg(back.feels)} degrés${rain}${changed ? ` : ${things(back.items)}` : ''}.`);
