@@ -37,6 +37,7 @@ import * as city from '../city.js';
 import * as collecte from '../collecte.js';
 import * as health from '../health.js';
 import * as myDay from '../myDay.js';
+import * as together from '../together.js';
 
 export const router = express.Router();
 
@@ -399,6 +400,25 @@ router.put('/api/day/people', (req, res) => {
         fail(res, err);
     }
 });
+
+// --- À deux : petits mots et liste d'épicerie ---
+
+const run = (fn) => (req, res) => {
+    try {
+        res.json(fn(req));
+    } catch (err) {
+        fail(res, err);
+    }
+};
+
+router.get('/api/together', run((req) => together.getView(req.query.person ? String(req.query.person) : null)));
+router.post('/api/together/notes', run((req) => together.addNote(req.body || {})));
+router.post('/api/together/notes/:id/read', run((req) => together.markRead(req.params.id)));
+router.delete('/api/together/notes/:id', run((req) => together.deleteNote(req.params.id)));
+router.post('/api/together/grocery', run((req) => together.addItems(String(req.body?.text || '').split(/\s*,\s*/), req.body?.by)));
+router.post('/api/together/grocery/:id/toggle', run((req) => together.toggleItem(req.params.id)));
+router.delete('/api/together/grocery/:id', run((req) => together.removeItem(req.params.id)));
+router.post('/api/together/grocery/clear-done', run(() => together.clearDone()));
 
 router.get('/api/day/briefing', async (req, res) => {
     try {

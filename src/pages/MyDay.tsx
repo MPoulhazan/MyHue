@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Icon } from '../components/Icon';
 import { speak } from '../hooks/useVoice';
+import { Together } from './Together';
 import { readDayPick as readPick, saveDayPick as savePick } from './myDayPick';
 import './Dashboard.css';
 import './MyDay.css';
@@ -237,7 +238,9 @@ export function MyDay() {
                 </section>
             </div>
 
-            {calendarOpen && <CalendarSheet person={person} onClose={() => setCalendarOpen(false)} onSaved={load} />}
+            <Together me={person} people={people} />
+
+            {calendarOpen &&<CalendarSheet person={person} onClose={() => setCalendarOpen(false)} onSaved={load} />}
 
             {touch && (
                 <footer className="md-touch">

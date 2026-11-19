@@ -90,3 +90,24 @@
 .md-field input:focus { outline: 2px solid var(--h-accent); outline-offset: 1px; }
 .md-error { margin: 0; color: var(--h-warn); font-size: 14px; }
 .md-btn.md-brief { gap: 8px; font-weight: 700; border-color: var(--md-tone); color: var(--md-tone-text); }
+
+/* À deux : petit mot et épicerie */
+.md-duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.md-note-item { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 16px; background: var(--h-light-dim); color: var(--h-light-text); }
+.md-note-item p { margin: 0; font-size: 17px; line-height: 1.4; color: var(--h-text); }
+.md-note-item .md-btn { align-self: flex-start; gap: 6px; }
+.md-write { display: flex; flex-direction: column; gap: 10px; }
+.md-field textarea { padding: 12px 16px; border-radius: 14px; border: 1px solid var(--h-line-2); background: var(--h-surface-2); color: var(--h-text); font-size: 15px; font-family: inherit; resize: none; }
+.md-field textarea:focus { outline: 2px solid var(--h-accent); outline-offset: 1px; }
+.md-head .muted { font-size: 13px; }
+.md-items { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.md-item { min-height: 44px; padding: 0 16px; border-radius: 999px; border: none; background: var(--h-surface-2); font-size: 15px; }
+.md-item.done { text-decoration: line-through; color: var(--h-muted); background: transparent; border: 1px dashed var(--h-line-2); }
+.md-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.md-add-field { flex: 1; min-width: 160px; }
+.md-add-field input { min-height: 44px; }
+.md .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 760px) {
+    .md-duo { grid-template-columns: minmax(0, 1fr); }
+}

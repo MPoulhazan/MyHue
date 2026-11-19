@@ -10,6 +10,7 @@ import { parseIntent } from '../intentParser.js';
 import { runGroqAgent, needsClaude, buildEscalation } from '../groqAgent.js';
 import { handleMcpRequest } from '../mcpServer.js';
 import * as myDay from '../myDay.js';
+import * as together from '../together.js';
 import { isValidToken } from '../auth.js';
 import { hueBaseUrl, getHueContext, getHueScenes } from '../hue.js';
 import * as journal from '../journal.js';
@@ -84,6 +85,15 @@ router.post('/api/agent', async (req, res) => {
         }
 
         // Niveau 0 : « C'est quoi ma journée ? », « Qu'est-ce qu'on fait samedi ? »
+        // Niveau 0 : « Ajoute du lait à la liste », « Dis à Camille que… »
+        let duo = null;
+        try {
+            duo = together.voiceAnswer(message, typeof person === 'string' ? person : null);
+        } catch (err) {
+            duo = `Je n’ai pas pu le faire : ${err.message}.`;
+        }
+        if (duo) return res.json({ message: duo, actions: [], actionResults: [], tier: 'local', intent: 'together' });
+
         const day = await myDay.voiceAnswer(message, typeof person === 'string' ? person : null).catch(() => null);
         if (day) return res.json({ message: day, actions: [], actionResults: [], tier: 'local', intent: 'day' });
 
