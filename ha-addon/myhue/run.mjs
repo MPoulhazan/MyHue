@@ -25,7 +25,6 @@ const env = {
     YOUTUBE_CLIENT_ID: opts.youtube_client_id,
     YOUTUBE_CLIENT_SECRET: opts.youtube_client_secret,
     YOUTUBE_DEFAULT_PLAYLISTS: opts.youtube_default_playlists,
-    GOOGLE_MAPS_API_KEY: opts.google_maps_api_key,
 };
 
 // Identifiants Mosquitto fournis par le Supervisor (add-on Mosquitto installé)

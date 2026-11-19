@@ -98,13 +98,6 @@ test('briefing personnel : agenda, mails, sortie', () => {
     assert.equal(salon, 'Rien à ton agenda aujourd’hui. Deux mails importants.');
 });
 
-test('heure de départ dans les choses et dans le briefing', () => {
-    const now = Date.parse('2026-11-18T17:00:00Z'); // 12 h
-    const e = { title: 'Dentiste', start: Date.parse('2026-11-18T19:00:00Z'), end: Date.parse('2026-11-18T20:00:00Z'), allDay: false, location: 'Clinique', departure: { at: Date.parse('2026-11-18T18:32:00Z'), via: 'bus 24', walk: false } };
-    assert.deepEqual(dayItems({ ...base, now, events: [e] }).items[0], { kind: 'event', title: 'Dentiste à 14 h', detail: 'Pars à 13 h 32 · bus 24', leaveAt: e.departure.at });
-    assert.equal(personalSpeech({ now, tz: TZ, events: [e], mails: null }), 'À ton agenda : Dentiste à 14 heures, pars à 13 heures 32 en bus 24.');
-});
-
 test('questions sur la journée', () => {
     for (const q of ['C’est quoi ma journée ?', 'Jean-Claude, mon briefing', 'qu’est-ce qu’on fait samedi', 'une idée de sortie']) assert.ok(isDayQuestion(q), q);
     for (const q of ['allume le salon', 'est-ce que Cooper a mangé']) assert.ok(!isDayQuestion(q), q);
