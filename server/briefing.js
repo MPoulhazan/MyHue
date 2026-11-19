@@ -176,10 +176,16 @@ export const announce = async (speakers, message, { volume = 0.7, holdMs = 20_00
     }, holdMs);
 };
 
-export const preview = async () => {
+// Phrases ajoutées par d'autres modules (« Ma journée » : l'agenda du matin)
+const extraLines = [];
+export const addExtra = (fn) => extraLines.push(fn);
+
+/** @param personal false = sans les phrases des autres modules (le briefing personnel les dit déjà) */
+export const preview = async ({ personal = true } = {}) => {
     const sky = await getSky().catch(() => null);
     const skyLine = sky ? skyBriefingLine(sky) : null;
-    return composeBriefing(await getWeatherDetails(), flexd.getStatus(), localParts().day, undefined, [city.briefingLine(), skyLine, mailbox.briefingLine(mailbox.getView())]);
+    const extras = personal ? await Promise.all(extraLines.map((fn) => Promise.resolve().then(fn).catch(() => null))) : [];
+    return composeBriefing(await getWeatherDetails(), flexd.getStatus(), localParts().day, undefined, [...extras, city.briefingLine(), skyLine, mailbox.briefingLine(mailbox.getView())]);
 };
 
 /** Dit le briefing tout de suite. */
