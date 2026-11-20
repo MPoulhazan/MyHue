@@ -345,6 +345,25 @@ router.delete('/api/communauto/search', async (_req, res) => {
     }
 });
 
+router.delete('/api/communauto/booking', async (_req, res) => {
+    try {
+        res.json(await communauto.cancelBooking('MyHue'));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Tablette murale pilotée par ADB : { host, pairPort, code, port? } (code de « Pair device with pairing code »)
+router.post('/api/communauto/tablet/pair', async (req, res) => {
+    try {
+        res.json(await communauto.pairTablet(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.get('/api/communauto/tablet', async (_req, res) => res.json(await communauto.tabletStatus()));
+
 router.get('/api/communauto/settings', (_req, res) => res.json(communauto.getSettings()));
 
 router.put('/api/communauto/settings', (req, res) => {

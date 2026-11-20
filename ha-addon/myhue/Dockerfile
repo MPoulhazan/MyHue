@@ -34,6 +34,11 @@ RUN curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg -o 
     && apt-get update \
     && apt-get install -y --no-install-recommends tailscale \
     && rm -rf /var/lib/apt/lists/*
+# adb 34 (bookworm-backports) : débogage sans fil appairé de la tablette murale (Communauto). Celui de bookworm (29) ne sait pas appairer.
+RUN echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/sources.list.d/backports.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends -t bookworm-backports adb \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app /app
 COPY run.mjs /run.mjs

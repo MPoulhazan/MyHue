@@ -168,10 +168,12 @@ interface CommunautoIn {
     radiusM: number;
     nearby: { dist: number }[];
     search: { active: boolean; radiusM: number; found: { gone?: boolean; dist: number; model: string }[] } | null;
+    booked?: { car: { model: string } } | null;
 }
 /** Recherche en cours : carte ; une auto trouvée et encore libre : en tête. Au repos : pastille. */
 export function communautoRelevance(v: CommunautoIn | null): WidgetState {
     if (!v) return state('communauto', 'hidden', 'pas encore lu');
+    if (v.booked) return state('communauto', 'alert', `${v.booked.car.model} bloquée`);
     if (v.search?.active) {
         const live = v.search.found.filter((c) => !c.gone);
         if (live.length) return state('communauto', 'alert', `${live[0].model} à ${live[0].dist} m`);

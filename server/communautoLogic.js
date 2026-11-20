@@ -103,15 +103,18 @@ export const communautoSpeech = (view) => {
 export const parseCommunautoCommand = (text) => {
     const t = String(text || '').toLowerCase();
     if (!/communauto|auto[- ]?partage/.test(t)) return null;
+    if (/annule.*(blocage|r[ée]servation)|d[ée]bloque/.test(t)) return { action: 'cancel' };
     if (/arr[êe]te|stop|annule|laisse tomber|c.est bon|j.ai r[ée]serv/.test(t)) return { action: 'stop' };
-    if (/trouve|cherche|surveille|lance|r[ée]serve|guette|il me faut|j.ai besoin/.test(t)) {
+    if (/trouve|cherche|surveille|lance|r[ée]serve|bloque|guette|il me faut|j.ai besoin/.test(t)) {
+        // « réserve » ou « bloque » : MyHue bloque lui-même la première auto dans l'appli
+        const autoBook = /r[ée]serv|bloque/.test(t);
         const m = /(\d+(?:[.,]\d+)?)\s*(km|kilom[èe]tres?|m\b|m[èe]tres?)/.exec(t);
         let radiusM = null;
         if (m) {
             const n = Number(m[1].replace(',', '.'));
             radiusM = Math.round(/^k/.test(m[2]) ? n * 1000 : n);
         }
-        return { action: 'start', radiusM };
+        return { action: 'start', radiusM, autoBook };
     }
     return { action: 'status' };
 };

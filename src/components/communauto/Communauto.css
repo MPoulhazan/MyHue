@@ -35,3 +35,10 @@
 .ca-car-actions .ca-btn { min-height: 44px; flex: 1; }
 .ca-car.gone { opacity: 0.55; }
 .ca-car.gone b { text-decoration: line-through; }
+
+.ca-auto { display: flex; gap: 12px; align-items: center; min-height: 48px; cursor: pointer; font-size: 15px; }
+.ca-auto input { width: 22px; height: 22px; accent-color: var(--ca-green); flex: none; }
+.ca-auto span { display: grid; gap: 2px; }
+.ca-auto small { color: var(--h-muted); font-size: 13px; }
+.ca-week { margin: 0; font-size: 13px; color: var(--h-muted); }
+.ca-week.warn { color: #ffcf7a; font-weight: 600; }

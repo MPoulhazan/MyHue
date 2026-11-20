@@ -187,7 +187,11 @@ router.post('/api/agent', async (req, res) => {
             let speech;
             try {
                 if (autoCmd.action === 'start') {
-                    speech = communautoSpeech(await communauto.startSearch({ radiusM: autoCmd.radiusM ?? undefined, by: 'Jarvis' }));
+                    const view = await communauto.startSearch({ radiusM: autoCmd.radiusM ?? undefined, autoBook: autoCmd.autoBook, by: 'Jarvis' });
+                    speech = `${autoCmd.autoBook ? 'Je la bloque dès qu’elle apparaît. ' : ''}${communautoSpeech(view)}`;
+                } else if (autoCmd.action === 'cancel') {
+                    await communauto.cancelBooking('Jarvis');
+                    speech = 'C’est fait, le blocage de la Communauto est annulé.';
                 } else if (autoCmd.action === 'stop') {
                     const was = (await communauto.getView()).search;
                     communauto.stop('Jarvis');

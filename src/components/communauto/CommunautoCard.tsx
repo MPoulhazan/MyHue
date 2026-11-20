@@ -25,7 +25,14 @@ export interface CommunautoView {
     radii: number[];
     durations: number[];
     nearby: Car[];
-    search: { active: boolean; radiusM: number; startedAt: number; until: number; by: string; found: Car[] } | null;
+    search: { active: boolean; radiusM: number; startedAt: number; until: number; by: string; autoBook: boolean; found: Car[] } | null;
+    /** La tablette est appairée : MyHue peut bloquer la Flex lui-même */
+    canAutoBook: boolean;
+    /** La tablette est en train de bloquer une auto */
+    booking: boolean;
+    booked: { car: Car; at: number; until: number } | null;
+    weekCount: number;
+    weekWarn: number;
 }
 
 /** Ouvre l'appli Communauto sur Android (le site si elle n'est pas installée). */
@@ -57,6 +64,7 @@ export function CommunautoCard() {
     const [busy, setBusy] = useState(false);
     const [radius, setRadius] = useState<number | null>(null);
     const [duration, setDuration] = useState<number | null>(null);
+    const [autoBook, setAutoBook] = useState(false);
     // Le « encore 27 min » avance tout seul
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
@@ -75,8 +83,44 @@ export function CommunautoCard() {
             setBusy(false);
         }
     };
-    const startSearch = () => call(() => axios.post('/api/communauto/search', { radiusM: radius ?? view.radiusM, durationMin: duration ?? view.durationMin }));
+    const startSearch = () => call(() => axios.post('/api/communauto/search', { radiusM: radius ?? view.radiusM, durationMin: duration ?? view.durationMin, autoBook: autoBook && view.canAutoBook }));
     const stopSearch = () => call(() => axios.delete('/api/communauto/search'));
+    const cancelBlock = () => call(() => axios.delete('/api/communauto/booking'));
+    const week = view.weekCount > 0 && (
+        <p className={`ca-week ${view.weekCount >= view.weekWarn ? 'warn' : ''}`}>
+            {view.weekCount >= view.weekWarn ? '⚠️ ' : ''}{view.weekCount} Flex bloquée{view.weekCount > 1 ? 's' : ''} par MyHue en 7 jours{view.weekCount >= view.weekWarn ? ', on y va mollo' : ''}
+        </p>
+    );
+
+    // Une Flex bloquée par MyHue : elle attend 30 min
+    const b = view.booked;
+    if (b) {
+        const left = Math.max(0, Math.round((b.until - now) / 60_000));
+        return (
+            <section className="card ca-card on found" aria-label="Communauto">
+                <div className="card-head">
+                    <span className="card-title ca-title"><i className="ca-dot" />Communauto bloquée</span>
+                    <span className="ca-pill">encore {left} min</span>
+                </div>
+                <ul className="ca-cars">
+                    <li className="ca-car">
+                        <div className="ca-car-text">
+                            <b>{label(b.car)}{b.car.battery != null && <span className="ca-batt"> · {b.car.battery} %</span>}</b>
+                            <span>{b.car.street ? `${b.car.street} · ` : ''}{b.car.dist} m {b.car.dir}</span>
+                        </div>
+                        <div className="ca-car-actions">
+                            <a className="ca-btn primary" href={APP_LINK}>Ouvrir l’appli</a>
+                            <a className="ca-btn" href={b.car.walk} target="_blank" rel="noreferrer">Y aller</a>
+                        </div>
+                    </li>
+                </ul>
+                {week}
+                <div className="ca-actions">
+                    <button type="button" className="ca-btn" disabled={busy} onClick={cancelBlock}>{busy ? 'Annulation…' : 'Annuler le blocage'}</button>
+                </div>
+            </section>
+        );
+    }
 
     const s = view.search;
     if (s?.active) {
@@ -85,13 +129,13 @@ export function CommunautoCard() {
         return (
             <section className={`card ca-card on ${live.length ? 'found' : ''}`} aria-label="Communauto">
                 <div className="card-head">
-                    <span className="card-title ca-title"><i className="ca-dot live" />{live.length ? 'Communauto trouvée' : 'Recherche Communauto'}</span>
+                    <span className="card-title ca-title"><i className="ca-dot live" />{view.booking ? 'Je la bloque…' : live.length ? 'Communauto trouvée' : 'Recherche Communauto'}</span>
                     <span className="ca-pill">{meters(s.radiusM)} · encore {left} min</span>
                 </div>
                 {s.found.length ? (
                     <ul className="ca-cars">{s.found.slice(0, 3).map((c) => <CarRow key={c.id} car={c} />)}</ul>
                 ) : (
-                    <p className="ca-line">Je surveille toutes les 20 s. Telegram, cuisine et lampe dès qu’une auto apparaît.</p>
+                    <p className="ca-line">{s.autoBook ? 'Je surveille toutes les 20 s et je bloque la première auto qui apparaît.' : 'Je surveille toutes les 20 s. Telegram, cuisine et lampe dès qu’une auto apparaît.'}</p>
                 )}
                 <div className="ca-actions">
                     {live.length > 0 && <button type="button" className="ca-btn primary" disabled={busy} onClick={stopSearch}>J’ai réservé</button>}
@@ -127,8 +171,15 @@ export function CommunautoCard() {
                     <button key={m} type="button" className={`ca-chip ${m === d ? 'on' : ''}`} aria-pressed={m === d} onClick={() => setDuration(m)}>{m < 60 ? `${m} min` : `${m / 60} h`}</button>
                 ))}
             </div>
+            {view.canAutoBook && (
+                <label className="ca-auto">
+                    <input type="checkbox" checked={autoBook} onChange={(e) => setAutoBook(e.target.checked)} />
+                    <span>Bloquer automatiquement la première<small>la tablette ouvre l’appli et la bloque pour toi</small></span>
+                </label>
+            )}
+            {week}
             <div className="ca-actions">
-                <button type="button" className="ca-btn primary" disabled={busy} onClick={startSearch}>Lancer la recherche</button>
+                <button type="button" className="ca-btn primary" disabled={busy} onClick={startSearch}>{autoBook && view.canAutoBook ? 'Chercher et bloquer' : 'Lancer la recherche'}</button>
                 <a className="ca-btn" href={APP_LINK}>Ouvrir l’appli</a>
             </div>
         </section>

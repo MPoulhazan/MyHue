@@ -139,4 +139,5 @@ test('communautoRelevance : pastille au repos, carte en recherche, en tête quan
     assert.deepEqual(communautoRelevance({ ...idle, search: found }), { id: 'communauto', relevance: 'alert', summary: 'Kia Niro EV à 240 m' });
     assert.equal(communautoRelevance({ ...idle, search: { ...search, found: [{ model: 'X', dist: 1, gone: true }] } }).relevance, 'now');
     assert.equal(communautoRelevance(null).relevance, 'hidden');
+    assert.deepEqual(communautoRelevance({ ...idle, booked: { car: { model: 'Toyota Corolla L' } } }), { id: 'communauto', relevance: 'alert', summary: 'Toyota Corolla L bloquée' });
 });
