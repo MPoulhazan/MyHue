@@ -16,8 +16,8 @@
 .ca-line { margin: 0; color: var(--h-muted); font-size: 15px; line-height: 1.4; }
 
 .ca-pick { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; }
-.ca-pick > span { color: var(--h-muted); min-width: 58px; }
-.ca-chip { min-height: 40px; min-width: 56px; padding: 0 12px; border: none; border-radius: 999px; background: var(--h-surface-2); color: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.ca-pick > span { color: var(--h-muted); flex-basis: 100%; }
+.ca-chip { min-height: 40px; min-width: 0; flex: 1; padding: 0 10px; border: none; border-radius: 999px; background: var(--h-surface-2); color: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .ca-chip.on { background: var(--ca-green); color: #142008; }
 
 .ca-actions { display: flex; gap: 10px; flex-wrap: wrap; }
