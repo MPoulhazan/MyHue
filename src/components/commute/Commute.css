@@ -3,7 +3,8 @@
 .commute-card { container-type: inline-size; }
 .commute-card { --bixi: #d52b1e; --cm-ok-bg: #2f3a1a; --cm-ok-text: #e3f7b5; --cm-low-bg: #3a2f14; --cm-low-text: #ffd98a; --cm-no-bg: #3a1a17; --cm-no-text: #ffc2bc; }
 
-.cm-title { display: inline-flex; align-items: center; gap: 8px; }
+.cm-card-head { flex-wrap: wrap; gap: 8px; }
+.cm-title { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .cm-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--bixi); display: inline-block; }
 
 .cm-pill { font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
@@ -26,8 +27,8 @@
 .cm-opt-text b { font-size: 14px; }
 .cm-opt-text small { font-size: 12px; color: var(--h-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cm-opt.is-best .cm-opt-text small { color: #c9d9a6; }
-.cm-warn { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--cm-low-bg); color: var(--cm-low-text); white-space: nowrap; }
-.cm-warn.info { background: var(--h-cool-dim); color: var(--h-cool-text); }
+.cm-opt-text small.cm-warn { font-weight: 700; color: var(--cm-low-text); }
+.cm-opt-text small.cm-warn.info { color: var(--h-cool-text); }
 .cm-min { font-size: 18px; font-variant-numeric: tabular-nums; }
 .cm-opt:not(.is-best) .cm-min { color: var(--h-muted); }
 

@@ -146,7 +146,8 @@ interface BixiIn {
 }
 export function bixiRelevance(v: BixiIn | null, now = new Date()): WidgetState {
     if (!v?.enabled || !v.configured || v.season === 'closed') return state('bixi', 'hidden', 'hors saison');
-    const said = v.verdict?.text.toLowerCase();
+    // Minuscule au premier mot seulement : « 12 °C », pas « 12 °c »
+    const said = v.verdict && v.verdict.text.charAt(0).toLowerCase() + v.verdict.text.slice(1);
     // La fenêtre de départ du serveur, ou toute l'heure de pointe du matin
     if (v.window || isCommute(now)) return state('bixi', 'now', said ?? 'heure de départ');
     return state('bixi', 'calm', said ?? 'pas l’heure de partir');

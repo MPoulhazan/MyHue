@@ -37,6 +37,7 @@ import { installWakewordRoutes } from './wakewordSamples.js';
 import { installTtsRoutes } from './tts.js';
 import { hueProxy } from './hue.js';
 import { getSensors } from './sensors.js';
+import { getTile, validTile } from './mapTiles.js';
 import * as climateChart from './climateChart.js';
 import './events.js';
 import { router as agentRoutes, GROQ_MODEL } from './routes/agent.js';
@@ -61,6 +62,18 @@ app.use('/api/hue', (req, res) => {
         entranceLight.noteHueCommand(req.url, req.body); // allumée à la main : elle reste 15 min
     }
     hueProxy(req, res);
+});
+
+// Tuiles du plan BIXI, relayées et gardées en cache par le Pi (OSM bloque la tablette)
+app.get('/api/tiles/:z/:x/:y.png', async (req, res) => {
+    const [z, x, y] = [req.params.z, req.params.x, req.params.y].map(Number);
+    if (!validTile(z, x, y)) return res.status(400).end();
+    try {
+        const png = await getTile(z, x, y);
+        res.set('Cache-Control', 'public, max-age=604800').type('png').send(png);
+    } catch {
+        res.status(502).end();
+    }
 });
 
 // --- Front buildé (add-on / prod) ---

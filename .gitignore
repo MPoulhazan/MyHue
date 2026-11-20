@@ -42,3 +42,4 @@ server/data/youtube-accounts.json
 server/data/music-history.json
 server/data/music-session.json
 server/data/music-moods.json
+server/data/tiles/

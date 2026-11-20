@@ -47,12 +47,14 @@ function headline(v: CommuteView): [string, string] {
     if (!b) return ['Aucune option fiable,', 'regarde dehors.'];
     const snow = /neige/i.test(v.verdict?.text || '');
     const bikeOk = (v.options || []).some((o) => (o.mode === 'bike' || o.mode === 'ebike') && o.ok && o.minutes != null);
-    if (b.mode === 'bike') return ['BIXI ce matin,', 'pars quand tu veux.'];
+    // « ce matin » seulement le matin : l'après-midi la carte sert à ressortir
+    const when = new Date().getHours() < 12 ? 'ce matin' : 'maintenant';
+    if (b.mode === 'bike') return [`BIXI ${when},`, 'pars quand tu veux.'];
     if (b.mode === 'ebike') return ['BIXI électrique,', 'prends un casque.'];
     // Nom de la ligne : réglage sur le Pi (data/commute.json), jamais dans le code public
     const bus = v.bus?.label || 'Bus';
     if (b.mode === 'bus') return [snow ? `Neige : ${bus.toLowerCase()},` : bikeOk ? `${bus}, plus rapide,` : `Pas de BIXI : ${bus.toLowerCase()},`, `pars à ${hm(b.leaveAt!)}.`];
-    return [snow ? 'Neige : à pied,' : 'À pied ce matin,', `≈ ${b.minutes} min.`];
+    return [snow ? 'Neige : à pied,' : `À pied ${when},`, `≈ ${b.minutes} min.`];
 }
 
 function OptionRow({ o, best }: { o: Option; best: boolean }) {
@@ -62,9 +64,11 @@ function OptionRow({ o, best }: { o: Option; best: boolean }) {
             <b className={`cm-badge ${o.mode}`}>{BADGE[o.mode]}</b>
             <span className="cm-opt-text">
                 <b>{o.mode === 'bus' && o.leaveAt ? `${o.title} à ${o.detail.split(' à ')[0]}` : o.title}</b>
-                <small>{o.mode === 'bus' ? busSub : o.detail}</small>
+                {/* L'avertissement remplace le détail : à côté du titre, il l'écrasait dans la colonne étroite */}
+                {o.warn
+                    ? <small className={`cm-warn ${o.mode === 'ebike' ? 'info' : ''}`}>{o.warn}</small>
+                    : <small>{o.mode === 'bus' ? busSub : o.detail}</small>}
             </span>
-            {o.warn && <span className={`cm-warn ${o.mode === 'ebike' ? 'info' : ''}`}>{o.warn}</span>}
             <b className="cm-min">{o.minutes != null ? `${o.minutes}′` : '–'}</b>
         </div>
     );
@@ -84,7 +88,7 @@ export function CommuteCard() {
 
     return (
         <section className="card commute-card" aria-label={`Trajet de ${who}`}>
-            <div className="card-head">
+            <div className="card-head cm-card-head">
                 <span className="card-title cm-title"><i className="cm-dot" />{title}</span>
                 {v.verdict?.text && <span className={`cm-pill ${v.verdict.level}`}>{v.verdict.text}</span>}
             </div>

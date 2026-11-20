@@ -41,7 +41,8 @@ export function CommuteMap({ data, best, large = false }: { data: CommuteMapData
             boxZoom: false,
             keyboard: large,
         });
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Relayées par le Pi : OSM bloque les tuiles demandées directement par la tablette
+        L.tileLayer('/api/tiles/{z}/{x}/{y}.png', {
             maxZoom: 19,
             className: 'cm-tiles',
             attribution: '© OpenStreetMap',
