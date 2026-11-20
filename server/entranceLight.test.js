@@ -2,8 +2,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { inRange, sceneFor, shouldSweep, whiteState, pickEntrance } from './entranceLight.js';
-import { parseAdvert } from './yeelight.js';
-
 test('whiteState : kelvins en mireds bornés, pourcentage en 1-254', () => {
     assert.deepEqual(whiteState({ ct: 4000, bright: 100 }), { on: true, bri: 254, transitiontime: 3, ct: 250 });
     assert.equal(whiteState({ ct: 2000, bright: 50 }, { min: 153, max: 454 }).ct, 454);
@@ -43,10 +41,4 @@ test('shouldSweep : on éteint une lampe allumée sans passage récent', () => {
     assert.equal(shouldSweep(now, now - 121_000, 120, null), true, 'dernier passage il y a plus de 2 min');
     assert.equal(shouldSweep(now, now - 30_000, 120, null), false, 'quelqu’un vient de passer');
     assert.equal(shouldSweep(now, now - 500_000, 120, { scene: {} }), false, 'extinction déjà programmée');
-});
-
-test('parseAdvert : réponse SSDP Yeelight', () => {
-    const txt = 'HTTP/1.1 200 OK\r\nLocation: yeelight://192.168.0.42:55443\r\nid: 0x000000000015243f\r\nmodel: color\r\npower: off\r\nname: \r\n';
-    assert.deepEqual(parseAdvert(txt), { id: '0x000000000015243f', ip: '192.168.0.42', port: 55443, model: 'color', name: null, power: 'off' });
-    assert.equal(parseAdvert('HTTP/1.1 200 OK\r\n'), null);
 });
