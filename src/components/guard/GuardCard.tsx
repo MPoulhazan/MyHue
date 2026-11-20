@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { guardPoll } from '../home/widgets/polls';
+import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
 import './Guard.css';
 
 // ── Données de /api/guard (server/guard.js) ──────────────────────────────────
@@ -64,39 +65,29 @@ export function GuardCard() {
 
     if (!view.mode) {
         return (
-            <section className="card guard-card" aria-label="Alarme">
-                <div className="card-head">
-                    <span className="card-title">Alarme</span>
-                    <span className="guard-pill off">Désactivée</span>
-                </div>
-                <p className="guard-line">Porte ou mouvement pendant votre absence : un Telegram tout de suite.</p>
+            <WidgetCard className="guard-card" label="Alarme" title="Alarme"
+                pills={<StatusPill level="off">Désactivée</StatusPill>}
+                detail={{ title: 'Alarme', body: <p className="lead">Porte ou mouvement pendant votre absence : un Telegram tout de suite. En mode vacances, le salon s’allume aussi le soir pour faire croire qu’on est là.</p> }}>
                 {pausedWarning}
                 <div className="guard-actions">
                     <button type="button" className="guard-btn" disabled={busy} onClick={() => put({ mode: 'alarm' })}>Mode alarme</button>
                     <button type="button" className="guard-btn" disabled={busy} onClick={() => put({ mode: 'vacation' })}>Mode vacances</button>
                 </div>
-            </section>
+            </WidgetCard>
         );
     }
 
     const sim = view.simToday;
-    return (
-        <section className="card guard-card on" aria-label="Alarme">
-            <div className="card-head">
-                <span className="card-title">{LABEL[view.mode]}</span>
-                <span className="guard-pill">Actif{view.since ? ` depuis ${day(view.since)}` : ''}</span>
-            </div>
-            {pausedWarning}
-            {view.events.length ? (
-                <ul className="guard-events">
-                    {view.events.slice(0, 4).map((e) => (
-                        <li key={e.at}><b>{day(e.at)}</b> {e.what === 'open' ? `${e.sensor} ouverte` : `mouvement, ${e.sensor}`}</li>
-                    ))}
-                </ul>
-            ) : (
-                <p className="guard-line">Rien à signaler.</p>
-            )}
-            {view.mode === 'vacation' && (
+    const events = (n: number) => view.events.length ? (
+        <ul className="guard-events">
+            {view.events.slice(0, n).map((e) => (
+                <li key={e.at}><b>{day(e.at)}</b> {e.what === 'open' ? `${e.sensor} ouverte` : `mouvement, ${e.sensor}`}</li>
+            ))}
+        </ul>
+    ) : (
+        <p className="wcard-line">Rien à signaler.</p>
+    );
+    const simulation = view.mode === 'vacation' && (
                 <label className="guard-sim">
                     <input type="checkbox" checked={view.simulate} disabled={busy} onChange={(e) => put({ simulate: e.target.checked })} />
                     <span>
@@ -104,10 +95,16 @@ export function GuardCard() {
                         {view.simulate && sim ? ` · ce soir ${hmMin(sim.onAt)} → ${hmMin(sim.offAt)}` : view.simulate ? ` · ${view.sim.onFrom}–${view.sim.offTo}` : ''}
                     </span>
                 </label>
-            )}
+    );
+    return (
+        <WidgetCard className="guard-card on" label="Alarme" title={LABEL[view.mode]}
+            pills={<StatusPill level="bad">Actif{view.since ? ` depuis ${day(view.since)}` : ''}</StatusPill>}
+            detail={{ title: LABEL[view.mode], body: <>{events(12)}{simulation}</> }}>
+            {pausedWarning}
+            {events(1)}
             <div className="guard-actions">
                 <button type="button" className="guard-btn stop" disabled={busy} onClick={() => put({ mode: null })}>On est rentrés</button>
             </div>
-        </section>
+        </WidgetCard>
     );
 }

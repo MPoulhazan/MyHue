@@ -136,10 +136,13 @@ a.weather-pill:hover { background: var(--h-surface-2); }
 .house-list li { display: flex; justify-content: space-between; gap: 12px; }
 .house-list li span:last-child { text-align: right; }
 
-.journal ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; font-size: 14px; max-height: 300px; overflow-y: auto; }
-.journal li { display: flex; gap: 12px; line-height: 1.4; }
+.journal ul, .journal-sheet ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; font-size: 14px; max-height: 300px; overflow-y: auto; }
+.journal-sheet ul { max-height: none; overflow: visible; }
+.house-add { align-self: flex-start; }
+.journal li, .journal-sheet li { display: flex; gap: 12px; line-height: 1.4; }
 .journal-time { flex: none; font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--h-muted); }
 .journal-link { color: var(--h-accent); }
+.journal li > span:last-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Panneaux (détail pièce, ajout capteur, menu) */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(5, 6, 5, 0.72); display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -298,8 +301,6 @@ a.weather-pill:hover { background: var(--h-surface-2); }
     .moments-title { margin-top: 0; }
     .room-card { height: auto; }
     .home-side { display: flex; grid-column: auto; }
-    .journal { flex: 1; min-height: 0; }
-    .journal ul { flex: 1; min-height: 0; max-height: none; }
 }
 .warn-line .row-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 

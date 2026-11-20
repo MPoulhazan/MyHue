@@ -1,0 +1,27 @@
+/* Carte compacte des widgets de l'accueil et pastilles d'état partagées */
+
+.card.wcard { gap: 12px; padding: 18px 20px; border-radius: 24px; }
+
+.wcard-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; min-height: 28px; }
+.wcard .wcard-title { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; font-size: 15px; font-weight: 600; color: var(--h-muted); }
+.wcard-title > span { display: inline-flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wcard .wcard-title.more { min-height: 36px; margin: -6px -8px; padding: 0 8px; border: none; border-radius: 12px; background: transparent; text-decoration: none; cursor: pointer; }
+.wcard .wcard-title.more:hover { background: var(--h-surface-2); color: var(--h-text); }
+.wcard-title.more svg { flex: none; }
+.wcard-pills { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+
+/* Une ligne de texte calme sous le titre */
+.wcard-line { margin: 0; font-size: 15px; line-height: 1.4; color: var(--h-muted); }
+.wcard-line b { color: var(--h-text); }
+.wcard-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.status-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.status-pill.ok { background: var(--h-ok-bg); color: var(--h-ok-text); }
+.status-pill.warn { background: var(--h-warn-bg); color: var(--h-warn-text); }
+.status-pill.bad { background: var(--h-bad-bg); color: var(--h-bad-text); }
+.status-pill.info { background: var(--h-info-bg); color: var(--h-info-text); }
+.status-pill.off { background: var(--h-surface-2); color: var(--h-muted); }
+
+/* Panneau de détail : plus étroit que les grands panneaux de l'app */
+.sheet.wsheet { width: min(760px, 100%); gap: 18px; }
+.wsheet .sheet-head h2 { font-size: 26px; }

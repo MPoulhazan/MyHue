@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { cooperPoll } from '../home/widgets/polls';
+import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
 import './Cooper.css';
 
 // ── Données de /api/cooper (server/cooper.js) ────────────────────────────────
@@ -32,8 +33,6 @@ export function CooperCard() {
     if (!view?.enabled || !view.sensor) return null;
 
     const late = view.mood === 'late' && view.meals.some((m) => m.status === 'late');
-    const done = view.meals.filter((m) => m.status === 'done' && m.at);
-    const last = done[done.length - 1];
 
     const markFed = async () => {
         setBusy(true);
@@ -48,33 +47,30 @@ export function CooperCard() {
     };
 
     return (
-        <section className={`card cooper-card mood-${view.mood}${view.moment ? ` moment-${view.moment}` : ''}`} aria-label="Repas de Cooper">
-            <div className="card-head">
-                <span className="card-title">Cooper</span>
-                {late && <span className="cooper-pill late">Oublié</span>}
-                {view.mood === 'double' && <span className="cooper-pill double">Déjà nourri</span>}
-                {!view.sensor.online && <span className="cooper-pill off">Capteur muet</span>}
-            </div>
+        <WidgetCard className={`cooper-card mood-${view.mood}${view.moment ? ` moment-${view.moment}` : ''}`} label="Repas de Cooper" title="Cooper"
+            pills={<>
+                {view.meals.map((m) => (
+                    <span key={m.id} className={`cooper-meal s-${m.status}`} title={m.status === 'done' && m.at ? `${cap(m.label)} à ${hm(m.at)}` : undefined}>
+                        {cap(m.label)}
+                        {m.status === 'done' && ' ✓'}
+                        {(m.status === 'late' || m.status === 'missed') && ' !'}
+                    </span>
+                ))}
+                {late && <StatusPill level="bad">Oublié</StatusPill>}
+                {view.mood === 'double' && <StatusPill level="warn">Déjà nourri</StatusPill>}
+                {!view.sensor.online && <StatusPill level="off">Capteur muet</StatusPill>}
+            </>}>
             <div className="cooper-body">
                 {view.moment && MOMENT_PHOTO[view.moment]
                     ? <img className="cooper-photo moment" src={MOMENT_PHOTO[view.moment]} alt="" width={96} height={96} />
                     : <img className={`cooper-photo ${late ? 'late' : ''}`} src="/cooper.jpg" alt="" width={64} height={64} />}
                 <p className="cooper-bubble" aria-live="polite">{view.line}</p>
             </div>
-            <div className="cooper-foot">
-                <span className="cooper-meals">
-                    {view.meals.map((m) => (
-                        <span key={m.id} className={`cooper-meal s-${m.status}`}>
-                            {cap(m.label)}
-                            {m.status === 'done' && ' ✓'}
-                            {(m.status === 'late' || m.status === 'missed') && ' !'}
-                        </span>
-                    ))}
-                </span>
-                {late
-                    ? <button type="button" className="cooper-done" onClick={markFed} disabled={busy}>C'est fait</button>
-                    : <span className="cooper-time">{last ? hm(last.at!) : `Prochain à ${view.meals.find((m) => ['upcoming', 'soon', 'due'].includes(m.status))?.time.replace(':00', ' h') ?? '—'}`}</span>}
-            </div>
-        </section>
+            {late && (
+                <div className="cooper-foot">
+                    <button type="button" className="cooper-done" onClick={markFed} disabled={busy}>C'est fait</button>
+                </div>
+            )}
+        </WidgetCard>
     );
 }

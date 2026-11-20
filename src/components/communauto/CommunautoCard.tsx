@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { communautoPoll } from '../home/widgets/polls';
+import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
 import { useIsPhone } from '../../hooks/useIsPhone';
 import { readDayPick } from '../../pages/myDayPick';
 import './Communauto.css';
@@ -107,11 +108,8 @@ export function CommunautoCard() {
     if (b) {
         const left = Math.max(0, Math.round((b.until - now) / 60_000));
         return (
-            <section className="card ca-card on found" aria-label="Communauto">
-                <div className="card-head">
-                    <span className="card-title ca-title"><i className="ca-dot" />Communauto bloquée</span>
-                    <span className="ca-pill">encore {left} min</span>
-                </div>
+            <WidgetCard key="booked" className="ca-card on found" label="Communauto" title={<><i className="ca-dot" />Communauto bloquée</>}
+                pills={<StatusPill level="ok">encore {left} min</StatusPill>}>
                 <ul className="ca-cars">
                     <li className="ca-car">
                         <div className="ca-car-text">
@@ -128,7 +126,7 @@ export function CommunautoCard() {
                 <div className="ca-actions">
                     <button type="button" className="ca-btn" disabled={busy} onClick={cancelBlock}>{busy ? 'Annulation…' : 'Annuler le blocage'}</button>
                 </div>
-            </section>
+            </WidgetCard>
         );
     }
 
@@ -137,13 +135,12 @@ export function CommunautoCard() {
         const live = s.found.filter((c) => !c.gone);
         const left = Math.max(1, Math.round((s.until - now) / 60_000));
         return (
-            <section className={`card ca-card on ${live.length ? 'found' : ''}`} aria-label="Communauto">
-                <div className="card-head">
-                    <span className="card-title ca-title"><i className="ca-dot live" />{view.booking ? 'Je la bloque…' : live.length ? 'Communauto trouvée' : 'Recherche Communauto'}</span>
-                    <span className="ca-pill">{meters(s.radiusM)} · encore {left} min</span>
-                </div>
+            <WidgetCard key="search" className={`ca-card on ${live.length ? 'found' : ''}`} label="Communauto"
+                title={<><i className="ca-dot live" />{view.booking ? 'Je la bloque…' : live.length ? 'Communauto trouvée' : 'Recherche Communauto'}</>}
+                pills={<StatusPill level="ok">{meters(s.radiusM)} · encore {left} min</StatusPill>}
+                detail={s.found.length > 1 ? { title: 'Autos trouvées', body: <ul className="ca-cars">{s.found.slice(0, 6).map((c) => <CarRow key={c.id} car={c} />)}</ul> } : undefined}>
                 {s.found.length ? (
-                    <ul className="ca-cars">{s.found.slice(0, 3).map((c) => <CarRow key={c.id} car={c} />)}</ul>
+                    <ul className="ca-cars"><CarRow car={live[0] ?? s.found[0]} /></ul>
                 ) : (
                     <p className="ca-line">
                         {s.nearMe ? 'Autour de ton téléphone. ' : ''}
@@ -154,24 +151,16 @@ export function CommunautoCard() {
                     {live.length > 0 && <button type="button" className="ca-btn primary" disabled={busy} onClick={stopSearch}>J’ai réservé</button>}
                     <button type="button" className="ca-btn" disabled={busy} onClick={stopSearch}>Arrêter</button>
                 </div>
-            </section>
+            </WidgetCard>
         );
     }
 
     const r = radius ?? view.radiusM;
     const d = duration ?? view.durationMin;
     const near = view.nearby[0];
-    return (
-        <section className="card ca-card" aria-label="Communauto">
-            <div className="card-head">
-                <span className="card-title ca-title"><i className="ca-dot" />Communauto Flex</span>
-                <span className="ca-pill off">{view.updatedAt ? `${view.nearby.length} à ${meters(view.radiusM)}` : 'injoignable'}</span>
-            </div>
-            <p className="ca-line">
-                {!view.updatedAt ? 'Communauto ne répond pas pour le moment.'
-                    : near ? <>La plus proche : <b>{label(near)}</b>, {near.dist} m {near.dir}.</>
-                        : `Aucune auto libre à moins de ${meters(view.radiusM)}.`}
-            </p>
+    // Rayon, durée et options : dans le détail de la carte au repos
+    const settings = (
+        <>
             <div className="ca-pick" role="group" aria-label="Rayon">
                 <span>Rayon</span>
                 {view.radii.map((m) => (
@@ -202,6 +191,22 @@ export function CommunautoCard() {
                 <button type="button" className="ca-btn primary" disabled={busy} onClick={startSearch}>{autoBook && view.canAutoBook ? 'Chercher et bloquer' : 'Lancer la recherche'}</button>
                 <a className="ca-btn" href={APP_LINK}>Ouvrir l’appli</a>
             </div>
-        </section>
+        </>
+    );
+    return (
+        <WidgetCard key="idle" className="ca-card" label="Communauto" title={<><i className="ca-dot" />Communauto Flex</>}
+            pills={<StatusPill level="off">{view.updatedAt ? `${view.nearby.length} à ${meters(view.radiusM)}` : 'injoignable'}</StatusPill>}
+            detail={{ title: 'Chercher une Communauto', className: 'ca-sheet', body: settings }}>
+            <p className="ca-line">
+                {!view.updatedAt ? 'Communauto ne répond pas pour le moment.'
+                    : near ? <>La plus proche : <b>{label(near)}</b>, {near.dist} m {near.dir}.</>
+                        : `Aucune auto libre à moins de ${meters(view.radiusM)}.`}
+            </p>
+            {error && <p className="ca-week warn" role="alert">{error}</p>}
+            <div className="ca-actions">
+                <button type="button" className="ca-btn primary" disabled={busy} onClick={startSearch}>{autoBook && view.canAutoBook ? 'Chercher et bloquer' : 'Lancer la recherche'}</button>
+            </div>
+        </WidgetCard>
     );
 }
+

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { bixiPoll } from '../home/widgets/polls';
 import { CommuteCard, commutePoll } from '../commute/CommuteCard';
+import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
 import './Bixi.css';
 
 // ── Données de /api/bixi (server/bixi.js) ────────────────────────────────────
@@ -85,7 +86,22 @@ function TripBlock({ trip }: { trip: Trip }) {
     );
 }
 
-/** Carte BIXI de l'accueil : un trajet par personne, du vélo au départ à la place libre à l'arrivée. */
+/** Une personne en une ligne : la station de départ et ses vélos. */
+function TripLine({ trip }: { trip: Trip }) {
+    const { from, to } = trip;
+    return (
+        <div className="bixi-line-row">
+            <b>{trip.who}</b>
+            <span className="bixi-line-st">{from ? short(from.name) : 'Aucun vélo dans le coin'}</span>
+            {from && <span className={`bixi-count ${from.scarce ? 'low' : level(from.bikes)}`}>{from.bikes} 🚲</span>}
+            {to && <span className={`bixi-count ${to.low ? 'low' : 'ok'}`}>{to.docks} P</span>}
+        </div>
+    );
+}
+
+const PILL = { ok: 'ok', low: 'warn', no: 'bad' } as const;
+
+/** Carte BIXI de l'accueil : une ligne par personne ; les trajets complets et les stations voisines dans le détail. */
 export function BixiCard() {
     const { view, now } = useBixi();
     const commute = commutePoll.use();
@@ -98,29 +114,30 @@ export function BixiCard() {
 
     const title = view.window ? `BIXI · départ ${hmLabel(view.leaveFrom)} – ${hmLabel(view.leaveTo)}` : 'BIXI';
     const card = (
-        <section className={`card bixi-card ${view.window ? 'is-window' : ''}`} aria-label="Vélos BIXI">
-            <div className="card-head">
-                <span className="card-title bixi-title"><i className="bixi-dot" />{title}</span>
-                <span className={`bixi-pill ${view.verdict.level}`}>{view.verdict.text}</span>
-            </div>
-            {view.updatedAt ? (
-                <div className="bixi-trips">
-                    {trips.map((t) => <TripBlock key={t.who} trip={t} />)}
-                </div>
-            ) : (
-                <p className="muted">BIXI ne répond pas pour le moment.</p>
-            )}
-            {view.updatedAt && (
-                <div className="bixi-foot">
-                    <span className="bixi-chips">
-                        {view.extras.map((s) => (
-                            <span key={s.id} className="bixi-chip">{short(s.name)} · {s.bikes ?? '–'}{s.dist != null && s.dist > 350 ? ` (${s.dist} m)` : ''}</span>
-                        ))}
-                    </span>
-                    <span>relevé {ago(view.updatedAt, now)}</span>
-                </div>
-            )}
-        </section>
+        <WidgetCard className={`bixi-card ${view.window ? 'is-window' : ''}`} label="Vélos BIXI"
+            title={<><i className="bixi-dot" />{title}</>}
+            pills={<StatusPill level={PILL[view.verdict.level]}>{view.verdict.text}</StatusPill>}
+            detail={view.updatedAt ? {
+                title: 'Vélos BIXI',
+                className: 'bixi-sheet',
+                body: (
+                    <>
+                        <div className="bixi-trips">{trips.map((t) => <TripBlock key={t.who} trip={t} />)}</div>
+                        <div className="bixi-foot">
+                            <span className="bixi-chips">
+                                {view.extras.map((s) => (
+                                    <span key={s.id} className="bixi-chip">{short(s.name)} · {s.bikes ?? '–'}{s.dist != null && s.dist > 350 ? ` (${s.dist} m)` : ''}</span>
+                                ))}
+                            </span>
+                            <span>relevé {ago(view.updatedAt, now)}</span>
+                        </div>
+                    </>
+                ),
+            } : undefined}>
+            {view.updatedAt
+                ? <div className="bixi-lines">{trips.map((t) => <TripLine key={t.who} trip={t} />)}</div>
+                : <p className="wcard-line">BIXI ne répond pas pour le moment.</p>}
+        </WidgetCard>
     );
     return covered ? <><CommuteCard />{card}</> : card;
 }

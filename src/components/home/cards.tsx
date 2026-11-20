@@ -4,6 +4,7 @@ import { useHomeData } from '../../hooks/useHome';
 import type { useHome, DashLight, LogEntry, Sensor } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import { avgLevel, useLastLevel, useLevelGesture } from './levels';
+import { WidgetCard } from './widgets/WidgetCard';
 
 // Cartes du tableau de bord, partagées par la tablette et le téléphone
 
@@ -207,13 +208,23 @@ export function HouseCard({ sensors, onAdd }: { sensors: Sensor[]; onAdd: () => 
             ? { cls: 'alert', icon: 'door' as const, text: `${open.map((s) => s.name).join(', ')} ouverte${open.length > 1 ? 's' : ''}` }
             : { cls: '', icon: 'check' as const, text: leaks.length ? 'Tout est fermé et au sec' : 'Tout est fermé' };
 
+    // Dans la carte : seulement ce qui cloche ; la liste complète dans le détail
+    const issues = [
+        ...offline.map((s) => ({ key: `off-${s.did}`, name: s.name, text: 'hors ligne' })),
+        ...(lowest != null && lowest < 20 ? [{ key: 'batt', name: 'Piles', text: `${lowest} % au plus bas` }] : []),
+    ].slice(0, 3);
+    const statusLine = (
+        <div className={`house-status ${status.cls}`}>
+            <span className="house-icon"><Icon name={status.icon} size={18} strokeWidth={2.2} /></span>
+            <span>{status.text}</span>
+        </div>
+    );
+
     return (
-        <section className="card house" aria-label="Maison">
-            <div className={`house-status ${status.cls}`}>
-                <span className="house-icon"><Icon name={status.icon} size={18} strokeWidth={2.2} /></span>
-                <span>{status.text}</span>
-            </div>
-            <ul className="house-list">
+        <WidgetCard className="house" label="Maison" title="Maison"
+            detail={{ title: 'Capteurs de la maison', body: <>
+                {statusLine}
+                <ul className="house-list">
                 {smokes.map((s) => (
                     <li key={s.did}><span>{s.name}</span><span className={s.props.smoke ? 'leak' : 'muted'}>
                         {s.props.smoke ? 'FUMÉE !' : s.props.smoke === false ? 'rien à signaler' : 'en attente du capteur'}{since(s)}</span></li>
@@ -228,29 +239,45 @@ export function HouseCard({ sensors, onAdd }: { sensors: Sensor[]; onAdd: () => 
                 ))}
                 {lowest != null && <li><span>Piles</span><span className={lowest < 20 ? 'warn' : 'muted'}>{lowest} % au plus bas</span></li>}
                 {offline.length > 0 && <li><span>Hors ligne</span><span className="warn">{offline.map((s) => s.name).join(', ')}</span></li>}
-            </ul>
-            <button type="button" className="ghost-btn" onClick={onAdd}><Icon name="plus" size={18} /> Ajouter un capteur</button>
-        </section>
+                </ul>
+                <button type="button" className="ghost-btn house-add" onClick={onAdd}><Icon name="plus" size={18} /> Ajouter un capteur</button>
+            </> }}>
+            {statusLine}
+            {issues.length > 0 && (
+                <ul className="house-list">
+                    {issues.map((i) => <li key={i.key}><span>{i.name}</span><span className="warn">{i.text}</span></li>)}
+                </ul>
+            )}
+        </WidgetCard>
     );
 }
 
+function JournalList({ log }: { log: LogEntry[] }) {
+    return (
+        <ul>
+            <AnimatePresence initial={false}>
+                {log.map((e) => (
+                    <motion.li key={e.id} layout initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                        <span className="journal-time">{e.t}</span>
+                        <span style={{ color: e.color }}>{e.msg}
+                            {e.href && <a className="journal-link" href={e.href} target="_blank" rel="noreferrer"> Demander à Claude ↗</a>}
+                        </span>
+                    </motion.li>
+                ))}
+            </AnimatePresence>
+            {!log.length && <li className="muted">Rien pour l'instant.</li>}
+        </ul>
+    );
+}
+
+/** Dans la carte : les derniers évènements ; tout le journal dans le détail. */
+const JOURNAL_COMPACT = 3;
+
 export function Journal({ log }: { log: LogEntry[] }) {
     return (
-        <section className="card journal" aria-label="Journal">
-            <h2 className="card-title">Journal</h2>
-            <ul>
-                <AnimatePresence initial={false}>
-                    {log.map((e) => (
-                        <motion.li key={e.id} layout initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                            <span className="journal-time">{e.t}</span>
-                            <span style={{ color: e.color }}>{e.msg}
-                                {e.href && <a className="journal-link" href={e.href} target="_blank" rel="noreferrer"> Demander à Claude ↗</a>}
-                            </span>
-                        </motion.li>
-                    ))}
-                </AnimatePresence>
-                {!log.length && <li className="muted">Rien pour l'instant.</li>}
-            </ul>
-        </section>
+        <WidgetCard className="journal" label="Journal" title="Journal"
+            detail={log.length > JOURNAL_COMPACT ? { title: 'Journal', className: 'journal-sheet', body: <JournalList log={log} /> } : undefined}>
+            <JournalList log={log.slice(0, JOURNAL_COMPACT)} />
+        </WidgetCard>
     );
 }

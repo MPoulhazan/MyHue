@@ -1,15 +1,16 @@
-/* Carte BIXI de l'accueil : maquette B, un trajet par personne (rouge BIXI pour les repères) */
+/* Carte BIXI de l'accueil : une ligne par personne ; les trajets complets dans le détail (rouge BIXI pour les repères) */
 
-.bixi-card { --bixi: #d52b1e; --bixi-dim: #3a1a17; --bixi-text: #ffc2bc; --bixi-ok-bg: #2f3a1a; --bixi-ok-text: #e3f7b5; --bixi-low-bg: #3a2f14; --bixi-low-text: #ffd98a; }
+.bixi-card, .bixi-sheet { --bixi: #d52b1e; }
 
-.bixi-title { display: inline-flex; align-items: center; gap: 8px; }
-.bixi-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--bixi); display: inline-block; }
+.bixi-dot { width: 10px; height: 10px; flex: none; border-radius: 3px; background: var(--bixi); display: inline-block; }
 
-.bixi-pill { font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
-.bixi-pill.ok { background: var(--bixi-ok-bg); color: var(--bixi-ok-text); }
-.bixi-pill.low { background: var(--bixi-low-bg); color: var(--bixi-low-text); }
-.bixi-pill.no { background: var(--bixi-dim); color: var(--bixi-text); }
+/* Carte compacte */
+.bixi-lines { display: grid; gap: 6px; }
+.bixi-line-row { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 12px; border-radius: 14px; background: var(--h-surface-2); font-size: 14px; }
+.bixi-line-row b { flex: none; }
+.bixi-line-st { flex: 1; min-width: 0; color: var(--h-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* Détail : un trajet par personne, du vélo au départ à la place libre à l'arrivée */
 .bixi-trips { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
 .bixi-trip { background: var(--h-surface-2); border-radius: 20px; padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
 .bixi-who { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -24,30 +25,13 @@
 .bixi-st { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
 .bixi-st small { display: block; font-size: 12px; color: var(--h-muted); font-weight: 500; }
 
-.bixi-count { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
-.bixi-count.ok { background: var(--bixi-ok-bg); color: var(--bixi-ok-text); }
-.bixi-count.low { background: var(--bixi-low-bg); color: var(--bixi-low-text); }
-.bixi-count.no { background: var(--bixi-dim); color: var(--bixi-text); }
+.bixi-count { flex: none; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.bixi-count.ok { background: var(--h-ok-bg); color: var(--h-ok-text); }
+.bixi-count.low { background: var(--h-warn-bg); color: var(--h-warn-text); }
+.bixi-count.no { background: var(--h-bad-bg); color: var(--h-bad-text); }
 
 .bixi-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--h-muted); font-variant-numeric: tabular-nums; }
 .bixi-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .bixi-chip { padding: 5px 10px; border-radius: 999px; background: var(--h-surface-2); font-weight: 700; color: var(--h-text); }
 
 .bixi-short { display: none; }
-
-/* Tablette murale en paysage : version compacte qui tient sous les Moments sans faire défiler */
-@media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
-    .card.bixi-card { padding: 14px 18px; gap: 10px; border-radius: 22px; }
-    .bixi-card .card-head { font-size: 14px; }
-    .bixi-pill { font-size: 12px; padding: 4px 10px; }
-    .bixi-trips { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .bixi-trip { padding: 10px 12px; gap: 6px; border-radius: 16px; }
-    .bixi-who b { font-size: 15px; }
-    .bixi-who span { font-size: 12px; }
-    .bixi-route { grid-template-columns: 16px minmax(0, 1fr) auto; row-gap: 6px; }
-    .bixi-pin { width: 11px; height: 11px; border-width: 2.5px; }
-    .bixi-line, .bixi-ride, .bixi-st small, .bixi-foot, .bixi-long { display: none; }
-    .bixi-short { display: inline; }
-    .bixi-st { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
-    .bixi-count { font-size: 13px; padding: 2px 8px; }
-}

@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { createSharedPoll } from '../../hooks/sharedPoll';
-import { Icon } from '../Icon';
+import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
+import type { Level } from '../home/widgets/WidgetCard';
 import { CommuteMap } from './CommuteMap';
 import type { CommuteMapData } from './CommuteMap';
 import './Commute.css';
@@ -40,6 +39,7 @@ const hmLabel = (hhmm?: string) => {
 };
 
 const BADGE: Record<Mode, string> = { bike: 'B', ebike: '⚡', bus: '🚌', walk: 'à p.' };
+const PILL: Record<'ok' | 'low' | 'no', Level> = { ok: 'ok', low: 'warn', no: 'bad' };
 
 /** La grande phrase du haut : quoi prendre, et quand partir. */
 function headline(v: CommuteView): [string, string] {
@@ -74,77 +74,65 @@ function OptionRow({ o, best }: { o: Option; best: boolean }) {
     );
 }
 
-/** Carte « Trajet » de l'accueil (maquette B) : le conseil d'abord, les options, la mini-carte à toucher. */
+/** Ce que dit la carte en jour de repos : l'idée de sortie. */
+function RestIdea({ v, full }: { v: CommuteView; full: boolean }) {
+    const idea = v.rest?.idea;
+    if (!idea) return <p className="wcard-line">L’idée arrive le mercredi matin.</p>;
+    return (
+        <div className="cm-idea">
+            <b>{idea.title}</b>
+            <small>{[idea.where, idea.when].filter(Boolean).join(' · ')}</small>
+            {full && idea.why && <small>{idea.why}</small>}
+        </div>
+    );
+}
+
+/** Carte « Trajet » de l'accueil : le conseil et la meilleure option ; le reste et le plan dans le détail. */
 export function CommuteCard() {
     const v = commutePoll.use();
-    const [big, setBig] = useState(false);
     if (!v?.enabled || !v.configured || !v.person) return null;
 
     const who = v.person.who;
     const bestStation = v.best?.stationId ?? null;
-
     const title = v.plan?.kind === 'work' ? `${who} · ${hmLabel(v.plan.from)} – ${hmLabel(v.plan.to)}` : `Trajet de ${who}`;
     const [l1, l2] = headline(v);
+    const options = (v.options || []).filter((o) => o.minutes != null || o.mode === 'bike');
+    const kind = v.plan?.kind;
+
+    const body = (full: boolean) => kind === 'rest' ? (
+        <>
+            <p className="cm-head">Jour de repos.{full ? <><br />Une idée pour ta journée :</> : ''}</p>
+            <RestIdea v={v} full={full} />
+        </>
+    ) : kind === 'off' ? (
+        <p className="cm-head">Pas de trajet prévu aujourd’hui.</p>
+    ) : (
+        <>
+            {full && <p className="cm-head">{l1}<br />{l2}</p>}
+            {(full ? options : options.slice(0, 1)).map((o) => <OptionRow key={o.mode} o={o} best={o === v.options![0] && !!v.best} />)}
+        </>
+    );
 
     return (
-        <section className="card commute-card" aria-label={`Trajet de ${who}`}>
-            <div className="card-head cm-card-head">
-                <span className="card-title cm-title"><i className="cm-dot" />{title}</span>
-                {v.verdict?.text && <span className={`cm-pill ${v.verdict.level}`}>{v.verdict.text}</span>}
-            </div>
-
-            <div className="cm-body">
-                <div className="cm-main">
-                    {v.plan?.kind === 'rest' ? (
-                        <>
-                            <p className="cm-head">Jour de repos.<br />Une idée pour ta journée :</p>
-                            {v.rest?.idea ? (
-                                <div className="cm-idea">
-                                    <b>{v.rest.idea.title}</b>
-                                    <small>{[v.rest.idea.where, v.rest.idea.when].filter(Boolean).join(' · ')}</small>
-                                    {v.rest.idea.why && <small>{v.rest.idea.why}</small>}
-                                </div>
-                            ) : (
-                                <p className="muted">L’idée arrive le mercredi matin.</p>
-                            )}
-                        </>
-                    ) : v.plan?.kind === 'off' ? (
-                        <p className="cm-head">Pas de trajet prévu aujourd’hui.</p>
-                    ) : (
-                        <>
-                            <p className="cm-head">{l1}<br />{l2}</p>
-                            {(v.options || []).filter((o) => o.minutes != null || o.mode === 'bike').slice(0, 3).map((o) => (
-                                <OptionRow key={o.mode} o={o} best={o === v.options![0] && !!v.best} />
-                            ))}
-                        </>
-                    )}
-                </div>
-
-                {v.map?.home && (
-                    <button type="button" className="cm-mini" aria-label="Agrandir la carte des stations" onClick={() => setBig(true)}>
-                        <CommuteMap data={v.map} best={bestStation} />
-                        <span className="cm-mini-hint">Toucher pour agrandir</span>
-                    </button>
-                )}
-            </div>
-
-            <AnimatePresence>
-                {big && v.map && (
-                    <div className="sheet-backdrop" onClick={() => setBig(false)}>
-                        <motion.div className="sheet cm-sheet" role="dialog" aria-modal="true" aria-label="Stations BIXI autour de la maison"
-                            initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 32 }}
-                            transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-                            onClick={(e) => e.stopPropagation()}>
-                            <div className="sheet-head">
-                                <h2>Stations autour</h2>
-                                <button type="button" className="round-btn" aria-label="Fermer" onClick={() => setBig(false)}><Icon name="close" size={22} strokeWidth={2} /></button>
-                            </div>
-                            <CommuteMap data={v.map} best={bestStation} large />
-                            <p className="muted cm-legend">Chiffre = vélos classiques · ⚡ électriques · vert 3 et plus, orange 1 ou 2, rouge 0{v.bus && !v.bus.realtime ? ' · bus : horaire prévu' : ''}</p>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-        </section>
+        <WidgetCard className="commute-card" label={`Trajet de ${who}`}
+            title={<><i className="cm-dot" />{title}</>}
+            pills={v.verdict?.text && <StatusPill level={PILL[v.verdict.level]}>{v.verdict.text}</StatusPill>}
+            detail={{
+                title: `Trajet de ${who}`,
+                className: 'cm-sheet',
+                body: (
+                    <>
+                        <div className="cm-detail">{body(true)}</div>
+                        {v.map?.home && (
+                            <>
+                                <CommuteMap data={v.map} best={bestStation} large />
+                                <p className="muted cm-legend">Chiffre = vélos classiques · ⚡ électriques · vert 3 et plus, orange 1 ou 2, rouge 0{v.bus && !v.bus.realtime ? ' · bus : horaire prévu' : ''}</p>
+                            </>
+                        )}
+                    </>
+                ),
+            }}>
+            {body(false)}
+        </WidgetCard>
     );
 }

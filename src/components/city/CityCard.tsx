@@ -1,3 +1,4 @@
+import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
 import { useCity } from './useCity';
 import type { CityEvent } from './useCity';
 import './City.css';
@@ -9,45 +10,56 @@ const GROUPS: [CityEvent['bucket'], string][] = [
     ['weekend', 'Ce week-end'],
     ['later', 'Plus tard'],
 ];
-const MAX = 5;
+/** Dans la carte : les plus graves seulement ; le reste dans le détail */
+const COMPACT = 2;
 
-/** Carte « En ville » : alertes météo, avis du quartier et événements, rangés par jour. Cachée quand il n'y a rien. */
+function Event({ e, onBin }: { e: CityEvent; onBin: () => void }) {
+    return (
+        <div className={`city-ev ${e.level}`} title={[e.detail, e.advice, e.source].filter(Boolean).join(' · ')}>
+            <i />
+            <span className="city-ev-text">
+                <b>{e.title}</b>
+                <small><span className="city-when">{e.when}</span>{e.detail && <> · {e.detail}</>}</small>
+            </span>
+            {e.action === 'collecte' && <button type="button" className="city-do" onClick={onBin}>C’est sorti</button>}
+        </div>
+    );
+}
+
+/** Carte « En ville » : alertes météo, avis du quartier et événements. Cachée quand il n'y a rien. */
 export function CityCard() {
     const { view, binOut } = useCity();
     if (!view?.enabled || !view.events.length) return null;
 
-    // Les événements arrivent du plus grave au moins grave : on garde les MAX premiers
-    const shown = view.events.slice(0, MAX);
-    const dangers = view.events.filter((e) => e.level === 'danger').length;
-    const hidden = view.events.length - shown.length;
+    // Les événements arrivent du plus grave au moins grave
+    const events = view.events;
+    const dangers = events.filter((e) => e.level === 'danger').length;
+    const more = events.length - COMPACT;
     return (
-        <section className="card city-card" aria-label="En ville">
-            <div className="card-head">
-                <span className="card-title">En ville</span>
-                {dangers > 0 && <span className="city-pill danger">{dangers} danger{dangers > 1 ? 's' : ''}</span>}
-            </div>
-            <div className="city-agenda">
-                {GROUPS.map(([key, label]) => {
-                    const list = shown.filter((e) => e.bucket === key);
-                    if (!list.length) return null;
-                    return (
-                        <div key={key} className="city-day">
-                            <span className="city-day-name">{label}</span>
-                            {list.map((e) => (
-                                <div key={e.id} className={`city-ev ${e.level}`} title={[e.detail, e.advice, e.source].filter(Boolean).join(' · ')}>
-                                    <i />
-                                    <span className="city-ev-text">
-                                        <b>{e.title}</b>
-                                        <small><span className="city-when">{e.when}</span>{e.detail && <> · {e.detail}</>}</small>
-                                    </span>
-                                    {e.action === 'collecte' && <button type="button" className="city-do" onClick={binOut}>C’est sorti</button>}
+        <WidgetCard className="city-card" label="En ville" title="En ville"
+            pills={dangers > 0 && <StatusPill level="bad">{dangers} danger{dangers > 1 ? 's' : ''}</StatusPill>}
+            detail={{
+                title: 'En ville',
+                className: 'city-sheet',
+                body: (
+                    <div className="city-agenda">
+                        {GROUPS.map(([key, label]) => {
+                            const list = events.filter((e) => e.bucket === key);
+                            if (!list.length) return null;
+                            return (
+                                <div key={key} className="city-day">
+                                    <span className="city-day-name">{label}</span>
+                                    {list.map((e) => <Event key={e.id} e={e} onBin={binOut} />)}
                                 </div>
-                            ))}
-                        </div>
-                    );
-                })}
-                {hidden > 0 && <span className="city-more">+ {hidden} autre{hidden > 1 ? 's' : ''}</span>}
+                            );
+                        })}
+                    </div>
+                ),
+            }}>
+            <div className="city-agenda">
+                {events.slice(0, COMPACT).map((e) => <Event key={e.id} e={e} onBin={binOut} />)}
+                {more > 0 && <span className="city-more">+ {more} autre{more > 1 ? 's' : ''}</span>}
             </div>
-        </section>
+        </WidgetCard>
     );
 }

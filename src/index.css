@@ -18,6 +18,17 @@
   --h-cool-text: #a9c9ff;
   --h-warn: #ffb547;
 
+  /* Niveaux d'état partagés par les widgets (StatusPill, bulles, compteurs) */
+  --h-ok-bg: #2f3a1a;
+  --h-ok-text: #e3f7b5;
+  --h-warn-bg: #3a2f14;
+  --h-warn-text: #ffd98a;
+  --h-bad: #ff5a4e;
+  --h-bad-bg: #3a1a17;
+  --h-bad-text: #ffc2bc;
+  --h-info-bg: var(--h-cool-dim);
+  --h-info-text: var(--h-cool-text);
+
   font-family: Manrope, system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;

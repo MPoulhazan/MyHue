@@ -7,10 +7,10 @@
 .sky-pill.q-fair { background: #3a2f18; color: var(--h-light-text); }
 .sky-pill.q-bad { background: var(--h-surface-2); color: var(--h-muted); }
 .sky-pill.aurora { background: #173a30; color: #8ff5cd; }
-.sky-pill.dots { font-weight: 600; }
-.sky-pill.dots > span { display: inline-flex; gap: 3px; }
-.sky-pill.dots i { width: 6px; height: 6px; border-radius: 999px; background: var(--h-line-2); }
-.sky-pill.dots i.on { background: var(--h-accent); }
+/* Qualité de la nuit en points, dans la pastille de la carte */
+.sky-dots { display: inline-flex; gap: 3px; }
+.sky-dots i { width: 6px; height: 6px; border-radius: 999px; background: var(--h-line-2); }
+.sky-dots i.on { background: currentColor; }
 
 /* ── Bandeau ── */
 .sky-banner { position: relative; overflow: hidden; border-radius: 28px; background: #15181c; padding: 32px; display: grid; grid-template-columns: 250px minmax(0, 1fr) 300px; gap: 36px; scroll-margin-top: 16px; }
@@ -78,16 +78,15 @@
 
 /* ── Carte de la home ── */
 .sky-card.aurora { box-shadow: 0 0 0 1px #24493d; }
-.sky-card-moon { display: flex; gap: 16px; align-items: center; }
+.sky-card-moon { display: flex; gap: 14px; align-items: center; }
 .sky-card-moon > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 14px; }
 .sky-card-moon strong { font-size: 18px; font-weight: 700; }
-.sky-highlight { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 18px; background: var(--h-surface-2); }
-.sky-highlight strong { font-size: 15px; }
-.sky-highlight span { font-size: 13px; color: var(--h-muted); line-height: 1.4; }
+.sky-next { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sky-next.k-aurora { color: #8ff5cd; }
+.sky-highlight { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border-radius: 14px; background: var(--h-surface-2); }
+.sky-highlight strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sky-highlight.k-aurora { background: #173a30; }
 .sky-highlight.k-aurora strong { color: #8ff5cd; }
-.sky-highlight.k-aurora span { color: #c9ffe9; }
-.sky-more { margin: -4px -10px -10px; text-decoration: none; }
 
 @media (max-width: 1180px) {
     .sky-banner { grid-template-columns: 220px minmax(0, 1fr); }
@@ -108,13 +107,6 @@
     .sky-cloud-bar { max-height: 96px; }
     .sky-labels span { font-size: 10px; }
     .sky-legend .sky-sun { margin-left: 0; }
-}
-
-/* Tablette en paysage : la colonne de droite défile plutôt que d'écraser le journal */
-@media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
-    .home-side:has(.sky-card) { overflow-y: auto; }
-    .home-side:has(.sky-card) .journal { min-height: 240px; }
-    .home-side .sky-card { flex: none; }
 }
 
 .sky-alerts { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--h-muted); }

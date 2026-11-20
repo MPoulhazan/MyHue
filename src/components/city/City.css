@@ -1,9 +1,6 @@
 /* Alertes de la ville : rouge = danger, ambre = à prévoir, bleu = info */
 
-.city-card, .city-dim { --city-danger: #ff5a4e; --city-danger-bg: #3d1714; --city-danger-text: #ffc4bd; --city-heads: var(--h-warn); --city-info: var(--h-cool); }
-
-.city-pill { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
-.city-pill.danger { background: var(--city-danger-bg); color: var(--city-danger-text); }
+.city-card, .city-sheet, .city-dim { --city-danger: var(--h-bad); --city-danger-text: var(--h-bad-text); --city-heads: var(--h-warn); --city-info: var(--h-cool); }
 
 .city-agenda { display: grid; gap: 10px; }
 .city-day { display: grid; gap: 6px; }
@@ -39,14 +36,12 @@
     @keyframes city-in { from { transform: translateY(12px); opacity: .6; } }
 }
 
-/* Carte Métro (hors saison BIXI) */
-.metro-pill { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap; background: var(--h-surface-2); color: var(--h-muted); }
-.metro-pill.ok { background: #2f3a1a; color: #e3f7b5; }
-.metro-pill.bad { background: #3d1714; color: #ffc4bd; }
-.metro-lines { display: grid; gap: 8px; }
-.metro-line { display: grid; grid-template-columns: 14px auto minmax(0, 1fr); gap: 10px; align-items: center; background: var(--h-surface-2); border-radius: 14px; padding: 10px 12px; }
+/* Carte Métro (hors saison BIXI) : une ligne par ligne, le texte complet dans le détail */
+.metro-lines { display: grid; gap: 6px; }
+.metro-line { display: grid; grid-template-columns: 14px auto minmax(0, 1fr); gap: 10px; align-items: center; background: var(--h-surface-2); border-radius: 14px; padding: 8px 12px; }
+.metro-lines:not(.full) .metro-line span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .metro-line i { width: 14px; height: 14px; border-radius: 999px; }
 .metro-line b { font-size: 14px; white-space: nowrap; }
 .metro-line span { font-size: 13px; color: var(--h-muted); min-width: 0; }
 .metro-line.bad span { color: var(--h-text); }
-.metro-note { font-size: 13px; }
+

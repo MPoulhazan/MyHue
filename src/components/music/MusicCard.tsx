@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import axios from 'axios';
 import type { Cast } from '../../hooks/useCast';
 import { musicPoll } from '../home/widgets/polls';
+import { WidgetCard } from '../home/widgets/WidgetCard';
 import { Icon, type IconName } from '../Icon';
 import './tones.css';
 import './MusicCard.css';
@@ -43,11 +43,7 @@ export function MusicCard({ cast }: { cast: Cast }) {
     };
 
     return (
-        <section className={`card music-card tone-${tone}`} aria-label="Musique">
-            <div className="music-card-head">
-                <span className="music-card-eyebrow">{s.habit ? 'Ton habitude' : 'Musique'}</span>
-                <Link to="/music" className="music-card-more">Tout voir</Link>
-            </div>
+        <WidgetCard className={`music-card tone-${tone}`} label="Musique" title={s.habit ? 'Ton habitude' : 'Musique'} to="/music">
             <div className="music-card-body">
                 {look
                     ? <span className="music-card-icon" aria-hidden="true"><Icon name={look.icon} size={30} /></span>
@@ -64,6 +60,6 @@ export function MusicCard({ cast }: { cast: Cast }) {
             <span className="music-card-foot">
                 {!view.device ? 'Aucune enceinte joignable' : playing ? `Remplacera la musique sur ${cast.now?.device}` : `Sur ${view.device.name}`}
             </span>
-        </section>
+        </WidgetCard>
     );
 }
