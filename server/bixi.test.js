@@ -33,7 +33,7 @@ test('assignStarts : chacun son vélo, pas le même dernier', () => {
     const home = [
         { id: 'roy', name: 'Roy', dist: 180, bikes: 1 },
         { id: 'andre', name: 'André', dist: 225, bikes: 3 },
-        { id: 'rachel', name: 'Rachel', dist: 325, bikes: 1 },
+        { id: 'c', name: 'Gamma', dist: 325, bikes: 1 },
     ];
     const [a, b] = assignStarts(home, [], 2);
     assert.equal(a.id, 'andre', 'un dernier vélo à 180 m vaut moins que 3 vélos à 225 m');
@@ -71,11 +71,11 @@ test('bixiSpeech et isBixiQuestion', () => {
     const view = {
         configured: true, season: 'open', updatedAt: 1, verdict: { text: '4 °C, sec · prends des gants' }, home: [],
         trips: [
-            { who: 'Toi', from: { name: 'Roy / St-André', bikes: 3 }, to: { name: 'Robert-Bourassa', docks: 14 } },
+            { who: 'Toi', from: { name: 'Alpha / Beta', bikes: 3 }, to: { name: 'Robert-Bourassa', docks: 14 } },
             { who: 'Lou', from: null, to: null },
         ],
     };
-    assert.equal(bixiSpeech(view), 'Toi : 3 vélos à Roy / St-André, 14 places à Robert-Bourassa. Lou : plus aucun vélo classique autour. 4 °C, sec, prends des gants.');
+    assert.equal(bixiSpeech(view), 'Toi : 3 vélos à Alpha / Beta, 14 places à Robert-Bourassa. Lou : plus aucun vélo classique autour. 4 °C, sec, prends des gants.');
     assert.match(bixiSpeech({ configured: true, season: 'closed' }), /hiver/);
     assert.equal(isBixiQuestion('Il y a des BIXI ?'), true);
     assert.equal(isBixiQuestion('reste-t-il des vélos'), true);
@@ -86,12 +86,12 @@ test('departureAlerts : vélos, places, météo', () => {
     const base = {
         configured: true, season: 'open', updatedAt: 1, verdict: { level: 'ok', text: '4 °C, sec' },
         home: [{ id: 'a', bikes: 1, trend: null }, { id: 'b', bikes: 0, trend: null }],
-        extras: [{ id: 'z', name: 'St-André / Cherrier', bikes: 12, dist: 430 }],
+        extras: [{ id: 'z', name: 'Delta / Epsilon', bikes: 12, dist: 430 }],
         trips: [{ who: 'Toi', to: { name: 'RB', docks: 14, low: false, alt: false } }, { who: 'Lou', to: { name: 'Mq', docks: 9, low: false, alt: true } }],
     };
     const a = departureAlerts(base);
     assert.deepEqual(a.map((x) => x.key), ['bikes', 'docks:Lou']);
-    assert.equal(a[0].text, '🚲 Plus que 1 vélo classique à vos stations. Le plus proche bien garni : St-André / Cherrier (12 vélos, 430 m).');
+    assert.equal(a[0].text, '🚲 Plus que 1 vélo classique à vos stations. Le plus proche bien garni : Delta / Epsilon (12 vélos, 430 m).');
     assert.equal(a[0].lamp, true);
     assert.match(a[1].text, /pleine, Mq a 9 places/);
     const ok = { ...base, home: [{ id: 'a', bikes: 5 }], trips: [{ who: 'Toi', to: { name: 'RB', docks: 14, low: false, alt: false } }] };

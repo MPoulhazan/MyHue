@@ -39,7 +39,7 @@ const hmLabel = (hhmm?: string) => {
     return `${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
 };
 
-const BADGE: Record<Mode, string> = { bike: 'B', ebike: '⚡', bus: '14', walk: 'à p.' };
+const BADGE: Record<Mode, string> = { bike: 'B', ebike: '⚡', bus: '🚌', walk: 'à p.' };
 
 /** La grande phrase du haut : quoi prendre, et quand partir. */
 function headline(v: CommuteView): [string, string] {
@@ -49,7 +49,9 @@ function headline(v: CommuteView): [string, string] {
     const bikeOk = (v.options || []).some((o) => (o.mode === 'bike' || o.mode === 'ebike') && o.ok && o.minutes != null);
     if (b.mode === 'bike') return ['BIXI ce matin,', 'pars quand tu veux.'];
     if (b.mode === 'ebike') return ['BIXI électrique,', 'prends un casque.'];
-    if (b.mode === 'bus') return [snow ? 'Neige : bus 14,' : bikeOk ? 'Bus 14, plus rapide,' : 'Pas de BIXI : bus 14,', `pars à ${hm(b.leaveAt!)}.`];
+    // Nom de la ligne : réglage sur le Pi (data/commute.json), jamais dans le code public
+    const bus = v.bus?.label || 'Bus';
+    if (b.mode === 'bus') return [snow ? `Neige : ${bus.toLowerCase()},` : bikeOk ? `${bus}, plus rapide,` : `Pas de BIXI : ${bus.toLowerCase()},`, `pars à ${hm(b.leaveAt!)}.`];
     return [snow ? 'Neige : à pied,' : 'À pied ce matin,', `≈ ${b.minutes} min.`];
 }
 

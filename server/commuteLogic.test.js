@@ -37,10 +37,10 @@ const trip = (bikes, ebikes = 0) => ({
     who: 'C',
     from: bikes ? { id: '1', name: 'du Parc / Roy', dist: 180, bikes, ebikes, scarce: bikes === 1 } : null,
     to: { id: '2', name: 'Gilford / Papineau', docks: 8, low: false },
-    ebike: ebikes ? { id: '3', name: 'St-André / Cherrier', dist: 400, ebikes } : null,
+    ebike: ebikes ? { id: '3', name: 'Delta / Epsilon', dist: 400, ebikes } : null,
     rideMin: 8,
 });
-const bus = { label: 'Bus 14', stopName: 'devant la maison', walkToStopMin: 1, rideMin: 6, walkFromStopMin: 6, departures: [{ at: at('08:11'), realtime: true }] };
+const bus = { label: 'Bus 99', stopName: 'devant la maison', walkToStopMin: 1, rideMin: 6, walkFromStopMin: 6, departures: [{ at: at('08:11'), realtime: true }] };
 const ok = { level: 'ok', text: '2 °C, sec · prends des gants' };
 
 test('commuteOptions : BIXI quand il y a des vélos et qu’il fait sec', () => {
@@ -55,11 +55,11 @@ test('commuteOptions : électrique avec casque quand il n’y a plus de classiqu
     assert.match(r.best.detail, /casque/);
 });
 
-test('commuteOptions : ni vélo ni électrique → bus 14, avec l’heure de départ', () => {
+test('commuteOptions : ni vélo ni électrique → bus, avec l’heure de départ', () => {
     const r = commuteOptions({ trip: trip(0), verdict: ok, destWalkMin: 3, bus, walkMin: 26, start: at('08:00'), tz: TZ });
     assert.equal(r.best.mode, 'bus');
     assert.equal(r.best.leaveAt, at('08:10'));
-    assert.match(adviceText('C', r.best, ok, TZ), /Pas de BIXI\. Bus 14 à 8 h 11, pars à 8 h 10\. Arrivée vers 8 h 23/);
+    assert.match(adviceText('C', r.best, ok, TZ), /Pas de BIXI\. Bus 99 à 8 h 11, pars à 8 h 10\. Arrivée vers 8 h 23/);
 });
 
 test('commuteOptions : neige → BIXI proposé mais déconseillé, bus d’abord', () => {

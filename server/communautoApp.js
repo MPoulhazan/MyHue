@@ -161,6 +161,8 @@ export const prewarm = () => exclusive(async () => {
  */
 export const block = (carId) => exclusive(async () => {
     const t0 = Date.now();
+    // L'id vient du flux public et finit dans une commande shell de la tablette : chiffres seulement
+    if (!/^\d{1,10}$/.test(String(carId))) return { ok: false, reason: 'screen', detail: `identifiant d’auto inattendu (${String(carId).slice(0, 20)})` };
     try {
         await ensureOnline();
     } catch (err) {
@@ -191,7 +193,8 @@ export const block = (carId) => exclusive(async () => {
             console.log(`[Communauto] Flex ${carId} bloquée, tap à ${tapMs} ms`);
             return { ok: true, ms: tapMs };
         }
-        return { ok: false, reason: 'gone', detail: 'prise juste avant' };
+        if (after.state === 'gone') return { ok: false, reason: 'gone', detail: 'prise juste avant' };
+        return { ok: false, reason: 'screen', detail: 'blocage pas confirmé à l’écran' };
     } finally {
         // Ne pas laisser une fiche ouverte : la prochaine course partirait d'une carte propre
         if (!blocked) await shell('input', 'keyevent', 'KEYCODE_BACK').catch(() => {});

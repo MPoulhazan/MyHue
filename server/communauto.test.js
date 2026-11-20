@@ -42,11 +42,11 @@ test('newArrivals : seulement les autos pas encore annoncées', () => {
 
 test('foundText et whereLabel : la rue si on la connaît', () => {
     const [a, b] = carsWithin([car(1, -0.0025, 0), car(2, 0.003, 0)], home, 500);
-    a.street = 'Rue Rachel Est';
-    assert.equal(whereLabel(a), `Rue Rachel Est, à ${a.dist} m au sud`);
+    a.street = 'Rue des Érables';
+    assert.equal(whereLabel(a), `Rue des Érables, à ${a.dist} m au sud`);
     assert.equal(whereLabel(b), `à ${b.dist} m au nord`);
     const text = foundText([a, b]);
-    assert.match(text, /^J’ai trouvé une Communauto : Toyota Corolla grise, Rue Rachel Est/);
+    assert.match(text, /^J’ai trouvé une Communauto : Toyota Corolla grise, Rue des Érables/);
     assert.match(text, /Et une autre : Toyota Corolla à \d+ m\./);
     assert.equal(foundText([]), '');
 });

@@ -64,7 +64,7 @@ export const carLabel = (c) => {
     return `${c.model}${c.color ? ` ${c.color}` : ''}${battery}`;
 };
 
-/** « rue Rachel, à 280 m au sud-est » ; sans rue : « à 280 m au sud-est » */
+/** « rue des Érables, à 280 m au sud-est » ; sans rue : « à 280 m au sud-est » */
 export const whereLabel = (c) => `${c.street ? `${c.street}, ` : ''}à ${c.dist} m ${c.dir}`;
 
 /** Message de découverte (Telegram et voix). */
