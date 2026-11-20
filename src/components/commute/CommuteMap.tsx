@@ -26,6 +26,8 @@ export function CommuteMap({ data, best, large = false }: { data: CommuteMapData
     const el = useRef<HTMLDivElement>(null);
     const map = useRef<L.Map | null>(null);
     const layer = useRef<L.LayerGroup | null>(null);
+    const fit = useRef<(() => void) | null>(null);
+    const fitted = useRef(false);
 
     useEffect(() => {
         if (!el.current || !data.home) return;
@@ -39,14 +41,21 @@ export function CommuteMap({ data, best, large = false }: { data: CommuteMapData
             boxZoom: false,
             keyboard: large,
         });
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            subdomains: 'abcd',
-            attribution: '© OpenStreetMap · © CARTO',
+            className: 'cm-tiles',
+            attribution: '© OpenStreetMap',
         }).addTo(m);
         map.current = m;
         layer.current = L.layerGroup().addTo(m);
+        // La carte naît dans une boîte qui s'anime ou change de taille : on recale le cadrage
+        const ro = new ResizeObserver(() => {
+            m.invalidateSize();
+            fit.current?.();
+        });
+        ro.observe(el.current);
         return () => {
+            ro.disconnect();
             m.remove();
             map.current = null;
         };
@@ -76,7 +85,10 @@ export function CommuteMap({ data, best, large = false }: { data: CommuteMapData
         }
         const pts = [home, ...shown.slice(0, large ? 12 : 5).map((s) => L.latLng(s.lat, s.lon))];
         if (large && data.work) pts.push(L.latLng(data.work.lat, data.work.lon));
-        m.fitBounds(L.latLngBounds(pts), { padding: large ? [40, 40] : [18, 18], maxZoom: 17 });
+        fit.current = () => m.fitBounds(L.latLngBounds(pts), { padding: large ? [40, 40] : [18, 18], maxZoom: 17 });
+        // Agrandie, on ne recadre pas à chaque relevé : la personne a peut-être déplacé la carte
+        if (!large || !fitted.current) fit.current();
+        fitted.current = true;
     }, [data, best, large]);
 
     return <div ref={el} className={`cm-map ${large ? 'is-large' : ''}`} />;

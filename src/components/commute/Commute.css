@@ -1,5 +1,6 @@
 /* Carte « Trajet » de l'accueil : maquette B, le conseil d'abord, la mini-carte à droite */
 
+.commute-card { container-type: inline-size; }
 .commute-card { --bixi: #d52b1e; --cm-ok-bg: #2f3a1a; --cm-ok-text: #e3f7b5; --cm-low-bg: #3a2f14; --cm-low-text: #ffd98a; --cm-no-bg: #3a1a17; --cm-no-text: #ffc2bc; }
 
 .cm-title { display: inline-flex; align-items: center; gap: 8px; }
@@ -34,12 +35,14 @@
 .cm-idea b { font-size: 15px; }
 .cm-idea small { font-size: 13px; color: var(--h-muted); }
 
-.cm-mini { width: 190px; flex: none; border: 0; padding: 0; border-radius: 16px; overflow: hidden; background: #22241f; cursor: pointer; position: relative; min-height: 190px; }
+.cm-mini { width: 190px; flex: none; border: 0; padding: 0; border-radius: 16px; overflow: hidden; background: #22241f; cursor: pointer; position: relative; min-height: 190px; isolation: isolate; z-index: 0; }
 .cm-mini .cm-map { position: absolute; inset: 0; pointer-events: none; }
 .cm-mini-hint { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 500; font-size: 11px; color: var(--h-text); background: rgba(20, 21, 19, 0.8); padding: 4px 8px; border-radius: 999px; }
 .cm-mini .leaflet-control-attribution { display: none; }
 
-.cm-map { width: 100%; height: 100%; background: #22241f; }
+.cm-map { width: 100%; height: 100%; background: #22241f; isolation: isolate; }
+/* Tuiles OpenStreetMap claires passées en sombre pour la tablette */
+.cm-tiles { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.4); }
 .cm-map.is-large { height: min(62dvh, 560px); border-radius: 20px; }
 .cm-sheet { gap: 16px; }
 .cm-legend { margin: 0; font-size: 13px; }
@@ -64,8 +67,8 @@
     .cm-mini { width: 170px; min-height: 160px; }
 }
 
-/* Téléphone : la carte passe sous les options */
-@media (max-width: 560px) {
+/* Carte étroite (colonne de droite, téléphone) : la mini-carte passe sous les options */
+@container (max-width: 520px) {
     .cm-body { flex-direction: column; }
     .cm-mini { width: 100%; min-height: 160px; }
 }

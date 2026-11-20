@@ -69,7 +69,9 @@ test('commuteOptions : neige → BIXI proposé mais déconseillé, bus d’abord
     const bike = r.options.find((o) => o.mode === 'bike');
     assert.equal(bike.ok, true);
     assert.match(bike.warn, /déconseillé/);
-    assert.match(adviceText('C', r.best, snow, TZ), /Plein de neige/);
+    assert.match(adviceText('C', r.best, snow, TZ, r.options), /Plein de neige/);
+    const far = commuteOptions({ trip: { ...trip(2), from: { ...trip(2).from, dist: 500 } }, verdict: ok, destWalkMin: 3, bus, walkMin: 26, start: at('08:00'), tz: TZ });
+    if (far.best.mode === 'bus') assert.match(adviceText('C', far.best, ok, TZ, far.options), /Le bus est plus rapide/);
 });
 
 test('commuteOptions : verglas → jamais le vélo ; bus raté → à pied', () => {

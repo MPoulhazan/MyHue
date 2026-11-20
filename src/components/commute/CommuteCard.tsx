@@ -46,9 +46,10 @@ function headline(v: CommuteView): [string, string] {
     const b = v.best;
     if (!b) return ['Aucune option fiable,', 'regarde dehors.'];
     const snow = /neige/i.test(v.verdict?.text || '');
+    const bikeOk = (v.options || []).some((o) => (o.mode === 'bike' || o.mode === 'ebike') && o.ok && o.minutes != null);
     if (b.mode === 'bike') return ['BIXI ce matin,', 'pars quand tu veux.'];
     if (b.mode === 'ebike') return ['BIXI électrique,', 'prends un casque.'];
-    if (b.mode === 'bus') return [snow ? 'Neige : bus 14,' : 'Pas de BIXI : bus 14,', `pars à ${hm(b.leaveAt!)}.`];
+    if (b.mode === 'bus') return [snow ? 'Neige : bus 14,' : bikeOk ? 'Bus 14, plus rapide,' : 'Pas de BIXI : bus 14,', `pars à ${hm(b.leaveAt!)}.`];
     return [snow ? 'Neige : à pied,' : 'À pied ce matin,', `≈ ${b.minutes} min.`];
 }
 

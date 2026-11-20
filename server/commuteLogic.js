@@ -164,12 +164,14 @@ export const commuteOptions = (f) => {
 };
 
 /** Une phrase pour la carte, Telegram et Jean-Claude. */
-export const adviceText = (who, best, verdict, tz = 'America/Toronto') => {
+export const adviceText = (who, best, verdict, tz = 'America/Toronto', options = []) => {
     if (!best) return `${who} : je n’ai aucune option fiable, regarde dehors.`;
     const snow = /neige/i.test(verdict?.text || '');
     if (best.mode === 'bike') return `${who} : BIXI, ${best.detail}. ≈ ${best.minutes} min.`;
     if (best.mode === 'ebike') return `${who} : BIXI électrique, ${best.detail.replace(/^Plus de vélo classique : /, '')}. ≈ ${best.minutes} min.`;
-    const why = snow ? 'Plein de neige, le BIXI est déconseillé. ' : verdict?.level === 'no' ? `${verdict.text}. ` : 'Pas de BIXI. ';
+    const bikeOk = options.some((o) => (o.mode === 'bike' || o.mode === 'ebike') && o.ok && o.minutes != null);
+    const faster = best.mode === 'bus' ? 'Le bus est plus rapide. ' : 'Plus rapide à pied. ';
+    const why = snow ? 'Plein de neige, le BIXI est déconseillé. ' : verdict?.level === 'no' ? `${verdict.text}. ` : bikeOk ? faster : 'Pas de BIXI. ';
     if (best.mode === 'bus') return `${who} : ${why}${best.title} à ${best.detail.split(' à ')[0]}, pars à ${hm(best.leaveAt, tz)}. Arrivée vers ${hm(best.arriveAt, tz)}.`;
     return `${who} : ${why}À pied, ≈ ${best.minutes} min.`;
 };

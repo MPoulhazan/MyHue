@@ -169,7 +169,7 @@ export const getView = async (id = null) => {
         verdict,
         best,
         options,
-        text: adviceText(p.who, best, verdict, TZ),
+        text: adviceText(p.who, best, verdict, TZ, options),
         bus: bus && { label: bus.label, stopName: bus.stopName, departures: bus.departures, realtime: !rt.error && Boolean(rt.byStop.get(`${bus.route}:${bus.stop}`)?.length), error: rt.error },
         map: await map(),
     };
