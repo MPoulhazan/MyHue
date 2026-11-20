@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
+import { QueueNote } from '../alerts/QueueNote';
 import './HomeAlarm.css';
 
-interface ActiveAlarm {
+export interface ActiveAlarm {
     did: string;
     name: string;
     room: string | null;
@@ -18,40 +19,29 @@ const ADVICE: Record<string, string> = {
 const hhmm = (ts: number) => new Date(ts).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' });
 
 /**
- * Écran d'alarme de la tablette (fumée, fuite) : reste affiché tant que l'alarme est levée.
+ * Écran d'alarme (fumée ou fuite), montré par AlertHost tant que l'alarme est levée.
  * « Lumières normales » = « C'est réglé » sur Telegram : les lampes reprennent leur état d'avant.
+ * @param alarms les alarmes de cette sorte (la fumée et la fuite ont chacune leur écran)
+ * @param all    toutes les alarmes en cours : un seul geste rend la maison normale
  */
-export function HomeAlarm() {
-    const [alarms, setAlarms] = useState<ActiveAlarm[]>([]);
+export function HomeAlarm({ alarms, all, waiting, onCleared }: { alarms: ActiveAlarm[]; all: ActiveAlarm[]; waiting: number; onCleared: () => void }) {
     const [busy, setBusy] = useState(false);
-
-    const load = useCallback(() => {
-        axios.get('/api/alarm').then(({ data }) => setAlarms(data.active || [])).catch(() => {});
-    }, []);
-
-    useEffect(() => {
-        load();
-        const timer = setInterval(load, 3000);
-        return () => clearInterval(timer);
-    }, [load]);
-
     const a = alarms[0];
     if (!a) return null;
 
     const clear = async () => {
         setBusy(true);
         try {
-            // Toutes les alarmes en cours : un seul geste rend la maison normale
-            for (const x of alarms) await axios.post('/api/alarm/clear', { did: x.did });
+            for (const x of all) await axios.post('/api/alarm/clear', { did: x.did });
         } finally {
             setBusy(false);
-            load();
+            onCleared();
         }
     };
 
     const where = a.room ? `${a.room} · ${a.name}` : a.name;
     return (
-        <div className="home-alarm-dim" role="alertdialog" aria-modal="true" aria-labelledby="home-alarm-title">
+        <div className="home-alarm-dim alert-layer" role="alertdialog" aria-modal="true" aria-labelledby="home-alarm-title">
             <div className="home-alarm">
                 <span className="home-alarm-kicker">Alarme maison · depuis {hhmm(a.since)}</span>
                 <h2 id="home-alarm-title">{TITLE[a.type] || 'Alarme'}</h2>
@@ -61,6 +51,7 @@ export function HomeAlarm() {
                     {busy ? 'Un instant…' : 'Lumières normales'}
                 </button>
                 <small className="home-alarm-note">Les lampes reprennent leur état d’avant et Telegram est prévenu. Si ça recommence, l’alarme repart.</small>
+                <QueueNote waiting={waiting} />
             </div>
         </div>
     );

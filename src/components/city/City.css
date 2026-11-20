@@ -19,7 +19,7 @@
 .city-more { font-size: 12px; color: var(--h-muted); font-weight: 700; }
 
 /* Écran d'alerte */
-.city-dim { position: fixed; inset: 0; z-index: 60; background: rgba(10, 10, 9, .74); display: grid; place-items: center; padding: 24px; }
+.city-dim { position: fixed; inset: 0; z-index: 1000; background: rgba(10, 10, 9, .74); display: grid; place-items: center; padding: 24px; }
 .city-takeover { width: min(720px, 100%); background: var(--h-surface); border: 2px solid var(--city-danger); border-radius: 30px; padding: 28px 32px; display: grid; gap: 18px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
 .city-kicker { font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--city-danger); }
 .city-takeover h2 { font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -.01em; text-wrap: balance; }

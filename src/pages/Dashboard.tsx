@@ -10,10 +10,7 @@ import type { IconName } from '../components/Icon';
 import { AddSensorSheet } from '../components/home/AddSensorSheet';
 import { OUTSIDE_ROOM } from '../components/home/RoomPicker';
 import { NightMode } from '../components/home/NightMode';
-import { PausedSensors } from '../components/home/PausedSensors';
 import { PhoneHome } from '../components/phone/PhoneHome';
-import { CityAlert } from '../components/city/CityAlert';
-import { HomeAlarm } from '../components/alarm/HomeAlarm';
 import { ClimateCard, HueStatus, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import { AllWidgetsSheet, HomeWidgets } from '../components/home/widgets/registry';
 import { useHomeWidgets } from '../components/home/widgets/useHomeWidgets';
@@ -101,7 +98,6 @@ export function Dashboard() {
                         {clock.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} · <span className="mono">{hhmm(clock)}</span>
                     </span>
                 </div>
-                <PausedSensors sensors={home.sensors} />
                 {home.weather && (
                     <Link to="/climate/weather" className="weather-pill">
                         <Icon name={weatherIcon(home.weather.condition)} size={18} />
@@ -166,8 +162,6 @@ export function Dashboard() {
 
             {sheets}
 
-            <CityAlert />
-            <HomeAlarm />
 
             <NightMode
                 temperature={home.sensors.find((s) => s.props.temperature != null)?.props.temperature ?? null}

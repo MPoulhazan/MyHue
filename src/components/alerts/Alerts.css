@@ -1,0 +1,33 @@
+/* Une seule couche d'alertes (AlertHost) : bannières en haut de chaque écran, plein écran au-dessus de tout */
+
+/* Au-dessus des panneaux (50), du lecteur, de l'assistant et du mode nuit (100) */
+.alert-layer { z-index: 1000; }
+
+.alert-queue { margin: 4px 0 0; font-size: 14px; font-weight: 700; opacity: 0.8; }
+
+/* Bannières */
+.alert-banners { display: flex; flex-direction: column; gap: 8px; margin: 16px 24px 0; font-family: Manrope, system-ui, sans-serif; }
+.shell.phone .alert-banners { margin: 12px 16px 0; }
+.alert-banner { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 18px; color: var(--h-text); font-size: 15px; line-height: 1.4; }
+.alert-banner > svg { flex: none; }
+.alert-banner.bad { background: #3d1620; }
+.alert-banner.bad > svg { color: #ff3b5c; }
+.alert-banner.warn { background: #3a2a12; }
+.alert-banner.warn > svg { color: var(--h-light); }
+.alert-banner-text { flex: 1; min-width: 0; }
+.alert-banner-since { color: var(--h-muted); }
+.alert-banner-hint { margin-top: 2px; color: var(--h-muted); font-size: 14px; }
+.alert-banner-btn { flex: none; min-height: 44px; padding: 0 18px; border-radius: 999px; border: none; background: var(--h-light); color: var(--h-on-accent); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+/* Plein écran de la garde : un passage pendant l'absence */
+.guard-dim { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(30, 8, 6, 0.86); font-family: Manrope, system-ui, sans-serif; }
+.guard-takeover { --guard-red: #ff6b5e; --guard-red-bg: var(--h-bad-bg); --guard-red-text: var(--h-bad-text); width: min(680px, 100%); box-sizing: border-box; display: grid; gap: 14px; padding: 30px 32px; border-radius: 30px; border: 3px solid #ff6b5e; background: var(--h-surface); color: var(--h-text); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5); }
+.guard-kicker { font-size: 13px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #ff6b5e; }
+.guard-takeover h2 { margin: 0; font-size: 38px; font-weight: 800; line-height: 1.1; }
+.guard-takeover p { margin: 0; font-size: 17px; color: var(--h-muted); }
+.guard-takeover-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.guard-takeover-actions .guard-btn { min-height: 56px; padding: 0 28px; font-size: 17px; }
+@media (max-width: 520px) {
+    .guard-takeover { padding: 24px 18px; }
+    .guard-takeover h2 { font-size: 30px; }
+}

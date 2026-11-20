@@ -1,20 +1,18 @@
-import { useCity } from './useCity';
+import { QueueNote } from '../alerts/QueueNote';
+import type { CityView } from './useCity';
 import './City.css';
 
 const LAMP = { ice: 'bleu glace', alert: 'orange' };
 
-/** Écran d'alerte de la tablette : un vrai danger (verglas, smog, avis d'ébullition…) reste affiché jusqu'à « J'ai vu ». */
-export function CityAlert() {
-    const { view, ack } = useCity();
-    const e = view?.takeover;
-    if (!e) return null;
+/** Écran d'alerte de la ville : un vrai danger (verglas, smog, avis d'ébullition…) reste affiché jusqu'à « J'ai vu ». */
+export function CityAlert({ event: e, waiting, onAck }: { event: NonNullable<CityView['takeover']>; waiting: number; onAck: (id: string) => void }) {
     const facts = [
         { label: 'Quand', value: e.when },
         e.advice ? { label: 'Pour vous', value: e.advice } : null,
         e.lamp ? { label: 'Lampe du salon', value: `respire en ${LAMP[e.lamp]}` } : null,
     ].filter((f): f is { label: string; value: string } => f !== null);
     return (
-        <div className="city-dim" role="alertdialog" aria-modal="true" aria-labelledby="city-alert-title">
+        <div className="city-dim alert-layer" role="alertdialog" aria-modal="true" aria-labelledby="city-alert-title">
             <div className={`city-takeover kind-${e.kind}`}>
                 <span className="city-kicker">{e.source}</span>
                 <h2 id="city-alert-title">{e.title}, {e.when}</h2>
@@ -26,8 +24,9 @@ export function CityAlert() {
                 </div>
                 <div className="city-actions">
                     <span className="muted">Le briefing du matin le redira.</span>
-                    <button type="button" className="city-seen" onClick={() => ack(e.id)} autoFocus>J’ai vu</button>
+                    <button type="button" className="city-seen" onClick={() => onAck(e.id)} autoFocus>J’ai vu</button>
                 </div>
+                <QueueNote waiting={waiting} />
             </div>
         </div>
     );
