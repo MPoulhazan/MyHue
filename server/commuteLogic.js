@@ -91,6 +91,7 @@ export const commuteOptions = (f) => {
         const minutes = walkMinutes(t.from.dist ?? 0) + t.rideMin + destWalk;
         out.push({
             mode: 'bike',
+            stationId: t.from.id,
             ok: !noBike,
             minutes,
             score: minutes - BIKE_BONUS_MIN + (v.level === 'low' ? LOW_WEATHER_PENALTY_MIN : 0) + (snow ? 30 : 0) + (noBike ? 999 : 0),
@@ -103,6 +104,7 @@ export const commuteOptions = (f) => {
         const minutes = walkMinutes(t.ebike.dist ?? 0) + ride + destWalk;
         out.push({
             mode: 'ebike',
+            stationId: t.ebike.id,
             ok: !noBike,
             minutes,
             score: minutes - BIKE_BONUS_MIN + EBIKE_PENALTY_MIN + (v.level === 'low' ? LOW_WEATHER_PENALTY_MIN : 0) + (snow ? 30 : 0) + (noBike ? 999 : 0),

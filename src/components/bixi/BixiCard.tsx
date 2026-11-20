@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { bixiPoll } from '../home/widgets/polls';
+import { CommuteCard, commutePoll } from '../commute/CommuteCard';
 import './Bixi.css';
 
 // ── Données de /api/bixi (server/bixi.js) ────────────────────────────────────
 
 interface Start { id: string; name: string; dist: number | null; bikes: number; scarce: boolean; fallback: boolean; trend: number | null }
 interface Dest { id: string; name: string; docks: number; low: boolean; alt: boolean }
-interface Trip { who: string; from: Start | null; to: Dest | null; rideMin: number | null }
+interface Trip { who: string; handled?: boolean; from: Start | null; to: Dest | null; rideMin: number | null }
 interface Station { id: string; name: string; dist: number | null; bikes: number | null; docks: number | null; trend?: number | null }
 export interface BixiView {
     enabled: boolean;
@@ -87,10 +88,16 @@ function TripBlock({ trip }: { trip: Trip }) {
 /** Carte BIXI de l'accueil : un trajet par personne, du vélo au départ à la place libre à l'arrivée. */
 export function BixiCard() {
     const { view, now } = useBixi();
+    const commute = commutePoll.use();
     if (!view?.enabled || !view.configured || view.season === 'closed') return null;
 
+    // Les trajets conseillés par le serveur (BIXI, bus ou à pied) ont leur propre carte
+    const covered = Boolean(commute?.configured) && view.trips.some((t) => t.handled);
+    const trips = covered ? view.trips.filter((t) => !t.handled) : view.trips;
+    if (covered && !trips.length) return <CommuteCard />;
+
     const title = view.window ? `BIXI · départ ${hmLabel(view.leaveFrom)} – ${hmLabel(view.leaveTo)}` : 'BIXI';
-    return (
+    const card = (
         <section className={`card bixi-card ${view.window ? 'is-window' : ''}`} aria-label="Vélos BIXI">
             <div className="card-head">
                 <span className="card-title bixi-title"><i className="bixi-dot" />{title}</span>
@@ -98,7 +105,7 @@ export function BixiCard() {
             </div>
             {view.updatedAt ? (
                 <div className="bixi-trips">
-                    {view.trips.map((t) => <TripBlock key={t.who} trip={t} />)}
+                    {trips.map((t) => <TripBlock key={t.who} trip={t} />)}
                 </div>
             ) : (
                 <p className="muted">BIXI ne répond pas pour le moment.</p>
@@ -115,4 +122,5 @@ export function BixiCard() {
             )}
         </section>
     );
+    return covered ? <><CommuteCard />{card}</> : card;
 }

@@ -270,6 +270,8 @@ export const getView = async ({ fresh = false } = {}) => {
         const leave = leaveWindowOf(c, now);
         return {
             who: c.who,
+            // Conseillé par commute.js : la carte « Trajet » s'en charge
+            handled: handled.has(c.who),
             leave: leave && { from: leave.from, to: leave.to },
             from: from && { id: from.id, name: from.name, dist: from.dist, bikes: from.bikes, ebikes: from.ebikes, scarce: from.scarce, fallback: from.fallback, trend: home.find((h) => h.id === from.id)?.trend ?? null },
             to: to && { id: to.id, name: to.name, docks: to.docks, low: to.low, alt: to.alt },

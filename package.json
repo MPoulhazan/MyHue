@@ -26,6 +26,7 @@
         "express": "^5.1.0",
         "framer-motion": "^12.34.0",
         "kiwicam-broadlinkjs-rm": "^0.9.22",
+        "leaflet": "1.9.4",
         "mdns-js": "^1.0.3",
         "mqtt": "^5.15.0",
         "node-ical": "0.27.3",
@@ -40,6 +41,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.39.1",
+        "@types/leaflet": "1.9.12",
         "@types/node": "^24.10.1",
         "@types/react": "^19.2.7",
         "@types/react-dom": "^19.2.3",

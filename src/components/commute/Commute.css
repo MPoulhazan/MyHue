@@ -1,0 +1,71 @@
+/* Carte « Trajet » de l'accueil : maquette B, le conseil d'abord, la mini-carte à droite */
+
+.commute-card { --bixi: #d52b1e; --cm-ok-bg: #2f3a1a; --cm-ok-text: #e3f7b5; --cm-low-bg: #3a2f14; --cm-low-text: #ffd98a; --cm-no-bg: #3a1a17; --cm-no-text: #ffc2bc; }
+
+.cm-title { display: inline-flex; align-items: center; gap: 8px; }
+.cm-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--bixi); display: inline-block; }
+
+.cm-pill { font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
+.cm-pill.ok { background: var(--cm-ok-bg); color: var(--cm-ok-text); }
+.cm-pill.low { background: var(--cm-low-bg); color: var(--cm-low-text); }
+.cm-pill.no { background: var(--cm-no-bg); color: var(--cm-no-text); }
+
+.cm-body { display: flex; gap: 12px; align-items: stretch; }
+.cm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.cm-head { margin: 0 0 2px; font-size: 22px; font-weight: 800; line-height: 1.2; letter-spacing: -0.01em; }
+
+.cm-opt { display: flex; align-items: center; gap: 10px; background: var(--h-surface-2); border: 2px solid transparent; border-radius: 14px; padding: 9px 12px; min-width: 0; }
+.cm-opt.is-best { background: var(--cm-ok-bg); border-color: var(--h-accent); }
+.cm-opt.is-off { opacity: 0.55; }
+.cm-badge { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; flex: none; }
+.cm-badge.bike, .cm-badge.ebike { background: var(--bixi); color: #fff; }
+.cm-badge.bus { background: var(--h-cool); color: #141513; }
+.cm-badge.walk { background: var(--h-line-2); color: var(--h-text); font-size: 11px; }
+.cm-opt-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cm-opt-text b { font-size: 14px; }
+.cm-opt-text small { font-size: 12px; color: var(--h-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm-opt.is-best .cm-opt-text small { color: #c9d9a6; }
+.cm-warn { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--cm-low-bg); color: var(--cm-low-text); white-space: nowrap; }
+.cm-warn.info { background: var(--h-cool-dim); color: var(--h-cool-text); }
+.cm-min { font-size: 18px; font-variant-numeric: tabular-nums; }
+.cm-opt:not(.is-best) .cm-min { color: var(--h-muted); }
+
+.cm-idea { background: var(--h-surface-2); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.cm-idea b { font-size: 15px; }
+.cm-idea small { font-size: 13px; color: var(--h-muted); }
+
+.cm-mini { width: 190px; flex: none; border: 0; padding: 0; border-radius: 16px; overflow: hidden; background: #22241f; cursor: pointer; position: relative; min-height: 190px; }
+.cm-mini .cm-map { position: absolute; inset: 0; pointer-events: none; }
+.cm-mini-hint { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 500; font-size: 11px; color: var(--h-text); background: rgba(20, 21, 19, 0.8); padding: 4px 8px; border-radius: 999px; }
+.cm-mini .leaflet-control-attribution { display: none; }
+
+.cm-map { width: 100%; height: 100%; background: #22241f; }
+.cm-map.is-large { height: min(62dvh, 560px); border-radius: 20px; }
+.cm-sheet { gap: 16px; }
+.cm-legend { margin: 0; font-size: 13px; }
+
+/* Repères de la carte (Leaflet divIcon) */
+.cm-home { display: grid !important; place-items: center; border-radius: 999px; background: var(--h-text); color: #141513; box-shadow: 0 0 0 4px rgba(237, 237, 230, 0.25); }
+.cm-stop { display: grid !important; place-items: center; border-radius: 6px; background: var(--h-cool); color: #141513; font: 800 11px Manrope, system-ui, sans-serif; }
+.cm-work { display: grid !important; place-items: center; border-radius: 999px; background: var(--h-accent); color: #141513; font: 800 12px Manrope, system-ui, sans-serif; }
+.cm-st { display: grid !important; place-items: center; border-radius: 999px; border: 2px solid; font: 800 13px Manrope, system-ui, sans-serif; position: relative; }
+.cm-st.ok { background: var(--cm-ok-bg); color: var(--cm-ok-text); border-color: #7d9a3a; }
+.cm-st.low { background: var(--cm-low-bg); color: var(--cm-low-text); border-color: #ffb547; }
+.cm-st.no { background: var(--cm-no-bg); color: var(--cm-no-text); border-color: var(--bixi); }
+.cm-st.best { border-width: 3px; border-color: var(--h-accent); box-shadow: 0 0 0 4px rgba(200, 245, 96, 0.3); }
+.cm-st i { position: absolute; top: -10px; right: -18px; font-style: normal; font-size: 10px; padding: 1px 4px; border-radius: 999px; background: var(--h-cool-dim); color: var(--h-cool-text); }
+
+/* Tablette murale en paysage : plus serré pour tenir sous les Moments */
+@media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
+    .card.commute-card { padding: 14px 18px; gap: 10px; border-radius: 22px; }
+    .cm-head { font-size: 18px; }
+    .cm-opt { padding: 6px 10px; border-radius: 12px; }
+    .cm-badge { width: 26px; height: 26px; font-size: 12px; }
+    .cm-mini { width: 170px; min-height: 160px; }
+}
+
+/* Téléphone : la carte passe sous les options */
+@media (max-width: 560px) {
+    .cm-body { flex-direction: column; }
+    .cm-mini { width: 100%; min-height: 160px; }
+}
