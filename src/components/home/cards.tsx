@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { useHomeData } from '../../hooks/useHome';
 import type { useHome, DashLight, LogEntry, Sensor } from '../../hooks/useHome';
 import { Icon } from '../Icon';
@@ -106,7 +107,11 @@ export const EXTRA_MODES: { id: string; label: string }[] = [
 
 const modeName = (id: string) => [...MODES, ...EXTRA_MODES].find((m) => m.id === id)?.label ?? id;
 
-export function ClimateCard({ home, onSchedule }: { home: ReturnType<typeof useHome>; onSchedule: () => void }) {
+/**
+ * Carte Climat. `compact` (accueil de la tablette) : température, consigne et mode ; le titre
+ * mène à l'écran Climat, où sont le programme et le reste.
+ */
+export function ClimateCard({ home, onSchedule, compact = false }: { home: ReturnType<typeof useHome>; onSchedule?: () => void; compact?: boolean }) {
     const h = home.heating;
     const t = home.thermostat;
     const smart = Boolean(t?.enabled && t.target != null);
@@ -128,15 +133,26 @@ export function ClimateCard({ home, onSchedule }: { home: ReturnType<typeof useH
     const extraMode = h?.power && !MODES.some((m) => m.id === h.mode);
 
     return (
-        <section className="card climate" aria-label="Climat">
+        <section className={`card climate ${compact ? 'compact' : ''}`} aria-label="Climat">
             <div className="card-head">
-                <span>Climat · {room?.name ?? 'Salon'}</span>
+                {compact ? (
+                    <Link to="/climate" className="climate-link">Climat · {room?.name ?? 'Salon'}<Icon name="chevron" size={16} strokeWidth={2.4} /></Link>
+                ) : (
+                    <span>Climat · {room?.name ?? 'Salon'}</span>
+                )}
                 {extraMode && <span className="pill cool">{modeName(h!.mode)}</span>}
             </div>
-            <div>
-                <div className="big-temp">{fmt(room?.props.temperature)}°</div>
-                <div className="muted">Humidité {fmt(room?.props.humidity, 0)} % · {fmt(room?.props.pressure, 0)} hPa</div>
-            </div>
+            {compact ? (
+                <div className="climate-now">
+                    <span className="big-temp">{fmt(room?.props.temperature)}°</span>
+                    <span className="muted">{fmt(room?.props.humidity, 0)} %</span>
+                </div>
+            ) : (
+                <div>
+                    <div className="big-temp">{fmt(room?.props.temperature)}°</div>
+                    <div className="muted">Humidité {fmt(room?.props.humidity, 0)} % · {fmt(room?.props.pressure, 0)} hPa</div>
+                </div>
+            )}
             {openOutside.length > 0 && (
                 <div className="warn-line">{openOutside.map((s) => s.name).join(', ')} ouverte : chauffage coupé si la pièce se refroidit</div>
             )}
@@ -166,7 +182,7 @@ export function ClimateCard({ home, onSchedule }: { home: ReturnType<typeof useH
                 <button type="button" className={!h?.power ? 'active off' : ''} aria-pressed={!h?.power}
                     onClick={() => home.controlHeating({ power: false })}>Arrêt</button>
             </div>
-            <div className="card-foot">
+            {!compact && <div className="card-foot">
                 <button type="button" className="foot-link" onClick={onSchedule}>
                     <span>Programme</span><span>{programLabel} ›</span>
                 </button>
@@ -178,7 +194,9 @@ export function ClimateCard({ home, onSchedule }: { home: ReturnType<typeof useH
                     </button>
                 )}
                 {!h?.connected && <div><span>Émetteur infrarouge</span><span className="warn">non connecté</span></div>}
-            </div>
+            </div>}
+            {/* L'émetteur muet empêche toute commande : même compacte, la carte le dit */}
+            {compact && !h?.connected && <div className="warn-line">Émetteur infrarouge non connecté</div>}
         </section>
     );
 }

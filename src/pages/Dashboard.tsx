@@ -14,9 +14,8 @@ import { PausedSensors } from '../components/home/PausedSensors';
 import { PhoneHome } from '../components/phone/PhoneHome';
 import { CityAlert } from '../components/city/CityAlert';
 import { HomeAlarm } from '../components/alarm/HomeAlarm';
-import { ScheduleSheet } from '../components/home/ScheduleSheet';
 import { ClimateCard, HueStatus, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
-import { HomeWidgets, WidgetChips } from '../components/home/widgets/registry';
+import { AllWidgetsSheet, HomeWidgets } from '../components/home/widgets/registry';
 import { useHomeWidgets } from '../components/home/widgets/useHomeWidgets';
 import './Dashboard.css';
 import '../components/lights/LightsPanel.css';
@@ -32,14 +31,14 @@ export function Dashboard() {
     const clock = useClock();
     const navigate = useNavigate();
     const [adding, setAdding] = useState(false);
-    const [schedule, setSchedule] = useState(false);
+    const [allOpen, setAllOpen] = useState(false);
 
     // Échap ferme le panneau ouvert
     useEffect(() => {
         const onKey = (e: globalThis.KeyboardEvent) => {
             if (e.key !== 'Escape') return;
             setAdding(false);
-            setSchedule(false);
+            setAllOpen(false);
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
@@ -73,10 +72,13 @@ export function Dashboard() {
     const sheets = (
         <AnimatePresence>
             {adding && <AddSensorSheet key="add" rooms={roomLights.map(([r]) => r)} onClose={() => setAdding(false)} />}
-            {schedule && home.thermostat && (
-                <ScheduleSheet key="schedule" status={home.thermostat} neverSent={!home.heating?.lastUpdated}
-                    onUpdate={home.updateThermostat} onClearOverride={() => home.overrideTarget(null)}
-                    onClose={() => setSchedule(false)} />
+            {allOpen && (
+                <AllWidgetsSheet key="all" states={states} ids={arrangement.chips} open={peek} onClose={() => setAllOpen(false)}
+                    onPick={(id) => {
+                        // Ouverte en carte dans « Maintenant » pendant un moment ; déjà ouverte, elle s'en va
+                        togglePeek(id);
+                        setAllOpen(false);
+                    }} />
             )}
         </AnimatePresence>
     );
@@ -109,7 +111,18 @@ export function Dashboard() {
             </header>
 
             <div className="home-grid">
-                <ClimateCard home={home} onSchedule={() => setSchedule(true)} />
+                {/* À gauche : le climat en bref, puis les teintes */}
+                <div className="home-left">
+                    <ClimateCard home={home} compact />
+                    {home.moments.length > 0 && (
+                        <section className="home-tints" aria-label="Teintes">
+                            <h2 className="moments-title">Teintes</h2>
+                            <div className="moments">
+                                {home.moments.map((m) => <MomentButton key={m.id} moment={m} onRun={home.runMoment} />)}
+                            </div>
+                        </section>
+                    )}
+                </div>
 
                 <section className="home-center" aria-label="Lumières">
                     <div className="section-head">
@@ -130,30 +143,26 @@ export function Dashboard() {
                         ))}
                         <HueStatus />
                     </div>
-
-                    {home.moments.length > 0 && (
-                        <>
-                            <h2 className="moments-title">Teintes</h2>
-                            <div className="moments">
-                                {home.moments.map((m) => <MomentButton key={m.id} moment={m} onRun={home.runMoment} />)}
-                            </div>
-                        </>
-                    )}
-
                 </section>
 
-                {/* Les widgets qui ont quelque chose à dire, du plus pressant au plus calme */}
+                {/* Ce qui a quelque chose à dire, du plus pressant au plus calme ; le reste derrière « Tout voir » */}
                 <aside className="home-side home-now" aria-label="Maintenant">
                     <div className="now-head">
-                        <strong>Maintenant</strong>
-                        <span>{nowIds.length} widget{nowIds.length > 1 ? 's' : ''}</span>
+                        <h2>Maintenant</h2>
+                        {arrangement.chips.length > 0 && (
+                            <button type="button" className="now-all" aria-haspopup="dialog" onClick={() => setAllOpen(true)}>
+                                Tout voir <span>({arrangement.chips.length})</span>
+                                <Icon name="chevron" size={16} strokeWidth={2.4} />
+                            </button>
+                        )}
                     </div>
-                    <HomeWidgets ctx={widgetCtx} ids={nowIds} />
+                    {/* La seule zone de l'accueil qui défile */}
+                    <div className="now-list">
+                        <HomeWidgets ctx={widgetCtx} ids={nowIds} />
+                        {!nowIds.length && <p className="now-empty">Rien d’urgent pour le moment.</p>}
+                    </div>
                 </aside>
             </div>
-
-            {/* Une pastille ouverte reste dans le bandeau, allumée : la toucher à nouveau referme la carte */}
-            <WidgetChips states={states} ids={arrangement.chips} open={peek} onToggle={togglePeek} />
 
             {sheets}
 

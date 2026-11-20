@@ -46,7 +46,28 @@ a.weather-pill:hover { background: var(--h-surface-2); }
 .round-btn:hover { background: var(--h-surface-2); }
 
 /* Grille principale */
-.home-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 340px minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.home-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 260px minmax(0, 1fr) 400px; gap: 20px; align-items: start; }
+
+/* Colonne de gauche : le climat en bref, puis les teintes en 2 × 2 */
+.home-left { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.home-tints { display: flex; flex-direction: column; gap: 10px; }
+.home-left .moments { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.home-left .moments button { height: 56px; border-radius: 18px; font-size: 15px; }
+.home-left .moments-title { margin-top: 0; font-size: 18px; }
+
+/* Climat compact de l'accueil : le reste est dans l'écran Climat */
+.card.climate.compact { gap: 14px; padding: 18px 20px; border-radius: 24px; }
+.climate-link { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; margin: -6px -8px; padding: 0 8px; border-radius: 12px; color: var(--h-muted); font-size: 15px; font-weight: 600; text-decoration: none; }
+.climate-link:hover { background: var(--h-surface-2); color: var(--h-text); }
+.climate-now { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.climate.compact .big-temp { font-size: 56px; }
+.climate.compact .climate-now .muted { margin-top: 0; font-size: 14px; }
+.climate.compact .stepper { padding: 6px; border-radius: 18px; }
+.climate.compact .stepper button { width: 48px; height: 48px; border-radius: 14px; font-size: 24px; }
+.climate.compact .stepper-label { font-size: 11px; }
+.climate.compact .stepper-value { font-size: 24px; }
+.climate.compact .modes { gap: 6px; }
+.climate.compact .modes button { height: 44px; border-radius: 12px; font-size: 13px; }
 
 .card { background: var(--h-surface); border-radius: 28px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .card-head { display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; color: var(--h-muted); }
@@ -234,8 +255,9 @@ a.weather-pill:hover { background: var(--h-surface-2); }
 
 /* Écrans moyens : la colonne de droite passe sous le reste */
 @media (max-width: 1180px) {
-    .home-grid { grid-template-columns: 320px minmax(0, 1fr); }
-    .home-side { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .home-grid { grid-template-columns: 260px minmax(0, 1fr); }
+    .home-side { grid-column: 1 / -1; }
+    .now-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }
 
 /* Téléphone */
@@ -244,7 +266,7 @@ a.weather-pill:hover { background: var(--h-surface-2); }
     .home-hello h1 { font-size: 24px; }
     .home-grid { grid-template-columns: minmax(0, 1fr); }
     .home-center { order: -1; }
-    .home-side { grid-template-columns: minmax(0, 1fr); }
+    .now-list { grid-template-columns: minmax(0, 1fr); }
     .big-temp { font-size: 64px; }
     .rooms { grid-template-columns: minmax(0, 1fr); }
     .room-card { height: 96px; padding: 16px 16px 16px 20px; }
@@ -288,14 +310,13 @@ a.weather-pill:hover { background: var(--h-surface-2); }
 /* Tablette en paysage : la page tient exactement dans l'écran et les colonnes vont jusqu'en bas */
 @media (min-width: 1000px) and (min-height: 600px) and (orientation: landscape) {
     .home { height: 100%; min-height: 0; }
-    .home-grid { grid-template-columns: 300px minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
-    /* La colonne « Maintenant » défile si ses cartes dépassent */
-    .home-now { overflow-y: auto; }
-    .home-now > * { flex: none; }
+    .home-grid { grid-template-columns: 260px minmax(0, 1fr) 400px; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
     .home-grid > * { min-height: 0; }
-    .climate { overflow-y: auto; }
-    .climate .card-foot { margin-top: auto; }
-    .home-center { overflow-y: auto; }
+    /* Une seule zone qui défile : la liste « Maintenant » ; le climat et les pièces tiennent dans l'écran */
+    .home-now { overflow: hidden; }
+    .now-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; overscroll-behavior: contain; }
+    .now-list > * { flex: none; }
+    .home-left, .home-center { overflow: hidden; }
     .rooms { flex: 1 0 auto; grid-auto-rows: minmax(108px, 1fr); }
     .home-center > .card { flex: none; }
     .moments-title { margin-top: 0; }
