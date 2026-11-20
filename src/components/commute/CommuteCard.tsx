@@ -77,7 +77,7 @@ export function CommuteCard() {
     const who = v.person.who;
     const bestStation = v.best?.stationId ?? null;
 
-    const title = v.plan?.kind === 'work' ? `Trajet de ${who} · ${hmLabel(v.plan.from)} – ${hmLabel(v.plan.to)}` : `Trajet de ${who}`;
+    const title = v.plan?.kind === 'work' ? `${who} · ${hmLabel(v.plan.from)} – ${hmLabel(v.plan.to)}` : `Trajet de ${who}`;
     const [l1, l2] = headline(v);
 
     return (

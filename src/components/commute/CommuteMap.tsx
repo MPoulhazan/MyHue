@@ -72,6 +72,8 @@ export function CommuteMap({ data, best, large = false }: { data: CommuteMapData
             L.marker([data.stop.lat, data.stop.lon], { icon: L.divIcon({ className: 'cm-stop', html: '14', iconSize: [24, 20] }), interactive: false, keyboard: false }).addTo(g);
         }
         const shown = data.stations.slice(0, large ? 40 : 12);
+        const advised = data.stations.find((s) => s.id === best);
+        if (advised && !shown.includes(advised)) shown.push(advised);
         for (const s of shown) {
             const e = s.ebikes ? `<i>⚡${s.ebikes}</i>` : '';
             L.marker([s.lat, s.lon], {
@@ -84,6 +86,9 @@ export function CommuteMap({ data, best, large = false }: { data: CommuteMapData
             L.marker([data.work.lat, data.work.lon], { icon: L.divIcon({ className: 'cm-work', html: 'Travail', iconSize: [64, 24] }), interactive: false, keyboard: false }).addTo(g);
         }
         const pts = [home, ...shown.slice(0, large ? 12 : 5).map((s) => L.latLng(s.lat, s.lon))];
+        // La station conseillée est toujours dans le cadre, même un peu loin
+
+        if (advised) pts.push(L.latLng(advised.lat, advised.lon));
         if (large && data.work) pts.push(L.latLng(data.work.lat, data.work.lon));
         fit.current = () => m.fitBounds(L.latLngBounds(pts), { padding: large ? [40, 40] : [18, 18], maxZoom: 17 });
         // Agrandie, on ne recadre pas à chaque relevé : la personne a peut-être déplacé la carte
