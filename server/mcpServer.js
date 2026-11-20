@@ -60,7 +60,7 @@ const DAY_TOOLS = [
     },
     {
         name: 'set_outing_ideas',
-        description: 'Dépose 4 à 8 idées de sortie à deux pour les prochains jours (remplace les précédentes) : événements, musées, restos, activités. Île de Montréal seulement, du mercredi au samedi soir.',
+        description: 'Dépose 4 à 8 idées de sortie à deux pour les prochains jours (remplace les précédentes) : événements, musées, restos, activités. Île de Montréal seulement, du mercredi au samedi soir. Ajoute aussi les idées de jour de repos (champ person) décrites dans outings.restRules.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -76,6 +76,7 @@ const DAY_TOOLS = [
                             where: { type: 'string', description: 'Lieu et quartier' },
                             why: { type: 'string', description: 'Une phrase concrète, sans superlatif' },
                             url: { type: 'string' },
+                            person: { type: 'string', description: 'id du profil si l’idée est une activité de jour pour cette personne seule (son jour de repos, voir outings.restDays) ; absent = sortie à deux' },
                         },
                         required: ['kind', 'title'],
                     },

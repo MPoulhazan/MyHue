@@ -229,13 +229,13 @@ export const getView = (now = Date.now()) => {
         sources: Object.fromEntries(Object.entries(sources).map(([k, s]) => [k, { ok: s.ok, at: s.at || null }])),
         events,
         takeover: takeover && { ...takeover, lamp: config.lamp ? lampKind(takeover) : null },
-        // Carte « Métro » quand la saison BIXI est finie
+        // Carte « Métro » quand quelqu’un a fini sa saison BIXI
         metro: config.stmKey ? {
             station: config.metroStation,
             lines: sources.stm.status,
             updatedAt: sources.stm.at || null,
             error: sources.stm.error,
-            show: !bixi.inSeason(now),
+            show: bixi.someoneOffSeason(now),
         } : null,
     };
 };
@@ -296,3 +296,6 @@ export const update = (patch = {}) => {
     sources.ville.at = 0;
     return getSettings();
 };
+
+/** La clé du portail STM (pour les passages de bus en temps réel), jamais renvoyée par l'API. */
+export const stmKey = () => config.stmKey || null;

@@ -73,7 +73,16 @@ export const pickOuting = (store, now = Date.now(), tz = 'America/Toronto') => {
     const today = new Date(now).toLocaleDateString('en-CA', { timeZone: tz });
     const done = new Set(store.done || []);
     const skipped = new Set(store.skipped || []);
-    const valid = (store.outings?.ideas || []).filter((o) => !skipped.has(o.id) && !done.has(o.title) && (!o.date || o.date >= today));
+    const valid = (store.outings?.ideas || []).filter((o) => !o.person && !skipped.has(o.id) && !done.has(o.title) && (!o.date || o.date >= today));
+    return valid.length ? { idea: valid[0], left: valid.length - 1 } : null;
+};
+
+/** L'idée d'activité de jour pour une personne seule (son jour de repos), datée d'aujourd'hui ou sans date. */
+export const pickSolo = (store, personId, now = Date.now(), tz = 'America/Toronto') => {
+    const today = new Date(now).toLocaleDateString('en-CA', { timeZone: tz });
+    const done = new Set(store.done || []);
+    const skipped = new Set(store.skipped || []);
+    const valid = (store.outings?.ideas || []).filter((o) => o.person === personId && !skipped.has(o.id) && !done.has(o.title) && (!o.date || o.date === today));
     return valid.length ? { idea: valid[0], left: valid.length - 1 } : null;
 };
 

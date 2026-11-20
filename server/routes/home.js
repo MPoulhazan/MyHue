@@ -33,6 +33,7 @@ import * as weeklyDigest from '../weeklyDigest.js';
 import * as homeWidgets from '../homeWidgets.js';
 import * as cube from '../cube.js';
 import * as bixi from '../bixi.js';
+import * as commute from '../commute.js';
 import * as communauto from '../communauto.js';
 import * as city from '../city.js';
 import * as collecte from '../collecte.js';
@@ -273,6 +274,26 @@ router.post('/api/mailbox/test', async (_req, res) => {
     try {
         await mailbox.test();
         res.json({ ok: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Trajet du matin (BIXI, bus, à pied) ---
+
+router.get('/api/commute', async (req, res) => {
+    try {
+        res.json(await commute.getView(typeof req.query.person === 'string' ? req.query.person : null));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/api/commute/settings', (_req, res) => res.json(commute.getSettings()));
+
+router.put('/api/commute/settings', (req, res) => {
+    try {
+        res.json(commute.update(req.body || {}));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

@@ -25,6 +25,8 @@ import { parseSensorPauseCommand } from '../sensorPauseLogic.js';
 import * as kitchenDisplay from '../kitchenDisplay.js';
 import { isKitchenShowCommand } from '../kitchenDisplayLogic.js';
 import * as bixi from '../bixi.js';
+import * as commute from '../commute.js';
+import { isCommuteQuestion } from '../commuteLogic.js';
 import { bixiSpeech, isBixiQuestion } from '../bixiLogic.js';
 import * as city from '../city.js';
 import * as communauto from '../communauto.js';
@@ -165,6 +167,12 @@ router.post('/api/agent', async (req, res) => {
                 speech = `Je n’arrive pas à afficher l’écran de la cuisine : ${err.message}.`;
             }
             return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'kitchen-display' });
+        }
+
+        // Niveau 0 : « Comment j'y vais ? » : BIXI, électrique, bus ou à pied pour la personne devant l'écran
+        if (isCommuteQuestion(message)) {
+            const said = await commute.speech(typeof person === 'string' ? person : null).catch(() => null);
+            if (said) return res.json({ message: said, actions: [], actionResults: [], tier: 'local', intent: 'commute' });
         }
 
         // Niveau 0 : « Il y a des BIXI ? », d'après le flux BIXI relu tout de suite

@@ -22,6 +22,7 @@ import * as cooper from './cooper.js';
 import * as mailbox from './mailbox.js';
 import * as cube from './cube.js';
 import * as bixi from './bixi.js';
+import * as commute from './commute.js';
 import * as communauto from './communauto.js';
 import * as city from './city.js';
 import * as collecte from './collecte.js';
@@ -89,6 +90,7 @@ app.listen(PORT, () => {
     mailbox.start();
     cube.start();
     bixi.start();
+    commute.start();
     communauto.start();
     city.start();
     collecte.start();

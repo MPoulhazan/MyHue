@@ -18,7 +18,7 @@ import * as cooper from './cooper.js';
 import * as mailbox from './mailbox.js';
 import * as city from './city.js';
 import { getWeatherDetails } from './weather.js';
-import { dayItems, headline, pickOuting, personalSpeech, isDayQuestion } from './myDayLogic.js';
+import { dayItems, headline, pickOuting, pickSolo, personalSpeech, isDayQuestion } from './myDayLogic.js';
 import * as briefing from './briefing.js';
 import * as calendar from './calendar.js';
 import { freeEvenings, localMidnight } from './calendarLogic.js';
@@ -182,6 +182,7 @@ export const setOutings = (ideas) => {
             why: clean(o.why, 300) || null,
             url: /^https?:\/\//.test(o.url || '') ? o.url : null,
             date: /^\d{4}-\d{2}-\d{2}$/.test(o.date || '') ? o.date : null,
+            person: people.some((p) => p.id === o.person) ? o.person : null,
         })).filter((o) => o.title),
     };
     store.skipped = [];
@@ -209,6 +210,13 @@ export const reactOuting = (id, action) => {
     return { ok: true };
 };
 
+/** L'idée d'activité du jour de repos d'une personne (ou null). */
+export const soloIdea = (personId) => pickSolo(store, personId, Date.now(), TZ)?.idea || null;
+
+// Les jours de repos de chacun (réglés dans commute.json), pour que la tâche Claude prévoie une activité
+let restDays = () => [];
+export const setRestDaysProvider = (fn) => (restDays = fn);
+
 /** Contexte pour la tâche Claude : profils, sorties déjà faites, jours où on sort. */
 export const getContextForClaude = () => ({
     people: people.map(({ id, name, mails, ical }) => ({ id, name, mails, calendar: Boolean(ical) })),
@@ -219,6 +227,9 @@ export const getContextForClaude = () => ({
         alreadyDone: store.done.slice(-50),
         liked: store.liked?.title || null,
         current: store.outings.ideas.map((o) => o.title),
+        // Jours de repos : 1 ou 2 idées d'activité de jour pour la personne seule (champ person, date du jour)
+        restDays: restDays(),
+        restRules: 'Pour chaque jour de repos de la semaine qui vient, 1 ou 2 idées d’activité de JOUR pour cette personne seule : champ person = son id, date = ce jour-là. Île de Montréal, faisable sans auto (métro, bus, BIXI, à pied), adaptée à la météo de saison.',
     },
     mails: 'Importants = tout sauf le spam, la pub, les infolettres et les promotions. 3 au plus par personne, avec un brouillon de réponse dans Gmail quand une réponse est attendue.',
 });
@@ -257,7 +268,7 @@ export const getDay = async (personId) => {
         headline: headline(weather, things.items, Date.now(), TZ),
         things: things.items,
         mails: person.mails ? (mails ? { at: mails.at, items: mails.items } : { at: null, items: [] }) : null,
-        outing: pickOuting(store, Date.now(), TZ),
+        outing: pickSolo(store, person.id, Date.now(), TZ) || pickOuting(store, Date.now(), TZ),
         liked: store.liked,
         touch: cooperView?.line ? { who: 'Cooper', line: cooperView.line } : null,
     };
