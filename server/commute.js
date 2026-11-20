@@ -88,7 +88,7 @@ const readRealtime = async () => {
         rt = { at: Date.now(), byStop, error: null };
     } catch (err) {
         const code = err.response?.status;
-        rt = { at: Date.now(), byStop: new Map(), error: code === 401 || code === 403 ? 'clé STM refusée pour le temps réel' : err.message };
+        rt = { at: Date.now(), byStop: new Map(), error: code === 400 || code === 401 || code === 403 ? 'clé STM sans accès au temps réel (GTFS-Realtime)' : err.message };
     }
 };
 
@@ -211,7 +211,7 @@ const checkMorning = async () => {
 };
 
 export const start = () => {
-    if (!config.enabled || !config.people.length) return console.log('🚌 Trajet : rien de réglé');
+    if (!config.enabled) return console.log('🚌 Trajet désactivé');
     for (const p of config.people) bixi.handleAlertsFor(p.bixiWho || p.who);
     const DAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
     myDay.setRestDaysProvider(() => config.people.filter((p) => p.rest?.length).map((p) => ({ person: p.id, days: p.rest.map((d) => DAYS[Number(d)]) })));
