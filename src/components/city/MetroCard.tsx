@@ -5,7 +5,7 @@ import './City.css';
 
 const LINE_COLOR: Record<string, string> = { 1: '#00a650', 2: '#ef8122', 4: '#ffd900', 5: '#0083ca' };
 
-/** Carte « Métro » de l'accueil, à la place de la carte BIXI hors saison : l'état des lignes qu'on prend. */
+/** Carte « Métro » de l'accueil, à la place de la carte BIXI hors saison : l'état des lignes qu'on prend. */
 export function MetroCard({ more }: { more?: ReactNode }) {
     const { view } = useCity();
     const m = view?.metro;

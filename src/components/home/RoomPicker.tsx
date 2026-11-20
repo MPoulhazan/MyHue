@@ -4,7 +4,7 @@ import { useState } from 'react';
 export const OUTSIDE_ROOM = 'Extérieur';
 
 /**
- * Choix de la pièce d'un capteur : les pièces Hue, « Extérieur », et une pièce libre
+ * Choix de la pièce d'un capteur : les pièces Hue, « Extérieur », et une pièce libre
  * (une chambre sans lampe Hue n'apparaît pas dans les pièces du pont).
  */
 export function RoomPicker({ rooms, value, onChange }: { rooms: string[]; value: string | null; onChange: (room: string | null) => void }) {

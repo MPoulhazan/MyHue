@@ -16,6 +16,10 @@
 
 .phone-section { font-size: 18px; font-weight: 700; margin-top: 4px; }
 
+/* « Maintenant » en tête de l'accueil du téléphone */
+.phone-now { display: flex; flex-direction: column; gap: 12px; }
+.home.phone .now-head h2 { font-size: 18px; }
+
 .home.phone .rooms { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 /* Carte de pièce en ligne : nom et état à gauche, intensité et bouton à droite */
 .home.phone .room-card {

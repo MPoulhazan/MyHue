@@ -16,7 +16,7 @@ interface KitchenView {
 const hm = (ts: number) => new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
 const status = (v: KitchenView) => {
-    if (!v.found) return `Écran « ${v.device} » introuvable sur le réseau`;
+    if (!v.found) return `Écran « ${v.device} » introuvable sur le réseau`;
     if (!v.enabled) return 'Désactivé';
     if (v.showing) return 'Affiché en ce moment';
     if (v.pausedUntil) return `Arrêté à la voix, revient vers ${hm(v.pausedUntil)}`;
@@ -57,7 +57,7 @@ export function KitchenDisplaySettings() {
                 <span className={`item-icon ${view.enabled ? '' : 'off'}`}><Icon name="grid" size={22} strokeWidth={2} /></span>
                 <span className="item-text">
                     <strong>Écran de la cuisine</strong>
-                    <span className="muted">Nest Hub « {view.device} » · {status(view)}</span>
+                    <span className="muted">Nest Hub « {view.device} » · {status(view)}</span>
                 </span>
                 <label className="with-icon muted">
                     de <input type="time" value={view.from} onChange={(e) => e.target.value && patch({ from: e.target.value })} />

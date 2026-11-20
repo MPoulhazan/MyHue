@@ -75,7 +75,7 @@ export function AgentBar({ voice, onAsk, onOpen, autoFocus }: {
     const listening = voice.state === 'listening';
     const placeholder =
         voice.state === 'idle'
-            ? voice.voiceError || (voice.wakeStatus === 'on' ? 'Dis « Jean-Claude » ou écris ici' : 'Demande-moi quelque chose')
+            ? voice.voiceError || (voice.wakeStatus === 'on' ? 'Dis « Jean-Claude » ou écris ici' : 'Demande-moi quelque chose')
             : VOICE_PLACEHOLDER[voice.state];
 
     return (
@@ -166,7 +166,7 @@ export function AgentSheet({ voice, conversation, thinking, onAsk, onClear, onCl
 
                 <div className="toggle-row">
                     <div>
-                        <div className="toggle-title">Mot d’activation « Jean-Claude »</div>
+                        <div className="toggle-title">Mot d’activation « Jean-Claude »</div>
                         <div className="muted">{wakeHint}</div>
                     </div>
                     <button type="button" className={`switch ${voice.wakeEnabled ? 'on' : ''}`} aria-pressed={voice.wakeEnabled}

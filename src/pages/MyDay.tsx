@@ -7,7 +7,7 @@ import { readDayPick as readPick, saveDayPick as savePick } from './myDayPick';
 import './Dashboard.css';
 import './MyDay.css';
 
-// « Ma journée » : le check-up du matin d'une personne (maquette A, 2026-11-17)
+// « Ma journée » : le check-up du matin d'une personne (maquette A, 2026-11-17)
 
 interface Person { id: string; name: string; initial: string; color: string; mails: boolean; calendar: boolean; calendarStatus: { at: number | null; error: string | null; count: number } | null }
 interface Thing { kind: string; title: string; detail: string }
@@ -32,7 +32,7 @@ const hm = (ts: number) => new Date(ts).toLocaleTimeString('fr-CA', { hour: 'num
 const today = () => new Date().toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long' });
 
 const claudeLink = (m: Mail) =>
-    `https://claude.ai/new?q=${encodeURIComponent(`Dans mon Gmail, trouve le mail « ${m.subject} » de ${m.from} et prépare une réponse dans mes brouillons (ne l’envoie pas).`)}`;
+    `https://claude.ai/new?q=${encodeURIComponent(`Dans mon Gmail, trouve le mail « ${m.subject} » de ${m.from} et prépare une réponse dans mes brouillons (ne l’envoie pas).`)}`;
 
 function MailItem({ mail }: { mail: Mail }) {
     const [open, setOpen] = useState(false);
@@ -86,7 +86,7 @@ function CalendarSheet({ person, onClose, onSaved }: { person: Person; onClose: 
                 </div>
                 <ol className="md-steps">
                     <li>Sur un ordinateur, ouvre <strong>calendar.google.com</strong>, puis la roue dentée › <strong>Paramètres</strong>.</li>
-                    <li>À gauche, clique sur ton agenda sous « Paramètres de mes agendas ».</li>
+                    <li>À gauche, clique sur ton agenda sous « Paramètres de mes agendas ».</li>
                     <li>Descends jusqu’à <strong>Intégrer l’agenda</strong> et copie l’<strong>adresse secrète au format iCal</strong>.</li>
                     <li>Colle-la ici. Elle reste sur le serveur de la maison et n’est jamais réaffichée.</li>
                 </ol>
@@ -184,7 +184,7 @@ export function MyDay() {
 
             <div className={`md-grid ${mails ? '' : 'two'}`}>
                 <section className="md-card">
-                    <h2>{person.mails ? 'Tes' : 'Les'} {things.length || ''} chose{things.length > 1 ? 's' : ''}</h2>
+                    <h2>À retenir</h2>
                     {things.length ? (
                         <ol className="md-things">
                             {things.map((t, i) => (
@@ -245,7 +245,7 @@ export function MyDay() {
             {touch && (
                 <footer className="md-touch">
                     <img src="/cooper.jpg" alt="" className="md-touch-photo" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                    <span>« {touch.line} »</span>
+                    <span>« {touch.line} »</span>
                 </footer>
             )}
         </div>

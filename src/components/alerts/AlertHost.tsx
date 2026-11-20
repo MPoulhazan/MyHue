@@ -18,7 +18,7 @@ import './Alerts.css';
 //
 // Plein écran (un seul à la fois, les autres en file) : fumée, fuite, passage pendant
 // l'alarme, danger en ville. Bannière en haut de tous les écrans : service en panne,
-// capteur en pause, danger en ville déjà vu. Le reste : les cartes de « Maintenant ».
+// capteur en pause, danger en ville déjà vu. Le reste : les cartes de « Maintenant ».
 // Au-dessus de tout, mode nuit compris (z-index dans Alerts.css).
 
 const SEEN_KEY = 'myhue.guard.seenAt';

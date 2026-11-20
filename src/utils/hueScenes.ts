@@ -26,7 +26,7 @@ const FRENCH: Record<string, string> = {
 // Déjà proposées par les ambiances de l'écran (Concentration ≈ Focus)
 const BUILT_IN = new Set(['lecture', 'détente', 'veilleuse', 'concentration', 'bougie']);
 
-// Emoji avec leurs sélecteurs de variante et liants (« Bougie 🕯️ »)
+// Emoji avec leurs sélecteurs de variante et liants (« Bougie 🕯️ »)
 const noEmoji = (name: string) => name.replace(/[\p{Extended_Pictographic}️‍]/gu, '').trim();
 const key = (name: string) => noEmoji(name).toLowerCase();
 

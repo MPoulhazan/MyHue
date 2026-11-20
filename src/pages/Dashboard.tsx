@@ -14,10 +14,11 @@ import { PhoneHome } from '../components/phone/PhoneHome';
 import { ClimateCard, HueStatus, RoomCard, fmt, greeting, hhmm, useClock } from '../components/home/cards';
 import { AllWidgetsSheet, HomeWidgets } from '../components/home/widgets/registry';
 import { useHomeWidgets } from '../components/home/widgets/useHomeWidgets';
+import { phoneLayout } from '../components/home/widgets/meta';
 import './Dashboard.css';
 import '../components/lights/LightsPanel.css';
 
-// Conditions de Home Assistant : « sunny » le jour, « clear-night » la nuit
+// Conditions de Home Assistant : « sunny » le jour, « clear-night » la nuit
 const weatherIcon = (condition: string): IconName =>
     condition === 'clear-night' ? 'moon' : condition === 'sunny' ? 'sun' : 'cloud';
 
@@ -50,7 +51,7 @@ export function Dashboard() {
             map.get(l.room)!.push(l);
         }
         // Pièces sans lampe mais avec un capteur (ex. une chambre)
-        // « Extérieur » n'est pas une pièce : ces capteurs-là vivent dans la carte Maison
+        // « Extérieur » n'est pas une pièce : ces capteurs-là vivent dans la carte Maison
         for (const s of home.sensors) if (s.room && s.room !== OUTSIDE_ROOM && !map.has(s.room)) map.set(s.room, []);
         return [...map.entries()];
     }, [home.rooms, home.lights, home.sensors]);
@@ -60,7 +61,8 @@ export function Dashboard() {
     const onCount = home.lights.filter((l) => l.reachable && l.level > 0).length;
     const phone = useIsPhone();
     const widgets = useHomeWidgets(home);
-    const { states, arrangement, peek, togglePeek } = widgets;
+    const { states, arrangement, peek, peekAll, togglePeek } = widgets;
+    const phoneView = phoneLayout(arrangement.cards, arrangement.chips, peekAll);
     const widgetCtx = { home, onAdd: () => setAdding(true), itemOf: widgets.itemOf };
     // Les pastilles touchées s'ouvrent en carte sous les autres
     const nowIds = [...arrangement.cards, ...peek];
@@ -70,9 +72,9 @@ export function Dashboard() {
         <AnimatePresence>
             {adding && <AddSensorSheet key="add" rooms={roomLights.map(([r]) => r)} onClose={() => setAdding(false)} />}
             {allOpen && (
-                <AllWidgetsSheet key="all" states={states} ids={arrangement.chips} open={peek} onClose={() => setAllOpen(false)}
+                <AllWidgetsSheet key="all" states={states} ids={phone ? phoneView.rest : arrangement.chips} open={phone ? peekAll : peek} onClose={() => setAllOpen(false)}
                     onPick={(id) => {
-                        // Ouverte en carte dans « Maintenant » pendant un moment ; déjà ouverte, elle s'en va
+                        // Ouverte en carte dans « Maintenant » pendant un moment ; déjà ouverte, elle s'en va
                         togglePeek(id);
                         setAllOpen(false);
                     }} />
@@ -83,7 +85,8 @@ export function Dashboard() {
     if (phone) {
         return (
             <>
-                <PhoneHome home={home} roomLights={roomLights} onAdd={() => setAdding(true)} widgets={widgets} />
+                <PhoneHome home={home} roomLights={roomLights} onAdd={() => setAdding(true)} widgets={widgets}
+                    shown={phoneView.shown} more={phoneView.rest.length} onShowAll={() => setAllOpen(true)} />
                 {sheets}
             </>
         );
@@ -141,7 +144,7 @@ export function Dashboard() {
                     </div>
                 </section>
 
-                {/* Ce qui a quelque chose à dire, du plus pressant au plus calme ; le reste derrière « Tout voir » */}
+                {/* Ce qui a quelque chose à dire, du plus pressant au plus calme ; le reste derrière « Tout voir » */}
                 <aside className="home-side home-now" aria-label="Maintenant">
                     <div className="now-head">
                         <h2>Maintenant</h2>

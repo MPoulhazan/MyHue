@@ -9,7 +9,7 @@ export type IconName =
     | 'play' | 'pause' | 'stop' | 'volume' | 'minus' | 'radio' | 'list'
     | 'trash' | 'drop' | 'wifi' | 'refresh' | 'chat'
     | 'mail' | 'bike' | 'metro' | 'city' | 'shield' | 'flame' | 'dice'
-    | 'next' | 'prev' | 'shuffle' | 'search' | 'leaf' | 'target' | 'bolt' | 'bowl' | 'timer' | 'waves' | 'user' | 'heart' | 'car';
+    | 'next' | 'prev' | 'shuffle' | 'search' | 'leaf' | 'target' | 'bolt' | 'bowl' | 'timer' | 'waves' | 'user' | 'heart' | 'car' | 'walk';
 
 const PATHS: Record<IconName, string> = {
     home: 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
@@ -72,6 +72,7 @@ const PATHS: Record<IconName, string> = {
     user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
     heart: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z',
     car: 'M5 17h14v-5l-2-5H7l-2 5zM5 12h14M7.5 17v2M16.5 17v2M8 14.5h.01M16 14.5h.01',
+    walk: 'M14.5 4.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zM12 8l-1.5 6 3 3v4M10.5 14l-2.5 7M9 11l3-3 3 3 2.5 1',
     city: 'M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13M14 10h2M14 14h2M14 18h2M7 12h1M7 16h1',
 };
 

@@ -1,7 +1,7 @@
 /**
- * Scène « Comment s'habiller » (maquette B validée le 2026-11-05) : nos deux personnages dessinés,
+ * Scène « Comment s'habiller » (maquette B validée le 2026-11-05) : nos deux personnages dessinés,
  * habillés selon la prévision, chaque vêtement pointé par une étiquette, et Cooper en photo,
- * « À poil » quelle que soit la météo. Pas de prénoms ni de visages : le dépôt est public.
+ * « À poil » quelle que soit la météo. Pas de prénoms ni de visages : le dépôt est public.
  */
 import { useEffect, useState } from 'react';
 import './OutfitScene.css';
@@ -20,7 +20,7 @@ export interface SceneOutfit {
 type Key = 'coat' | 'hat' | 'gloves' | 'scarf' | 'boots' | 'umbrella' | 'sunglasses' | 'cream' | 'top' | 'hood';
 
 const keyOf = (item: string): Key | null => {
-    if (/bottes/i.test(item)) return 'boots'; // avant « imperméable » : les bottes imperméables ne sont pas un manteau
+    if (/bottes/i.test(item)) return 'boots'; // avant « imperméable » : les bottes imperméables ne sont pas un manteau
     if (/capuche/i.test(item)) return 'hood';
     if (/manteau|veste|imperm/i.test(item)) return 'coat';
     if (/tuque/i.test(item)) return 'hat';

@@ -177,7 +177,7 @@ const recognize = (trace: (step: string) => void) =>
         rec.onspeechstart = () => trace('parole');
         rec.onresult = (e) => {
             text = e.results[0][0].transcript;
-            trace(`« ${text} »`);
+            trace(`« ${text} »`);
         };
         rec.onerror = (e) => {
             trace(`erreur ${e.error}`);

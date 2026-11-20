@@ -26,7 +26,7 @@ function Event({ e, onBin }: { e: CityEvent; onBin: () => void }) {
     );
 }
 
-/** Carte « En ville » : alertes météo, avis du quartier et événements. Cachée quand il n'y a rien. */
+/** Carte « En ville » : alertes météo, avis du quartier et événements. Cachée quand il n'y a rien. */
 export function CityCard() {
     const { view, binOut } = useCity();
     if (!view?.enabled || !view.events.length) return null;

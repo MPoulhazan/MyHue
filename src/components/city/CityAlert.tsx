@@ -4,11 +4,11 @@ import './City.css';
 
 const LAMP = { ice: 'bleu glace', alert: 'orange' };
 
-/** Écran d'alerte de la ville : un vrai danger (verglas, smog, avis d'ébullition…) reste affiché jusqu'à « J'ai vu ». */
+/** Écran d'alerte de la ville : un vrai danger (verglas, smog, avis d'ébullition…) reste affiché jusqu'à « J'ai vu ». */
 export function CityAlert({ event: e, waiting, onAck }: { event: NonNullable<CityView['takeover']>; waiting: number; onAck: (id: string) => void }) {
     const facts = [
         { label: 'Quand', value: e.when },
-        e.advice ? { label: 'Pour vous', value: e.advice } : null,
+        e.advice ? { label: 'Pour toi', value: e.advice } : null,
         e.lamp ? { label: 'Lampe du salon', value: `respire en ${LAMP[e.lamp]}` } : null,
     ].filter((f): f is { label: string; value: string } => f !== null);
     return (

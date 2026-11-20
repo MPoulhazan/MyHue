@@ -1,4 +1,4 @@
-// ── Widgets de l'accueil : identifiants, libellés et forme de la liste « Maintenant » ──
+// ── Widgets de l'accueil : identifiants, libellés et forme de la liste « Maintenant » ──
 //
 // La pertinence se calcule sur le Pi (server/homeFeedLogic.js, servie par /api/home-feed).
 // L'écran garde seulement ce qu'il affiche : les libellés et l'ordre de l'écran de réglages.
@@ -13,7 +13,7 @@ export type WidgetId = 'guard' | 'city' | 'cooper' | 'mail' | 'music' | 'house' 
 /** La forme de la carte Déplacements, choisie par le Pi avec la pastille. */
 export type MovesForm = 'communauto' | 'trip' | 'metro' | 'communauto-idle' | null;
 
-/** Un widget dans la liste « Maintenant » du Pi. */
+/** Un widget dans la liste « Maintenant » du Pi. */
 export interface FeedItem {
     id: WidgetId;
     relevance: Relevance;
@@ -29,12 +29,27 @@ export interface FeedItem {
 export interface HomeFeed {
     generatedAt: number;
     items: FeedItem[];
-    /** Cartes pleines de « Maintenant », de la plus pressante à la plus calme */
+    /** Cartes pleines de « Maintenant », de la plus pressante à la plus calme */
     cards: WidgetId[];
     /** Pastilles du bandeau, dans l'ordre du registre */
     chips: WidgetId[];
     /** Prochaine bascule d'heure : l'écran relit la liste à ce moment-là */
     nextChange: number | null;
+}
+
+/** Cartes pleines au plus sur l'accueil du téléphone. */
+export const PHONE_MAX_CARDS = 3;
+
+/**
+ * L'accueil du téléphone : les 3 cartes les plus pressantes, plus celles ouvertes à la main ;
+ * le reste (cartes en trop puis widgets calmes) dans « Tout voir ». Le journal reste sur la tablette.
+ */
+export function phoneLayout(cards: WidgetId[], chips: WidgetId[], opened: WidgetId[]) {
+    const keep = (id: WidgetId) => !WIDGET_META[id].tabletOnly;
+    const all = cards.filter(keep);
+    const shown = all.slice(0, PHONE_MAX_CARDS);
+    const rest = [...all.slice(PHONE_MAX_CARDS), ...chips.filter(keep)];
+    return { shown: [...shown, ...opened.filter((id) => keep(id) && !shown.includes(id))], rest };
 }
 
 /** Ordre du registre (le même que sur le Pi), pour l'écran de réglages. */

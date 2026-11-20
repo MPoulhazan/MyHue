@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { commutePoll } from '../home/widgets/polls';
+import { Icon } from '../Icon';
 import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
 import type { Level } from '../home/widgets/WidgetCard';
 import { CommuteMap } from './CommuteMap';
@@ -38,7 +39,13 @@ const hmLabel = (hhmm?: string) => {
     return `${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
 };
 
-const BADGE: Record<Mode, string> = { bike: 'B', ebike: '⚡', bus: '🚌', walk: 'à p.' };
+/** Le repère de chaque option : B de BIXI, éclair, numéro de la ligne de bus, piéton. */
+function Badge({ o }: { o: Option }) {
+    if (o.mode === 'bike') return <b className="cm-badge bike" aria-hidden="true">B</b>;
+    if (o.mode === 'ebike') return <b className="cm-badge ebike" aria-hidden="true"><Icon name="bolt" size={16} strokeWidth={2.2} /></b>;
+    if (o.mode === 'bus') return <b className="cm-badge bus" aria-hidden="true">{o.title.match(/\d+/)?.[0] ?? 'Bus'}</b>;
+    return <b className="cm-badge walk" aria-hidden="true"><Icon name="walk" size={18} strokeWidth={2} /></b>;
+}
 const PILL: Record<'ok' | 'low' | 'no', Level> = { ok: 'ok', low: 'warn', no: 'bad' };
 
 /** La grande phrase du haut : quoi prendre, et quand partir. */
@@ -47,7 +54,7 @@ function headline(v: CommuteView): [string, string] {
     if (!b) return ['Aucune option fiable,', 'regarde dehors.'];
     const snow = /neige/i.test(v.verdict?.text || '');
     const bikeOk = (v.options || []).some((o) => (o.mode === 'bike' || o.mode === 'ebike') && o.ok && o.minutes != null);
-    // « ce matin » seulement le matin : l'après-midi la carte sert à ressortir
+    // « ce matin » seulement le matin : l'après-midi la carte sert à ressortir
     const when = new Date().getHours() < 12 ? 'ce matin' : 'maintenant';
     if (b.mode === 'bike') return [`BIXI ${when},`, 'pars quand tu veux.'];
     if (b.mode === 'ebike') return ['BIXI électrique,', 'prends un casque.'];
@@ -61,7 +68,7 @@ function OptionRow({ o, best }: { o: Option; best: boolean }) {
     const busSub = o.mode === 'bus' ? o.detail.replace(/^[^à]*à /, '') : o.detail;
     return (
         <div className={`cm-opt ${best ? 'is-best' : ''} ${o.ok ? '' : 'is-off'}`}>
-            <b className={`cm-badge ${o.mode}`}>{BADGE[o.mode]}</b>
+            <Badge o={o} />
             <span className="cm-opt-text">
                 <b>{o.mode === 'bus' && o.leaveAt ? `${o.title} à ${o.detail.split(' à ')[0]}` : o.title}</b>
                 {/* L'avertissement remplace le détail : à côté du titre, il l'écrasait dans la colonne étroite */}
@@ -87,7 +94,7 @@ function RestIdea({ v, full }: { v: CommuteView; full: boolean }) {
     );
 }
 
-/** Carte « Trajet » de l'accueil : le conseil et la meilleure option ; le reste et le plan dans le détail. */
+/** Carte « Trajet » de l'accueil : le conseil et la meilleure option ; le reste et le plan dans le détail. */
 export function CommuteCard({ more }: { more?: ReactNode }) {
     const v = commutePoll.use();
     if (!v?.enabled || !v.configured || !v.person) return null;

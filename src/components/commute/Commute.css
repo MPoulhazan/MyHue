@@ -13,8 +13,8 @@
 .cm-opt.is-off { opacity: 0.55; }
 .cm-badge { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; flex: none; }
 .cm-badge.bike, .cm-badge.ebike { background: var(--bixi); color: #fff; }
-.cm-badge.bus { background: var(--h-cool); color: #141513; }
-.cm-badge.walk { background: var(--h-line-2); color: var(--h-text); font-size: 11px; }
+.cm-badge.bus { background: var(--h-cool); color: #141513; font-size: 12px; font-weight: 800; }
+.cm-badge.walk { background: var(--h-line-2); color: var(--h-text); }
 .cm-opt-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cm-opt-text b { font-size: 14px; color: var(--h-text); }
 .cm-opt-text small { font-size: 12px; color: var(--h-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -3,7 +3,7 @@
 // Fonction pure, sans React ni réseau (testée dans server/alertQueue.test.js) :
 // AlertHost lui donne ce que la maison sait, elle rend la file des pleins écrans
 // (le premier seul est montré, les autres attendent) et les bannières du haut.
-// Le reste des avertissements vit en carte, dans « Maintenant ».
+// Le reste des avertissements vit en carte, dans « Maintenant ».
 
 /** Plein écran : il faut agir tout de suite. Dans cet ordre de priorité. */
 export type TakeoverKind = 'smoke' | 'leak' | 'intrusion' | 'city';
@@ -22,7 +22,7 @@ export interface SensorIn { did: string; name: string; pausedUntil?: number | 'f
 export interface AlertsIn {
     alarms: AlarmIn[];
     guard: GuardIn | null;
-    /** Le dernier passage déjà vu sur cet écran (« J'ai vu ») */
+    /** Le dernier passage déjà vu sur cet écran (« J'ai vu ») */
     guardSeenAt: number;
     city: CityIn | null;
     services: ServiceIn[];
@@ -33,7 +33,7 @@ export interface AlertsIn {
 export interface Takeover { id: string; kind: TakeoverKind }
 export interface Banner { id: string; kind: BannerKind; ref: string }
 
-/** Un passage pendant l'absence reste en plein écran une demi-heure, ou jusqu'à « J'ai vu ». */
+/** Un passage pendant l'absence reste en plein écran une demi-heure, ou jusqu'à « J'ai vu ». */
 export const INTRUSION_MS = 30 * 60_000;
 
 const RANK: Record<TakeoverKind, number> = { smoke: 0, leak: 1, intrusion: 2, city: 3 };

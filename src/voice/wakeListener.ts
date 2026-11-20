@@ -1,4 +1,4 @@
-// Écoute le micro en continu et appelle onWake quand « Jean-Claude » est détecté.
+// Écoute le micro en continu et appelle onWake quand « Jean-Claude » est détecté.
 // Tout reste dans le navigateur : aucun son ne sort de l'appareil.
 import * as ort from 'onnxruntime-web/wasm';
 import { WakeWordModel, SAMPLE_RATE, CHUNK } from './wakeWord';

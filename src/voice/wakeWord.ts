@@ -1,4 +1,4 @@
-// Détection du mot d'activation « Jean-Claude » avec les modèles openWakeWord
+// Détection du mot d'activation « Jean-Claude » avec les modèles openWakeWord
 // (modèle maison entraîné par scripts/train-wakeword.py)
 // (https://github.com/dscripka/openWakeWord), exécutés en local via ONNX.
 // Pipeline par bloc de 80 ms : audio → mel-spectrogramme → embedding → score.

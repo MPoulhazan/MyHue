@@ -24,7 +24,7 @@ const hm = (ts: number) => {
     return `${d.getHours()} h ${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-/** Carte « Okayyy ! Le courrier » de l'accueil : le visiteur dit si le facteur est passé. */
+/** Carte « Okayyy ! Le courrier » de l'accueil : le visiteur dit si le facteur est passé. */
 export function MailboxCard() {
     const view = mailboxPoll.use();
     const [busy, setBusy] = useState(false);
@@ -46,7 +46,7 @@ export function MailboxCard() {
     return (
         <WidgetCard className={`mail-card mood-${view.mood}`} label="Boîte aux lettres" title="Courrier"
             pills={(view.waiting || view.night || !view.sensor.online || delivery || pickup) && <>
-                {/* Le facteur et le relevé du jour ; « d'habitude » est déjà dans la bulle */}
+                {/* Le facteur et le relevé du jour ; « d'habitude » est déjà dans la bulle */}
                 {delivery && !view.waiting && <StatusPill level="info">Facteur {hm(delivery)}</StatusPill>}
                 {pickup && (!delivery || pickup > delivery) && <StatusPill level="ok">Relevé {hm(pickup)}</StatusPill>}
                 {view.waiting && <StatusPill level="warn">Dans la boîte</StatusPill>}

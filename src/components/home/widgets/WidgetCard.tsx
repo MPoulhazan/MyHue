@@ -9,7 +9,7 @@ import './WidgetCard.css';
 //
 // Une carte de widget a toujours la même forme : un titre, une ou deux pastilles
 // d'état, un corps compact (environ 160 px de haut au plus dans la colonne
-// « Maintenant ») et, s'il y a plus à dire, un panneau de détail ouvert en
+// « Maintenant ») et, s'il y a plus à dire, un panneau de détail ouvert en
 // touchant le titre. Le détail (plan, listes complètes, réglages) ne vit jamais
 // dans la carte.
 

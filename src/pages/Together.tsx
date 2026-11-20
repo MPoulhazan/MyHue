@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Icon } from '../components/Icon';
 
-// « À deux » sur la page Ma journée : le petit mot pour moi et la liste d'épicerie commune
+// « À deux » sur la page Ma journée : le petit mot pour moi et la liste d'épicerie commune
 
 interface Note { id: string; from: string | null; to: string; text: string; at: number; readAt: number | null }
 interface Item { id: string; text: string; by: string | null; at: number; doneAt: number | null }
@@ -62,7 +62,7 @@ export function Together({ me, people }: { me: Person; people: Person[] }) {
                 {forMe.map((n) => (
                     <div key={n.id} className="md-note-item">
                         <span className="md-meta">{name(n.from)} · {ago(n.at)}</span>
-                        <p>« {n.text} »</p>
+                        <p>« {n.text} »</p>
                         <button className="md-btn" onClick={() => call(() => axios.post(`/api/together/notes/${n.id}/read`))}><Icon name="check" size={16} strokeWidth={2.5} />Lu</button>
                     </div>
                 ))}
@@ -82,7 +82,7 @@ export function Together({ me, people }: { me: Person; people: Person[] }) {
             </section>
 
             <section className="md-card md-grocery">
-                <div className="md-head"><h2>Épicerie</h2><span className="muted">« Jean-Claude, ajoute du lait à la liste »</span></div>
+                <div className="md-head"><h2>Épicerie</h2><span className="muted">« Jean-Claude, ajoute du lait à la liste »</span></div>
                 {open.length || done.length ? (
                     <ul className="md-items">
                         {open.map((g) => (

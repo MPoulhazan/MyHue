@@ -34,7 +34,7 @@ const reading = (s: Sensor) => {
     return '';
 };
 
-/** « en pause jusqu’à 07:00 », « en pause »… */
+/** « en pause jusqu’à 07:00 », « en pause »… */
 const pauseLabel = (until: number | 'forever' | null) => {
     if (until == null) return '';
     if (until === 'forever') return 'en pause';

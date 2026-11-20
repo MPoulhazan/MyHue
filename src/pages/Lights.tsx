@@ -11,7 +11,7 @@ interface Circadian {
     kelvin: number | null;
 }
 
-/** Interrupteur « suit le soleil » : le blanc des lampes allumées glisse du froid (jour) au chaud (soir). */
+/** Interrupteur « suit le soleil » : le blanc des lampes allumées glisse du froid (jour) au chaud (soir). */
 function SunToggle() {
     const [state, setState] = useState<Circadian | null>(null);
     useEffect(() => {

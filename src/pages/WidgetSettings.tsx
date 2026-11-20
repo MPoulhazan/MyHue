@@ -33,11 +33,11 @@ export function WidgetSettings() {
     return (
         <div className="home settings-page">
             <header className="home-top">
-                <div className="home-hello"><h1>Widgets de l’accueil</h1></div>
+                <div className="home-hello"><h1>Cartes de l’accueil</h1></div>
             </header>
             <p className="settings-note muted">
-                En Auto, un widget passe en carte dans « Maintenant » quand il a quelque chose à dire, sinon il reste en pastille en bas.
-                Cinq cartes au plus, celles sur Toujours comprises.
+                En Auto, une carte s’affiche dans « Maintenant » quand elle a quelque chose à dire ; sinon elle attend derrière « Tout voir ».
+                Cinq cartes au plus sur la tablette, trois sur le téléphone, celles sur Toujours comprises.
             </p>
             {error && <p className="settings-note warn" role="alert">{error}</p>}
 

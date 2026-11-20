@@ -17,7 +17,7 @@ type XY = [number, number];
 
 const HOUR = 3600_000;
 const PAD = { left: 34, right: 14, top: 14 };
-const OUT_H = 46; // bande « dehors »
+const OUT_H = 46; // bande « dehors »
 const OUT_GAP = 16;
 const AXIS_H = 20;
 
@@ -134,7 +134,7 @@ export function TemperatureChart({ did, name }: { did: string; name: string }) {
         const first = new Date(from);
         first.setMinutes(0, 0, 0);
         for (let ts = first.getTime() + HOUR; ts < to - HOUR; ts += HOUR) {
-            // Pas collée à « maint. » (téléphone)
+            // Pas collée à « maint. » (téléphone)
             if (new Date(ts).getHours() % 6 === 0 && x(ts) < w - PAD.right - 52) xTicks.push(ts);
         }
 
@@ -158,7 +158,7 @@ export function TemperatureChart({ did, name }: { did: string; name: string }) {
             .map((s, i) => `M${x(s.from).toFixed(1)},${y(setpoint![i].target).toFixed(1)}V${y(s.target).toFixed(1)}`)
             .join('');
 
-        // Bande « dehors » : sa propre échelle, sous le graphique
+        // Bande « dehors » : sa propre échelle, sous le graphique
         let out = null;
         if (hasOut) {
             const top = mainBottom + OUT_GAP;
@@ -261,7 +261,7 @@ export function TemperatureChart({ did, name }: { did: string; name: string }) {
                     {/* Min et max */}
                     {[{ p: chart.maxP, k: 'max', dy: -9 }, { p: chart.minP, k: 'min', dy: 17 }].map(({ p, k, dy }) => {
                         const px = chart.x(p.ts);
-                        // Pas d'étiquette collée au point « maintenant »
+                        // Pas d'étiquette collée au point « maintenant »
                         if (Math.abs(px - lastX) < 50) return null;
                         return (
                             <g key={k}>

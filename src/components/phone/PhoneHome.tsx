@@ -3,18 +3,26 @@ import type { DashLight, Home } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import { MomentButton } from '../MomentButton';
 import { HueStatus, RoomCard, fmt } from '../home/cards';
-import { HomeWidgets, WidgetChips } from '../home/widgets/registry';
-import { WIDGET_META } from '../home/widgets/meta';
+import { HomeWidgets } from '../home/widgets/registry';
+import type { WidgetId } from '../home/widgets/meta';
 import type { useHomeWidgets } from '../home/widgets/useHomeWidgets';
 import './PhoneHome.css';
 
-/** Accueil du téléphone : moments, pièces et état de la maison sur une colonne. */
-export function PhoneHome({ home, roomLights, onAdd, widgets }: {
+/**
+ * Accueil du téléphone, sur une colonne : d'abord « Maintenant » (3 cartes au plus, le reste
+ * derrière « Tout voir »), puis les teintes et les pièces.
+ */
+export function PhoneHome({ home, roomLights, onAdd, widgets, shown, more, onShowAll }: {
     home: Home;
     roomLights: [string, DashLight[]][];
     onAdd: () => void;
-    /** Même tri que la tablette : cartes qui ont quelque chose à dire, pastilles pour le reste */
+    /** Même liste que la tablette, calculée par le Pi */
     widgets: ReturnType<typeof useHomeWidgets>;
+    /** Les cartes montrées (phoneLayout) */
+    shown: WidgetId[];
+    /** Combien d'autres sont derrière « Tout voir » */
+    more: number;
+    onShowAll: () => void;
 }) {
     const navigate = useNavigate();
     const climate = home.sensors.find((s) => s.props.temperature != null);
@@ -32,17 +40,35 @@ export function PhoneHome({ home, roomLights, onAdd, widgets }: {
                 </div>
             </header>
 
-            {openDoors.length > 0 && (
+            {/* Une porte ouverte se voit tout de suite, sauf si la carte Maison le dit déjà */}
+            {openDoors.length > 0 && !shown.includes('house') && (
                 <div className="phone-alert" role="status">
                     <Icon name="door" size={20} strokeWidth={2} />
                     <span>{openDoors.map((s) => s.name).join(', ')} ouverte{openDoors.length > 1 ? 's' : ''}</span>
                 </div>
             )}
 
-            {home.moments.length > 0 && (
-                <div className="phone-moments">
-                    {home.moments.map((m) => <MomentButton key={m.id} moment={m} onRun={home.runMoment} iconSize={18} />)}
+            <section className="phone-now" aria-label="Maintenant">
+                <div className="now-head">
+                    <h2>Maintenant</h2>
+                    {more > 0 && (
+                        <button type="button" className="now-all" aria-haspopup="dialog" onClick={onShowAll}>
+                            Tout voir <span>({more})</span>
+                            <Icon name="chevron" size={16} strokeWidth={2.4} />
+                        </button>
+                    )}
                 </div>
+                <HomeWidgets ctx={{ home, onAdd, itemOf: widgets.itemOf }} ids={shown} />
+                {!shown.length && <p className="now-empty">Rien d’urgent pour le moment.</p>}
+            </section>
+
+            {home.moments.length > 0 && (
+                <>
+                    <h2 className="phone-section">Teintes</h2>
+                    <div className="phone-moments">
+                        {home.moments.map((m) => <MomentButton key={m.id} moment={m} onRun={home.runMoment} iconSize={18} />)}
+                    </div>
+                </>
             )}
 
             <h2 className="phone-section">Pièces</h2>
@@ -55,11 +81,6 @@ export function PhoneHome({ home, roomLights, onAdd, widgets }: {
                 ))}
                 <HueStatus />
             </div>
-
-            <h2 className="phone-section">Maintenant</h2>
-            <HomeWidgets ctx={{ home, onAdd, itemOf: widgets.itemOf }} ids={[...widgets.arrangement.cards, ...widgets.peek].filter((id) => !WIDGET_META[id].tabletOnly)} />
-            <WidgetChips states={widgets.states} ids={widgets.arrangement.chips.filter((id) => !WIDGET_META[id].tabletOnly)}
-                open={widgets.peek} onToggle={widgets.togglePeek} />
         </div>
     );
 }

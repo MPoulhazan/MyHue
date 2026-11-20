@@ -4,7 +4,7 @@ import { CommunautoCard, CommunautoLauncher } from '../communauto/CommunautoCard
 import { communautoPoll } from '../home/widgets/polls';
 import type { MovesForm } from '../home/widgets/meta';
 
-// ── Carte « Déplacements » : une seule carte pour BIXI, bus, métro et Communauto ──
+// ── Carte « Déplacements » : une seule carte pour BIXI, bus, métro et Communauto ──
 
 /** Dans le détail du trajet ou du métro : chercher une Communauto sans changer de carte. */
 function CommunautoMore() {

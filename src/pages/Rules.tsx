@@ -41,7 +41,7 @@ const ago = (iso: string) => {
     return `il y a ${Math.floor(hours / 24)} j`;
 };
 
-// Modèles qui acceptent « toutes les portes » (did '*')
+// Modèles qui acceptent « toutes les portes » (did '*')
 const ANY_DOOR = new Set(['door_left_open', 'door_night']);
 
 /** Automatismes : ce qui tourne, un interrupteur chacun, et un bouton pour en créer. */
@@ -136,7 +136,7 @@ export function Rules() {
 
             {loaded && (
                 <p className="muted settings-note">
-                    Tu peux aussi le demander à l’agent : « Préviens-moi si la température du salon passe sous 18° ».
+                    Tu peux aussi le demander à l’agent : « Préviens-moi si la température du salon passe sous 18° ».
                 </p>
             )}
 

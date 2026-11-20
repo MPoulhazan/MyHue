@@ -20,7 +20,7 @@ const hhmm = (ts: number) => new Date(ts).toLocaleTimeString('fr-CA', { hour: '2
 
 /**
  * Écran d'alarme (fumée ou fuite), montré par AlertHost tant que l'alarme est levée.
- * « Lumières normales » = « C'est réglé » sur Telegram : les lampes reprennent leur état d'avant.
+ * « Lumières normales » = « C'est réglé » sur Telegram : les lampes reprennent leur état d'avant.
  * @param alarms les alarmes de cette sorte (la fumée et la fuite ont chacune leur écran)
  * @param all    toutes les alarmes en cours : un seul geste rend la maison normale
  */

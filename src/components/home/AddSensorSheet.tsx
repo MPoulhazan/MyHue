@@ -27,7 +27,7 @@ const TYPES: { id: string; label: string }[] = [
     { id: 'other', label: 'Autre' },
 ];
 
-/** Type deviné à partir de la description zigbee2mqtt (« Door and window sensor »...). */
+/** Type deviné à partir de la description zigbee2mqtt (« Door and window sensor »...). */
 const guessType = (d: Device) => {
     const s = `${d.description ?? ''} ${d.model ?? ''}`.toLowerCase();
     if (/door|window|contact|magnet/.test(s)) return 'door';
@@ -247,7 +247,7 @@ export function AddSensorSheet({ rooms, onClose }: { rooms: string[]; onClose: (
 
                 {step === 'automations' && (
                     <div className="step-body">
-                        <p className="lead">Que doit faire « {name.trim()} » ? Tu pourras changer ça dans Automatismes.</p>
+                        <p className="lead">Que doit faire « {name.trim()} » ? Tu pourras changer ça dans Automatismes.</p>
                         {DOOR_AUTOMATIONS.map((a) => (
                             <label key={a.id} className="check">
                                 <input type="checkbox" checked={chosen.includes(a.id)}
@@ -264,7 +264,7 @@ export function AddSensorSheet({ rooms, onClose }: { rooms: string[]; onClose: (
                 {step === 'done' && (
                     <div className="step-body done">
                         <span className="found-icon big"><Icon name="check" size={36} strokeWidth={2.4} /></span>
-                        <p className="lead">« {name.trim()} » est prêt.</p>
+                        <p className="lead">« {name.trim()} » est prêt.</p>
                         <button type="button" className="primary-btn" onClick={onClose}>Fermer</button>
                     </div>
                 )}

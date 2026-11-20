@@ -30,7 +30,7 @@ const day = (ts: number) => {
 
 const LABEL = { alarm: 'Mode alarme', vacation: 'Mode vacances' } as const;
 
-/** Carte « Alarme » : activer à la main, voir les passages, couper en rentrant. */
+/** Carte « Alarme » : activer à la main, voir les passages, couper en rentrant. */
 export function GuardCard() {
     const view = guardPoll.use();
     const [busy, setBusy] = useState(false);
@@ -58,7 +58,7 @@ export function GuardCard() {
     // Une pause oubliée ne doit pas faire un trou dans la surveillance
     const pausedWarning = paused.length > 0 && (
         <div className="guard-paused" role="status">
-            <span>⚠️ En pause, {view.mode ? 'non surveillé' : 'ne sera pas surveillé'} : <b>{paused.map((p) => p.name).join(', ')}</b></span>
+            <span>En pause, {view.mode ? 'non surveillé' : 'ne sera pas surveillé'} : <b>{paused.map((p) => p.name).join(', ')}</b></span>
             <button type="button" className="guard-btn" disabled={busy} onClick={resumeAll}>Réactiver</button>
         </div>
     );
@@ -67,7 +67,7 @@ export function GuardCard() {
         return (
             <WidgetCard className="guard-card" label="Alarme" title="Alarme"
                 pills={<StatusPill level="off">Désactivée</StatusPill>}
-                detail={{ title: 'Alarme', body: <p className="lead">Porte ou mouvement pendant votre absence : un Telegram tout de suite. En mode vacances, le salon s’allume aussi le soir pour faire croire qu’on est là.</p> }}>
+                detail={{ title: 'Alarme', body: <p className="lead">Porte ou mouvement quand la maison est vide : un Telegram tout de suite. En mode vacances, le salon s’allume aussi le soir pour faire croire qu’on est là.</p> }}>
                 {pausedWarning}
                 <div className="guard-actions">
                     <button type="button" className="guard-btn" disabled={busy} onClick={() => put({ mode: 'alarm' })}>Mode alarme</button>

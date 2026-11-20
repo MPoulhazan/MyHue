@@ -5,7 +5,7 @@ import './Dashboard.css';
 import './Settings.css';
 import './Remote.css';
 
-// Collecte d'enregistrements « Jean-Claude » pour entraîner le mot d'activation.
+// Collecte d'enregistrements « Jean-Claude » pour entraîner le mot d'activation.
 // Les WAV sont rangés côté serveur dans server/data/wakeword/<locuteur>/.
 
 const SPEAKER_KEY = 'myhue.wakeword.speaker';
@@ -17,7 +17,7 @@ type Phase = 'idle' | 'ready' | 'recording' | 'saving';
 const TIPS = [
     'Varie la distance : collé à la tablette, à 2 m, depuis l’autre bout de la pièce.',
     'Varie le ton : normal, pressé, fatigué, en chuchotant un peu, plus fort.',
-    'Varie le débit : « Jean-Claude », « Jeaan-Claude », « J’Claude ».',
+    'Varie le débit : « Jean-Claude », « Jeaan-Claude », « J’Claude ».',
     'Enregistre aussi avec la télé ou la musique en fond, comme en vrai.',
 ];
 
@@ -65,7 +65,7 @@ export function WakewordRecorder() {
         setMessage('Prépare-toi…');
         await new Promise((res) => setTimeout(res, 700));
         setPhase('recording');
-        setMessage('Dis « Jean-Claude »');
+        setMessage('Dis « Jean-Claude »');
         const clip = await recordClip(stream);
         if (!clip) {
             setMessage('Rien entendu, recommence.');
@@ -121,7 +121,7 @@ export function WakewordRecorder() {
     return (
         <div className="home settings-page wakeword">
             <header className="home-top">
-                <div className="home-hello"><h1>Mot d’activation</h1><span className="muted">« Jean-Claude »</span></div>
+                <div className="home-hello"><h1>Mot d’activation</h1><span className="muted">« Jean-Claude »</span></div>
             </header>
 
             <section className="card" aria-label="Enregistrer des prises">

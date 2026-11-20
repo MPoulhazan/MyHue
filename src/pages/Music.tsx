@@ -111,7 +111,7 @@ export function Music() {
 
     const play = useCallback((key: string, req: Omit<PlayRequest, 'deviceId'>, label: string) => {
         if (!target) return;
-        run(key, () => musicApi.play({ ...req, deviceId: target.id }), `Impossible de lancer « ${label} ».`);
+        run(key, () => musicApi.play({ ...req, deviceId: target.id }), `Impossible de lancer « ${label} ».`);
     }, [target, run]);
 
     const enqueue = useCallback((tracks: YouTubeVideo[]) => {
@@ -137,7 +137,7 @@ export function Music() {
             {notice && <div className="warn-line" role="status">{notice}</div>}
 
             <SearchResults query={query} results={results} error={searchError} onClose={() => search('')} busy={busy} blocked={blocked} playingVideo={playingVideo}
-                onPlay={(tracks, i) => play(`t:${tracks[i].videoId}`, { kind: 'tracks', tracks, startIndex: i, name: `Recherche « ${query} »` }, tracks[i].title)}
+                onPlay={(tracks, i) => play(`t:${tracks[i].videoId}`, { kind: 'tracks', tracks, startIndex: i, name: `Recherche « ${query} »` }, tracks[i].title)}
                 onPlaySelection={(tracks) => play('selection', { kind: 'tracks', tracks, name: 'Sélection' }, 'la sélection')}
                 onAdd={enqueue}
                 onMix={(t) => play(`mix:${t.videoId}`, { kind: 'mix', id: t.videoId, name: t.title }, `Radio de ${t.title}`)} />
@@ -169,7 +169,7 @@ export function Music() {
                                     </span>
                                     <span>
                                         <strong>{m.name}</strong>
-                                        <span className="mz-mood-hint">{m.playlistName ? `Playlist « ${m.playlistName} »` : m.hint}</span>
+                                        <span className="mz-mood-hint">{m.playlistName ? `Playlist « ${m.playlistName} »` : m.hint}</span>
                                     </span>
                                 </button>
                             );
@@ -276,7 +276,7 @@ function SearchResults(props: {
     return (
         <section className="card mz-results" aria-label="Résultats de recherche">
             <div className="mz-head">
-                <h2>Résultats pour « {query} »</h2>
+                <h2>Résultats pour « {query} »</h2>
                 <button type="button" className="mz-icon-btn" aria-label="Fermer la recherche" onClick={props.onClose}><Icon name="close" size={20} /></button>
             </div>
             {loading && <p className="muted">Recherche…</p>}
@@ -545,7 +545,7 @@ function PlaylistSheet({ playlist, moods, busy, blocked, playingVideo, onClose, 
                         <span className="muted">Ambiance</span>
                         <select value={linked?.id ?? ''} onChange={(e) => (e.target.value ? onLinkMood(e.target.value) : linked && onUnlinkMood(linked.id))}>
                             <option value="">Aucune</option>
-                            {moods.map((m) => <option key={m.id} value={m.id}>{m.name}{m.playlistId && m.playlistId !== playlist.id ? ` (remplace « ${m.playlistName} »)` : ''}</option>)}
+                            {moods.map((m) => <option key={m.id} value={m.id}>{m.name}{m.playlistId && m.playlistId !== playlist.id ? ` (remplace « ${m.playlistName} »)` : ''}</option>)}
                         </select>
                     </label>
                     {!playlist.accountId && (
@@ -722,7 +722,7 @@ function Accounts({ onChange }: { onChange: () => void }) {
                         <>
                             <p>Sur le téléphone de la personne à ajouter, ouvre <strong>{login.verificationUrl.replace(/^https?:\/\/(www\.)?/, '')}</strong> et entre ce code :</p>
                             <p className="yt-login-code">{login.userCode}</p>
-                            <p className="muted">Google affichera « application non vérifiée » : c’est normal, choisis Continuer. La page se met à jour toute seule.</p>
+                            <p className="muted">Google affichera « application non vérifiée » : c’est normal, choisis Continuer. La page se met à jour toute seule.</p>
                             <button type="button" className="ghost-btn" onClick={() => { youtubeApi.cancelLogin().catch(() => {}); setLogin(null); }}>Annuler</button>
                         </>
                     )}

@@ -519,7 +519,7 @@ function SignalTile() {
                     aria-label="Lampe qui prévient" onClick={() => save({ enabled: !s.enabled })}><i /></button>
             </span>
             <span className="muted">
-                Quand tu pars (porte d’entrée entre {hourMin(s.outHour * 60 - s.windowBeforeMin)} et {hourMin(s.outHour * 60 + s.windowAfterMin)}, ou « Je pars »),
+                Quand tu pars (porte d’entrée entre {hourMin(s.outHour * 60 - s.windowBeforeMin)} et {hourMin(s.outHour * 60 + s.windowAfterMin)}, ou « Je pars »),
                 la lampe respire en bleu si la pluie arrive dans 30 min, en ambre si une tempête approche.
             </span>
             <label className="wx-brief-row">
@@ -704,7 +704,7 @@ function BriefingTile() {
                 <button type="button" className="ghost-btn" aria-expanded={open} onClick={() => setOpen((o) => !o)}>Régler</button>
             </span>
             {msg && <span className="muted">{msg}</span>}
-            {text && <p className="wx-brief-text">« {text} »</p>}
+            {text && <p className="wx-brief-text">« {text} »</p>}
             {open && (
                 <div className="wx-brief-settings">
                     <label className="wx-brief-row">

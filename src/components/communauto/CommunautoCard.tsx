@@ -102,7 +102,7 @@ const nearestLine = (view: CommunautoView) => {
 
 const WeekNote = ({ view }: { view: CommunautoView }) => view.weekCount > 0 ? (
     <p className={`ca-week ${view.weekCount >= view.weekWarn ? 'warn' : ''}`}>
-        {view.weekCount >= view.weekWarn ? '⚠️ ' : ''}{view.weekCount} Flex bloquée{view.weekCount > 1 ? 's' : ''} par MyHue en 7 jours{view.weekCount >= view.weekWarn ? ', on y va mollo' : ''}
+        {view.weekCount} Flex bloquée{view.weekCount > 1 ? 's' : ''} par MyHue en 7 jours{view.weekCount >= view.weekWarn ? ', on y va mollo' : ''}
     </p>
 ) : null;
 
@@ -165,7 +165,7 @@ export function CommunautoCard() {
     const view = communautoPoll.use();
     const phone = useIsPhone();
     const { busy, error, call } = useCommunautoCall();
-    // Le « encore 27 min » avance tout seul
+    // Le « encore 27 min » avance tout seul
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
         const t = setInterval(() => setNow(Date.now()), 30_000);
@@ -181,7 +181,7 @@ export function CommunautoCard() {
     if (b) {
         const left = Math.max(0, Math.round((b.until - now) / 60_000));
         return (
-            <WidgetCard key="booked" className="ca-card on found" label="Communauto" title={<><i className="ca-dot" />Communauto bloquée</>}
+            <WidgetCard key="booked" className="ca-card on is-found" label="Communauto" title={<><i className="ca-dot" />Communauto bloquée</>}
                 pills={<StatusPill level="ok">encore {left} min</StatusPill>}>
                 <ul className="ca-cars">
                     <li className="ca-car">
@@ -209,7 +209,7 @@ export function CommunautoCard() {
         const live = s.found.filter((c) => !c.gone);
         const left = Math.max(1, Math.round((s.until - now) / 60_000));
         return (
-            <WidgetCard key="search" className={`ca-card on ${live.length ? 'found' : ''}`} label="Communauto"
+            <WidgetCard key="search" className={`ca-card on ${live.length ? 'is-found' : ''}`} label="Communauto"
                 title={<><i className="ca-dot live" />{view.booking ? 'Je la bloque…' : live.length ? 'Communauto trouvée' : 'Recherche Communauto'}</>}
                 pills={<StatusPill level="ok">{meters(s.radiusM)} · encore {left} min</StatusPill>}
                 detail={s.found.length > 1 ? { title: 'Autos trouvées', body: <ul className="ca-cars">{s.found.slice(0, 6).map((c) => <CarRow key={c.id} car={c} />)}</ul> } : undefined}>

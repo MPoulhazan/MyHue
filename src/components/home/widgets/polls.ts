@@ -22,7 +22,7 @@ export const alarmPoll = createSharedPoll<{ active: ActiveAlarm[] }>('/api/alarm
 export const guardPoll = createSharedPoll<GuardView>('/api/guard', 30_000);
 export const musicPoll = createSharedPoll<MusicHome>('/api/music/home', 60_000);
 
-/** Liste « Maintenant » calculée par le Pi ; relue aussi aux bascules d'heure et quand un capteur change */
+/** Liste « Maintenant » calculée par le Pi ; relue aussi aux bascules d'heure et quand un capteur change */
 export const feedPoll = createSharedPoll<HomeFeed>('/api/home-feed', 20_000);
 
 /** Réglages Auto / Toujours / Masqué, partagés par la tablette et le téléphone (server/homeWidgets.js) */

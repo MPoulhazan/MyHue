@@ -1,4 +1,4 @@
-// Profil choisi sur cet écran pour « Ma journée » : tient 10 minutes, puis retour au profil par défaut
+// Profil choisi sur cet écran pour « Ma journée » : tient 10 minutes, puis retour au profil par défaut
 
 const PICK_KEY = 'myday.pick';
 const PICK_MS = 10 * 60_000;

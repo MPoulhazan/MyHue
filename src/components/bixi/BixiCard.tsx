@@ -34,13 +34,13 @@ const ago = (ts: number, now: number) => {
     const s = Math.max(0, Math.round((now - ts) / 1000));
     return s < 60 ? `il y a ${s} s` : `il y a ${Math.round(s / 60)} min`;
 };
-// « du Parc-La Fontaine / Roy » → « Parc-La Fontaine / Roy »
+// « du Parc-La Fontaine / Roy » → « Parc-La Fontaine / Roy »
 const short = (name: string) => name.replace(/^(du|de la|des|de l’|de)\s+/i, '');
 const level = (n: number) => (n <= 0 ? 'no' : n === 1 ? 'low' : 'ok');
 
 function useBixi() {
     const view = bixiPoll.use();
-    // L'horloge du « relevé il y a… » avance à chaque minute
+    // L'horloge du « relevé il y a… » avance à chaque minute
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
         const t = setInterval(() => setNow(Date.now()), 60_000);
@@ -56,14 +56,14 @@ function TripBlock({ trip }: { trip: Trip }) {
         <div className="bixi-trip">
             <div className="bixi-who">
                 <b>{trip.who}</b>
-                {trip.rideMin != null && <span>≈ {trip.rideMin} min<span className="bixi-long"> de vélo</span></span>}
+                {trip.rideMin != null && <span>≈ {trip.rideMin} min de vélo</span>}
             </div>
             <div className="bixi-route">
                 <i className="bixi-pin" />
                 {from ? (
                     <>
                         <span className="bixi-st" title={from.name}>{short(from.name)}<small>{fromNote}</small></span>
-                        <span className={`bixi-count ${from.scarce ? 'low' : level(from.bikes)}`}><span className="bixi-long">{plural(from.bikes, 'vélo')}</span><span className="bixi-short">{from.bikes} 🚲</span></span>
+                        <span className={`bixi-count ${from.scarce ? 'low' : level(from.bikes)}`}>{plural(from.bikes, 'vélo')}</span>
                     </>
                 ) : (
                     <>
@@ -77,7 +77,7 @@ function TripBlock({ trip }: { trip: Trip }) {
                 {to ? (
                     <>
                         <span className="bixi-st" title={to.name}>{short(to.name)}<small>{to.alt ? 'la préférée est pleine' : 'à l’arrivée'}</small></span>
-                        <span className={`bixi-count ${to.low ? 'low' : 'ok'}`}><span className="bixi-long">{plural(to.docks, 'place')}</span><span className="bixi-short">{to.docks} P</span></span>
+                        <span className={`bixi-count ${to.low ? 'low' : 'ok'}`}>{plural(to.docks, 'place')}</span>
                     </>
                 ) : (
                     <span className="bixi-st muted">Station d’arrivée inconnue</span>
@@ -94,8 +94,8 @@ function TripLine({ trip }: { trip: Trip }) {
         <div className="bixi-line-row">
             <b>{trip.who}</b>
             <span className="bixi-line-st">{from ? short(from.name) : 'Aucun vélo dans le coin'}</span>
-            {from && <span className={`bixi-count ${from.scarce ? 'low' : level(from.bikes)}`}>{from.bikes} 🚲</span>}
-            {to && <span className={`bixi-count ${to.low ? 'low' : 'ok'}`}>{to.docks} P</span>}
+            {from && <span className={`bixi-count ${from.scarce ? 'low' : level(from.bikes)}`}>{plural(from.bikes, 'vélo')}</span>}
+            {to && <span className={`bixi-count ${to.low ? 'low' : 'ok'}`}>{plural(to.docks, 'place')}</span>}
         </div>
     );
 }

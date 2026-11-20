@@ -33,5 +33,3 @@
 .bixi-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--h-muted); font-variant-numeric: tabular-nums; }
 .bixi-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .bixi-chip { padding: 5px 10px; border-radius: 999px; background: var(--h-surface-2); font-weight: 700; color: var(--h-text); }
-
-.bixi-short { display: none; }

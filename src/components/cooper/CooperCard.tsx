@@ -14,7 +14,7 @@ export interface CooperView {
     meals: Meal[];
     mood: 'fed' | 'waiting' | 'soon' | 'late' | 'double';
     line: string;
-    /** Moment de la journée qui prend la bulle : dodo (21 h – 8 h), réveil (« Ça pousse »), promenade faite. */
+    /** Moment de la journée qui prend la bulle : dodo (21 h – 8 h), réveil (« Ça pousse »), promenade faite. */
     moment?: 'dodo' | 'pousse' | 'walked' | null;
     blinking: boolean;
 }
@@ -26,7 +26,7 @@ const hm = (ts: number) => {
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const MOMENT_PHOTO: Record<string, string> = { dodo: '/cooper-dodo.webp', pousse: '/cooper-pousse.webp' };
 
-/** Carte « Cooper parle » de l'accueil : sa bulle dit s'il a eu ses repas de 12 h et 18 h. */
+/** Carte « Cooper parle » de l'accueil : sa bulle dit s'il a eu ses repas de 12 h et 18 h. */
 export function CooperCard() {
     const view = cooperPoll.use();
     const [busy, setBusy] = useState(false);

@@ -12,7 +12,7 @@ const hm = (ts: number) => {
 
 /**
  * Plein écran quand une porte s'ouvre ou qu'un mouvement est vu pendant le mode alarme ou
- * vacances. « J'ai vu » le range (sur cet écran) ; « On est rentrés » coupe la surveillance.
+ * vacances. « J'ai vu » le range (sur cet écran) ; « On est rentrés » coupe la surveillance.
  */
 export function GuardAlert({ view, event, waiting, onSeen, demo = false }: {
     view: GuardView;

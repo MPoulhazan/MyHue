@@ -10,7 +10,7 @@ const QUALITY: Record<'good' | 'fair' | 'bad', [Level, string, number]> = {
     bad: ['off', 'Mauvais', 1],
 };
 
-/** Carte « Ciel ce soir » de l'accueil : la lune et l'événement le plus important ; tout le ciel dans Météo. */
+/** Carte « Ciel ce soir » de l'accueil : la lune et l'événement le plus important ; tout le ciel dans Météo. */
 export function SkyCard() {
     const sky = useSky();
     if (!sky) return null;

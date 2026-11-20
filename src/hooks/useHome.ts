@@ -448,7 +448,7 @@ export function useHome() {
         try {
             const { data } = await axios.post('/api/heating/control', patch);
             if (data?.mode) setHeating((h) => (h ? { ...h, ...data } : h));
-            loadThermostat(); // « arrêt » ou « froid » désactivent le thermostat
+            loadThermostat(); // « arrêt » ou « froid » désactivent le thermostat
         } catch {
             push('Clim · commande échouée', '#FF3B5C');
         }
@@ -496,7 +496,7 @@ export function useHome() {
 
     const clearConversation = useCallback(() => setConversation([]), []);
 
-    // Un capteur renommé : ses anciennes entrées prennent le nouveau nom (« Porte chambre » → « Porte d'entrée »)
+    // Un capteur renommé : ses anciennes entrées prennent le nouveau nom (« Porte chambre » → « Porte d'entrée »)
     const namedLog = useMemo(() => log.map((e) => {
         const name = e.did && sensors.find((s) => s.did === e.did)?.name;
         const sep = e.msg.indexOf(' : ');

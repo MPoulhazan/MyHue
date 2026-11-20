@@ -4,7 +4,7 @@ import { Icon } from '../Icon';
 
 const VOLUME_STEP = 10;
 
-/** Barres animées « en lecture ». */
+/** Barres animées « en lecture ». */
 export function Equalizer({ paused = false }: { paused?: boolean }) {
     return (
         <span className={`eq ${paused ? 'paused' : ''}`} aria-hidden="true">

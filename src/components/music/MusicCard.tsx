@@ -16,7 +16,7 @@ const MOOD_LOOK: Record<string, { icon: IconName; tone: string }> = {
     dodo: { icon: 'moon', tone: 'night' },
 };
 
-/** Carte « Musique » de l'accueil : la suggestion du moment, à lancer d'une touche. */
+/** Carte « Musique » de l'accueil : la suggestion du moment, à lancer d'une touche. */
 export function MusicCard({ cast }: { cast: Cast }) {
     const view = musicPoll.use();
     const [busy, setBusy] = useState(false);
