@@ -22,7 +22,7 @@ import * as notifier from './notifier.js';
 import * as presence from './presence.js';
 import * as journal from './journal.js';
 import * as lightSignals from './lightSignals.js';
-import { RADII, DURATIONS, carsWithin, newArrivals, foundText, carLabel, whereLabel, walkLink } from './communautoLogic.js';
+import { RADII, DURATIONS, carsWithin, newArrivals, foundText, carLabel, whereLabel, walkLink, carAppLink } from './communautoLogic.js';
 import { weekCount } from './communautoAppLogic.js';
 import * as app from './communautoApp.js';
 
@@ -241,7 +241,11 @@ const schedule = () => {
 /** Lance (ou relance) une recherche ; une auto déjà dans le rayon est annoncée tout de suite. */
 export const startSearch = async ({ radiusM, durationMin, autoBook = false, by = 'MyHue' } = {}) => {
     if (autoBook && !config.tablet?.host) throw new Error('la tablette n’est pas appairée pour réserver');
-    if (autoBook && config.lastBooking && config.lastBooking.until > Date.now()) throw new Error('une Flex est déjà bloquée');
+    if (autoBook && config.lastBooking) {
+        await ensureFresh(15_000);
+        checkBookingStillHeld();
+        if (config.lastBooking && config.lastBooking.until > Date.now()) throw new Error('une Flex est déjà bloquée');
+    }
     const r = Number(radiusM ?? config.radiusM);
     const d = Number(durationMin ?? config.durationMin);
     if (!Number.isFinite(r) || r < 100 || r > 2000) throw new Error('rayon invalide (100 à 2000 m)');
@@ -278,10 +282,26 @@ export const start = () => {
 
 // --- Vue ---
 
-const strip = ({ lat, lon, ...c }) => ({ ...c, walk: walkLink({ lat, lon }) });
+const strip = ({ lat, lon, ...c }) => ({ ...c, walk: walkLink({ lat, lon }), app: carAppLink(c.id) });
+
+/**
+ * Blocage annulé ailleurs (téléphone, appli) : l'auto redevient libre dans le flux public.
+ * Une auto bloquée ou en course n'y figure pas ; on laisse 2 min au flux pour se mettre à jour.
+ */
+const BLOCK_FEED_LAG_MS = 2 * 60_000;
+const checkBookingStillHeld = () => {
+    const b = config.lastBooking;
+    if (!b || !feed.at || feed.at < b.at + BLOCK_FEED_LAG_MS) return;
+    if (b.until <= Date.now() || feed.vehicles.some((v) => String(v.CarId) === b.car.id)) {
+        if (b.until > Date.now()) journal.log({ kind: 'system', title: `Blocage Communauto annulé ailleurs : ${carLabel(b.car)} est de nouveau libre` });
+        config.lastBooking = null;
+        save();
+    }
+};
 
 export const getView = async ({ fresh = false } = {}) => {
-    await ensureFresh(isActive() ? SEARCH_EVERY_MS : fresh ? 15_000 : IDLE_MAX_AGE_MS);
+    await ensureFresh(isActive() ? SEARCH_EVERY_MS : fresh || config.lastBooking ? 15_000 : IDLE_MAX_AGE_MS);
+    checkBookingStillHeld();
     const home = await getLocation().catch(() => null);
     const s = isActive() ? config.search : null;
     const radiusM = s?.radiusM ?? config.radiusM;

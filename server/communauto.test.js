@@ -72,3 +72,8 @@ test('parseCommunautoCommand : lancer, arrêter, demander', () => {
     assert.deepEqual(parseCommunautoCommand('il y a des communauto autour ?'), { action: 'status' });
     assert.equal(parseCommunautoCommand('allume le salon'), null);
 });
+
+test('carAppLink : lien de l’appli vers la fiche de l’auto, forcé vers son paquet', async () => {
+    const { carAppLink } = await import('./communautoLogic.js');
+    assert.equal(carAppLink(11869), 'intent://client.reservauto.net/quebec/dashboard/map/free-floating-info/11869#Intent;scheme=https;package=com.communauto.reservauto;S.browser_fallback_url=https%3A%2F%2Fwww.communauto.com;end');
+});

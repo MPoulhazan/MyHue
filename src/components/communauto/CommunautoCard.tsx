@@ -16,6 +16,8 @@ export interface Car {
     street?: string | null;
     gone?: boolean;
     walk: string;
+    /** Ouvre l'appli sur la fiche de cette auto */
+    app?: string;
 }
 export interface CommunautoView {
     updatedAt: number | null;
@@ -50,7 +52,7 @@ function CarRow({ car }: { car: Car }) {
             </div>
             {!car.gone && (
                 <div className="ca-car-actions">
-                    <a className="ca-btn primary" href={APP_LINK}>Réserver</a>
+                    <a className="ca-btn primary" href={car.app ?? APP_LINK}>Réserver</a>
                     <a className="ca-btn" href={car.walk} target="_blank" rel="noreferrer">Y aller</a>
                 </div>
             )}
@@ -109,7 +111,7 @@ export function CommunautoCard() {
                             <span>{b.car.street ? `${b.car.street} · ` : ''}{b.car.dist} m {b.car.dir}</span>
                         </div>
                         <div className="ca-car-actions">
-                            <a className="ca-btn primary" href={APP_LINK}>Ouvrir l’appli</a>
+                            <a className="ca-btn primary" href={b.car.app ?? APP_LINK}>Ouvrir l’appli</a>
                             <a className="ca-btn" href={b.car.walk} target="_blank" rel="noreferrer">Y aller</a>
                         </div>
                     </li>

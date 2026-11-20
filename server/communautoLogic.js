@@ -122,5 +122,8 @@ export const parseCommunautoCommand = (text) => {
 /** Lien pour ouvrir l'appli Communauto sur Android (site web si elle n'est pas installée). */
 export const APP_LINK = 'intent://#Intent;package=com.communauto.reservauto;S.browser_fallback_url=https%3A%2F%2Fwww.communauto.com;end';
 
+/** Ouvre l'appli directement sur la fiche de cette Flex (lien de l'appli, forcé vers son paquet). */
+export const carAppLink = (carId) => `intent://client.reservauto.net/quebec/dashboard/map/free-floating-info/${encodeURIComponent(carId)}#Intent;scheme=https;package=com.communauto.reservauto;S.browser_fallback_url=https%3A%2F%2Fwww.communauto.com;end`;
+
 /** Itinéraire à pied vers l'auto. */
 export const walkLink = (c) => `https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=${c.lat},${c.lon}`;
