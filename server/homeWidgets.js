@@ -8,17 +8,44 @@ import { dataFile } from './dataDir.js';
 
 const FILE = dataFile('home-widgets.json');
 
-export const WIDGET_IDS = ['guard', 'city', 'cooper', 'mail', 'music', 'house', 'bixi', 'metro', 'communauto', 'sky', 'journal'];
+export const WIDGET_IDS = ['guard', 'city', 'cooper', 'mail', 'music', 'house', 'moves', 'sky', 'journal'];
+/** Anciens widgets fondus dans « Déplacements » (novembre 2026) */
+const MOVES_PARTS = ['bixi', 'metro', 'communauto'];
 export const PINS = ['auto', 'always', 'hidden'];
 
 // Cooper reste une carte par défaut : c'est le widget préféré de la maison
 const DEFAULTS = Object.fromEntries(WIDGET_IDS.map((id) => [id, id === 'cooper' ? 'always' : 'auto']));
 
+/**
+ * Reprend les réglages d'avant la fusion : BIXI, Métro et Communauto deviennent Déplacements.
+ * Toujours si l'un des trois l'était, Masqué seulement s'ils l'étaient tous, Auto sinon.
+ */
+export function migrate(raw = {}) {
+    if (raw.moves) return raw;
+    const old = MOVES_PARTS.map((id) => raw[id]).filter(Boolean);
+    if (!old.length) return raw;
+    const moves = old.includes('always') ? 'always' : old.length === MOVES_PARTS.length && old.every((p) => p === 'hidden') ? 'hidden' : 'auto';
+    return { ...raw, moves };
+}
+
 let pins = { ...DEFAULTS };
 try {
-    if (existsSync(FILE)) pins = { ...pins, ...clean(JSON.parse(readFileSync(FILE, 'utf8')).pins || {}) };
+    if (existsSync(FILE)) {
+        const raw = JSON.parse(readFileSync(FILE, 'utf8')).pins || {};
+        pins = { ...pins, ...clean(migrate(raw)) };
+        // Le fichier garde la nouvelle forme dès le premier démarrage
+        if (MOVES_PARTS.some((id) => id in raw)) save();
+    }
 } catch (err) {
     console.error('❌ home-widgets.json illisible, réglages par défaut:', err.message);
+}
+
+function save() {
+    try {
+        writeFileSync(FILE, JSON.stringify({ pins }, null, 2), 'utf8');
+    } catch (err) {
+        console.error('❌ Sauvegarde des widgets de l’accueil impossible:', err.message);
+    }
 }
 
 /** Ne garde que les widgets connus et les valeurs permises. */
@@ -41,10 +68,6 @@ export function updatePins(input) {
         if (!PINS.includes(pin)) throw new Error(`réglage inconnu pour ${id} : ${pin}`);
     }
     pins = { ...pins, ...clean(given) };
-    try {
-        writeFileSync(FILE, JSON.stringify({ pins }, null, 2), 'utf8');
-    } catch (err) {
-        console.error('❌ Sauvegarde des widgets de l’accueil impossible:', err.message);
-    }
+    save();
     return getPins();
 }

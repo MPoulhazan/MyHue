@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Home } from '../../../hooks/useHome';
 import { useCity } from '../../city/useCity';
 import { useSky } from '../../sky/sky';
-import { bixiPoll, communautoPoll, cooperPoll, guardPoll, mailboxPoll, musicPoll, pinsPoll } from './polls';
+import { bixiPoll, communautoPoll, commutePoll, cooperPoll, guardPoll, mailboxPoll, musicPoll, pinsPoll } from './polls';
 import {
-    arrange, bixiRelevance, cityRelevance, communautoRelevance, cooperRelevance, guardRelevance, houseRelevance,
-    journalRelevance, mailRelevance, metroRelevance, musicRelevance, skyRelevance,
+    arrange, cityRelevance, cooperRelevance, guardRelevance, houseRelevance,
+    journalRelevance, mailRelevance, movesRelevance, musicRelevance, skyRelevance,
 } from './relevance';
 import type { Arrangement, WidgetId, WidgetState } from './relevance';
 
@@ -25,11 +25,12 @@ export function useHomeWidgets(home: Home): {
     const bixi = bixiPoll.use();
     const guard = guardPoll.use();
     const communauto = communautoPoll.use();
+    const commute = commutePoll.use();
     const music = musicPoll.use();
     const sky = useSky();
     const pins = pinsPoll.use();
 
-    // Les règles d'heure (BIXI le matin, Ciel le soir) se réévaluent chaque minute
+    // Les règles d'heure (Ciel le soir, musique le matin) se réévaluent chaque minute
     const [clock, setClock] = useState(() => new Date());
     useEffect(() => {
         const t = setInterval(() => setClock(new Date()), 60_000);
@@ -43,9 +44,7 @@ export function useHomeWidgets(home: Home): {
         mailRelevance(mail),
         musicRelevance(music, Boolean(home.cast.now), clock),
         houseRelevance(home.sensors),
-        bixiRelevance(bixi, clock),
-        metroRelevance(city, clock),
-        communautoRelevance(communauto),
+        movesRelevance({ commute, bixi, city, communauto }),
         skyRelevance(sky, clock),
         journalRelevance(home.log.length),
     ];

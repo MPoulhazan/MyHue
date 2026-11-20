@@ -5,11 +5,9 @@ import { Icon } from '../../Icon';
 import type { IconName } from '../../Icon';
 import { HouseCard, Journal } from '../cards';
 import { CityCard } from '../../city/CityCard';
-import { MetroCard } from '../../city/MetroCard';
 import { CooperCard } from '../../cooper/CooperCard';
 import { MailboxCard } from '../../mailbox/MailboxCard';
-import { BixiCard } from '../../bixi/BixiCard';
-import { CommunautoCard } from '../../communauto/CommunautoCard';
+import { MovesCard } from '../../moves/MovesCard';
 import { SkyCard } from '../../sky/SkyCard';
 import { GuardCard } from '../../guard/GuardCard';
 import { MusicCard } from '../../music/MusicCard';
@@ -34,15 +32,13 @@ const RENDER: Record<WidgetId, (ctx: WidgetCtx) => ReactNode> = {
     mail: () => <MailboxCard />,
     music: ({ home }) => <MusicCard cast={home.cast} />,
     house: ({ home, onAdd }) => <HouseCard sensors={home.sensors} onAdd={onAdd} />,
-    bixi: () => <BixiCard />,
-    metro: () => <MetroCard />,
-    communauto: () => <CommunautoCard />,
+    moves: () => <MovesCard />,
     sky: () => <SkyCard />,
     journal: ({ home }) => <Journal log={home.log} />,
 };
 
 const CHIP_ICON: Record<WidgetId, IconName | null> = {
-    guard: 'shield', city: 'city', cooper: null, mail: 'mail', music: 'music', house: 'home', bixi: 'bike', metro: 'metro', communauto: 'car', sky: 'moon', journal: 'list',
+    guard: 'shield', city: 'city', cooper: null, mail: 'mail', music: 'music', house: 'home', moves: 'bike', sky: 'moon', journal: 'list',
 };
 
 /** Les cartes pleines des widgets demandés, dans l'ordre donné. */

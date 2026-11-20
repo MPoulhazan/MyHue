@@ -10,7 +10,7 @@ export type Relevance = 'alert' | 'now' | 'calm' | 'hidden';
 /** Réglage par widget : Auto suit la pertinence, Toujours garde la carte, Masqué l'enlève. */
 export type Pin = 'auto' | 'always' | 'hidden';
 
-export type WidgetId = 'guard' | 'city' | 'cooper' | 'mail' | 'music' | 'house' | 'bixi' | 'metro' | 'communauto' | 'sky' | 'journal';
+export type WidgetId = 'guard' | 'city' | 'cooper' | 'mail' | 'music' | 'house' | 'moves' | 'sky' | 'journal';
 
 export interface WidgetState {
     id: WidgetId;
@@ -20,7 +20,7 @@ export interface WidgetState {
 }
 
 /** Ordre du registre : il départage deux widgets de même pertinence. */
-export const WIDGET_ORDER: WidgetId[] = ['guard', 'city', 'cooper', 'mail', 'music', 'house', 'bixi', 'metro', 'communauto', 'sky', 'journal'];
+export const WIDGET_ORDER: WidgetId[] = ['guard', 'city', 'cooper', 'mail', 'music', 'house', 'moves', 'sky', 'journal'];
 
 export interface WidgetMeta {
     label: string;
@@ -37,16 +37,14 @@ export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
     mail: { label: 'Courrier', when: 'Du passage du facteur jusqu’à l’ouverture de la boîte' },
     music: { label: 'Musique', when: 'Quand tu as l’habitude d’écouter à ce moment, et de 7 h à 9 h' },
     house: { label: 'Maison', when: 'Une porte ou une fenêtre ouverte, une pile faible' },
-    bixi: { label: 'BIXI', when: 'De 7 h à 9 h en semaine' },
-    metro: { label: 'Métro', when: 'Hors saison BIXI : de 7 h à 9 h en semaine, ou si une ligne est perturbée' },
-    communauto: { label: 'Communauto', when: 'Pendant une recherche, en tête quand une auto est trouvée' },
+    moves: { label: 'Déplacements', when: 'BIXI, bus, métro et Communauto : à l’heure de départ de chacun, pendant une recherche Communauto, ou si le métro est perturbé' },
     sky: { label: 'Ciel', when: 'Le soir, et toujours quand une aurore est possible' },
     journal: { label: 'Journal', when: 'Jamais en carte : pastille seulement', tabletOnly: true },
 };
 
 /** Cooper reste toujours une carte : c'est le widget préféré de la maison. */
 export const DEFAULT_PINS: Record<WidgetId, Pin> = {
-    guard: 'auto', city: 'auto', cooper: 'always', mail: 'auto', music: 'auto', house: 'auto', bixi: 'auto', metro: 'auto', communauto: 'auto', sky: 'auto', journal: 'auto',
+    guard: 'auto', city: 'auto', cooper: 'always', mail: 'auto', music: 'auto', house: 'auto', moves: 'auto', sky: 'auto', journal: 'auto',
 };
 
 /** Cartes pleines au plus dans « Maintenant », Cooper compris. */
@@ -57,8 +55,6 @@ const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
 // ── Heures du mode Auto (heure de la tablette, à Montréal) ───────────────────
 
-/** Heure de pointe du matin : de 7 h à 9 h, du lundi au vendredi. */
-export const isCommute = (d: Date) => d.getDay() >= 1 && d.getDay() <= 5 && d.getHours() >= 7 && d.getHours() < 9;
 /** Le soir : de 18 h à 1 h du matin. */
 export const isEvening = (d: Date) => d.getHours() >= 18 || d.getHours() < 1;
 
@@ -137,33 +133,27 @@ export function houseRelevance(sensors: SensorIn[]): WidgetState {
     return state('house', 'calm', 'tout est fermé');
 }
 
+// ── Déplacements : BIXI et trajet, métro, Communauto dans une seule carte ───
+
+interface CommuteIn {
+    enabled: boolean;
+    configured: boolean;
+    /** Par rapport à l'horaire du jour de la personne, gardé sur le Pi (commute.js) */
+    phase?: 'before' | 'soon' | 'now' | 'after' | null;
+    best?: { title: string; minutes: number | null } | null;
+    verdict?: { text: string };
+}
 interface BixiIn {
     enabled: boolean;
     configured: boolean;
     season: string;
+    /** Fenêtre de départ des trajets BIXI réglés sur le Pi */
     window: boolean;
     verdict?: { text: string };
 }
-export function bixiRelevance(v: BixiIn | null, now = new Date()): WidgetState {
-    if (!v?.enabled || !v.configured || v.season === 'closed') return state('bixi', 'hidden', 'hors saison');
-    // Minuscule au premier mot seulement : « 12 °C », pas « 12 °c »
-    const said = v.verdict && v.verdict.text.charAt(0).toLowerCase() + v.verdict.text.slice(1);
-    // La fenêtre de départ du serveur, ou toute l'heure de pointe du matin
-    if (v.window || isCommute(now)) return state('bixi', 'now', said ?? 'heure de départ');
-    return state('bixi', 'calm', said ?? 'pas l’heure de partir');
-}
-
 interface MetroIn {
     metro: { show: boolean; error: string | null; lines: { ok: boolean }[] } | null;
 }
-export function metroRelevance(v: MetroIn | null, now = new Date()): WidgetState {
-    const m = v?.metro;
-    if (!m?.show) return state('metro', 'hidden', 'saison BIXI');
-    if (!m.error && m.lines.some((l) => !l.ok)) return state('metro', 'now', 'ligne perturbée');
-    const said = m.error ? 'état inconnu' : 'service normal';
-    return state('metro', isCommute(now) ? 'now' : 'calm', said);
-}
-
 interface CommunautoIn {
     updatedAt: number | null;
     radiusM: number;
@@ -171,18 +161,71 @@ interface CommunautoIn {
     search: { active: boolean; radiusM: number; found: { gone?: boolean; dist: number; model: string }[] } | null;
     booked?: { car: { model: string } } | null;
 }
-/** Recherche en cours : carte ; une auto trouvée et encore libre : en tête. Au repos : pastille. */
-export function communautoRelevance(v: CommunautoIn | null): WidgetState {
-    if (!v) return state('communauto', 'hidden', 'pas encore lu');
-    if (v.booked) return state('communauto', 'alert', `${v.booked.car.model} bloquée`);
-    if (v.search?.active) {
-        const live = v.search.found.filter((c) => !c.gone);
-        if (live.length) return state('communauto', 'alert', `${live[0].model} à ${live[0].dist} m`);
-        return state('communauto', 'now', `recherche ${v.search.radiusM} m`);
+export interface MovesIn {
+    commute: CommuteIn | null;
+    bixi: BixiIn | null;
+    city: MetroIn | null;
+    communauto: CommunautoIn | null;
+}
+
+/** La forme de la carte : Communauto en cours, conseil de trajet (saison BIXI), métro (hors saison), Communauto au repos. */
+export type MovesForm = 'communauto' | 'trip' | 'metro' | 'communauto-idle' | null;
+
+/** Choisie ici pour la pastille comme pour la carte, pour qu'elles disent la même chose. */
+export function movesForm(v: MovesIn): MovesForm {
+    const ca = v.communauto;
+    if (ca?.booked || ca?.search?.active) return 'communauto';
+    const b = v.bixi;
+    const bixiOn = Boolean(b?.enabled && b.configured && b.season !== 'closed');
+    if (bixiOn) return 'trip';
+    if (v.city?.metro?.show) return 'metro';
+    return ca ? 'communauto-idle' : null;
+}
+
+/** L'heure de partir d'après l'horaire de la personne : 45 min avant jusqu'à la fin de sa fenêtre. */
+const leaving = (v: MovesIn) => {
+    const c = v.commute;
+    if (c?.enabled && c.configured) return c.phase === 'soon' || c.phase === 'now';
+    return false;
+};
+const firstLower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+
+/**
+ * En carte à l'heure de départ de chacun (pas d'heure fixe), pendant une recherche
+ * Communauto ou si une ligne de métro est perturbée ; après le départ, pastille.
+ */
+export function movesRelevance(v: MovesIn): WidgetState {
+    const form = movesForm(v);
+    const ca = v.communauto;
+    if (!form) return state('moves', 'hidden', 'rien à montrer');
+
+    if (form === 'communauto' && ca) {
+        if (ca.booked) return state('moves', 'alert', `${ca.booked.car.model} bloquée`);
+        const s = ca.search!;
+        const live = s.found.filter((c) => !c.gone);
+        if (live.length) return state('moves', 'alert', `${live[0].model} à ${live[0].dist} m`);
+        return state('moves', 'now', `recherche Communauto ${s.radiusM} m`);
     }
-    if (!v.updatedAt) return state('communauto', 'calm', 'pas de réponse');
-    const n = v.nearby.length;
-    return state('communauto', 'calm', n ? `${n} à ${v.radiusM} m` : `aucune à ${v.radiusM} m`);
+
+    if (form === 'trip') {
+        const c = v.commute;
+        const best = c?.configured ? c.best : null;
+        const said = best?.minutes != null ? `${best.title}, ${best.minutes} min` : v.bixi?.verdict ? firstLower(v.bixi.verdict.text) : 'conseil de trajet';
+        // Sans horaire de trajet réglé, la fenêtre de départ des trajets BIXI
+        const now = c?.configured ? leaving(v) : Boolean(v.bixi?.window);
+        return state('moves', now ? 'now' : 'calm', now ? said : v.bixi?.verdict ? firstLower(v.bixi.verdict.text) : said);
+    }
+
+    if (form === 'metro') {
+        const m = v.city!.metro!;
+        if (!m.error && m.lines.some((l) => !l.ok)) return state('moves', 'now', 'métro perturbé');
+        return state('moves', leaving(v) ? 'now' : 'calm', m.error ? 'métro : état inconnu' : 'métro : service normal');
+    }
+
+    // Communauto au repos : la plus proche, à lancer depuis la carte
+    if (!ca?.updatedAt) return state('moves', 'calm', 'Communauto ne répond pas');
+    const n = ca.nearby.length;
+    return state('moves', 'calm', n ? `${n} Communauto à ${ca.radiusM} m` : `aucune Communauto à ${ca.radiusM} m`);
 }
 
 interface SkyIn {

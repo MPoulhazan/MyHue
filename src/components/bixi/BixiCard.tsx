@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { bixiPoll } from '../home/widgets/polls';
-import { CommuteCard, commutePoll } from '../commute/CommuteCard';
+import type { ReactNode } from 'react';
+import { bixiPoll, commutePoll } from '../home/widgets/polls';
+import { CommuteCard } from '../commute/CommuteCard';
 import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
 import './Bixi.css';
 
@@ -102,7 +103,7 @@ function TripLine({ trip }: { trip: Trip }) {
 const PILL = { ok: 'ok', low: 'warn', no: 'bad' } as const;
 
 /** Carte BIXI de l'accueil : une ligne par personne ; les trajets complets et les stations voisines dans le détail. */
-export function BixiCard() {
+export function BixiCard({ more }: { more?: ReactNode }) {
     const { view, now } = useBixi();
     const commute = commutePoll.use();
     if (!view?.enabled || !view.configured || view.season === 'closed') return null;
@@ -110,7 +111,7 @@ export function BixiCard() {
     // Les trajets conseillés par le serveur (BIXI, bus ou à pied) ont leur propre carte
     const covered = Boolean(commute?.configured) && view.trips.some((t) => t.handled);
     const trips = covered ? view.trips.filter((t) => !t.handled) : view.trips;
-    if (covered && !trips.length) return <CommuteCard />;
+    if (covered && !trips.length) return <CommuteCard more={more} />;
 
     const title = view.window ? `BIXI · départ ${hmLabel(view.leaveFrom)} – ${hmLabel(view.leaveTo)}` : 'BIXI';
     const card = (
@@ -131,6 +132,7 @@ export function BixiCard() {
                             </span>
                             <span>relevé {ago(view.updatedAt, now)}</span>
                         </div>
+                        {!covered && more}
                     </>
                 ),
             } : undefined}>
@@ -139,5 +141,5 @@ export function BixiCard() {
                 : <p className="wcard-line">BIXI ne répond pas pour le moment.</p>}
         </WidgetCard>
     );
-    return covered ? <><CommuteCard />{card}</> : card;
+    return covered ? <><CommuteCard more={more} />{card}</> : card;
 }

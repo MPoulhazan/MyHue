@@ -4,6 +4,7 @@ import type { MailView } from '../../mailbox/MailboxCard';
 import type { BixiView } from '../../bixi/BixiCard';
 import type { GuardView } from '../../guard/GuardCard';
 import type { CommunautoView } from '../../communauto/CommunautoCard';
+import type { CommuteView } from '../../commute/CommuteCard';
 import type { MusicHome } from '../../../services/musicApi';
 import type { Pin, WidgetId } from './relevance';
 
@@ -13,6 +14,8 @@ export const mailboxPoll = createSharedPoll<MailView>('/api/mailbox', 30_000);
 export const bixiPoll = createSharedPoll<BixiView>('/api/bixi', 60_000);
 // 20 s : le rythme de la recherche côté serveur, pour voir une auto trouvée aussitôt
 export const communautoPoll = createSharedPoll<CommunautoView>('/api/communauto', 20_000);
+// Conseil de trajet : son horaire décide aussi quand la carte Déplacements passe devant
+export const commutePoll = createSharedPoll<CommuteView>('/api/commute', 60_000);
 export const guardPoll = createSharedPoll<GuardView>('/api/guard', 30_000);
 export const musicPoll = createSharedPoll<MusicHome>('/api/music/home', 60_000);
 

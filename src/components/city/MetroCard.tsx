@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
 import { useCity } from './useCity';
 import './City.css';
@@ -5,7 +6,7 @@ import './City.css';
 const LINE_COLOR: Record<string, string> = { 1: '#00a650', 2: '#ef8122', 4: '#ffd900', 5: '#0083ca' };
 
 /** Carte « Métro » de l'accueil, à la place de la carte BIXI hors saison : l'état des lignes qu'on prend. */
-export function MetroCard() {
+export function MetroCard({ more }: { more?: ReactNode }) {
     const { view } = useCity();
     const m = view?.metro;
     if (!m?.show) return null;
@@ -27,7 +28,7 @@ export function MetroCard() {
     const title = `Métro${m.station ? ` · ${m.station}` : ''}`;
     return (
         <WidgetCard className="metro-card" label="Métro" title={title} pills={pill}
-            detail={m.error ? undefined : { title, body: lines(true) }}>
+            detail={m.error && !more ? undefined : { title, body: <>{!m.error && lines(true)}{more}</> }}>
             {m.error
                 ? <p className="wcard-line">{m.error === 'clé STM refusée' ? 'La STM refuse encore la clé : vérifie que l’application est abonnée à l’API i3 sur le portail développeurs.' : `STM injoignable : ${m.error}`}</p>
                 : lines(false)}

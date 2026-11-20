@@ -32,3 +32,11 @@ test('widget ou valeur inconnus refusés, rien ne change', () => {
     assert.throws(() => widgets.updatePins(null), /réglages attendus/);
     assert.equal(widgets.getPins().pins.sky, 'hidden');
 });
+
+test('migrate : BIXI, Métro et Communauto deviennent Déplacements', () => {
+    assert.deepEqual(widgets.migrate({ bixi: 'always', metro: 'auto' }), { bixi: 'always', metro: 'auto', moves: 'always' });
+    assert.equal(widgets.migrate({ bixi: 'hidden', metro: 'hidden', communauto: 'hidden' }).moves, 'hidden');
+    assert.equal(widgets.migrate({ bixi: 'hidden', metro: 'hidden' }).moves, 'auto', 'Communauto restait visible');
+    assert.equal(widgets.migrate({ bixi: 'hidden', moves: 'always' }).moves, 'always', 'déjà migré');
+    assert.deepEqual(widgets.migrate({ sky: 'hidden' }), { sky: 'hidden' });
+});

@@ -1,4 +1,5 @@
-import { createSharedPoll } from '../../hooks/sharedPoll';
+import type { ReactNode } from 'react';
+import { commutePoll } from '../home/widgets/polls';
 import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
 import type { Level } from '../home/widgets/WidgetCard';
 import { CommuteMap } from './CommuteMap';
@@ -25,7 +26,6 @@ export interface CommuteView {
     map?: CommuteMapData;
 }
 
-export const commutePoll = createSharedPoll<CommuteView>('/api/commute', 60_000);
 
 const hm = (ts: number) => {
     const d = new Date(ts);
@@ -88,7 +88,7 @@ function RestIdea({ v, full }: { v: CommuteView; full: boolean }) {
 }
 
 /** Carte « Trajet » de l'accueil : le conseil et la meilleure option ; le reste et le plan dans le détail. */
-export function CommuteCard() {
+export function CommuteCard({ more }: { more?: ReactNode }) {
     const v = commutePoll.use();
     if (!v?.enabled || !v.configured || !v.person) return null;
 
@@ -129,6 +129,7 @@ export function CommuteCard() {
                                 <p className="muted cm-legend">Chiffre = vélos classiques · ⚡ électriques · vert 3 et plus, orange 1 ou 2, rouge 0{v.bus && !v.bus.realtime ? ' · bus : horaire prévu' : ''}</p>
                             </>
                         )}
+                        {more}
                     </>
                 ),
             }}>
