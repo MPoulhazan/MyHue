@@ -6,7 +6,7 @@ import type { GuardView } from '../../guard/GuardCard';
 import type { CommunautoView } from '../../communauto/CommunautoCard';
 import type { CommuteView } from '../../commute/CommuteCard';
 import type { MusicHome } from '../../../services/musicApi';
-import type { Pin, WidgetId } from './relevance';
+import type { HomeFeed, Pin, WidgetId } from './meta';
 
 // Lectures partagées par les cartes et le registre des widgets : une requête par intervalle
 export const cooperPoll = createSharedPoll<CooperView>('/api/cooper', 30_000);
@@ -18,6 +18,9 @@ export const communautoPoll = createSharedPoll<CommunautoView>('/api/communauto'
 export const commutePoll = createSharedPoll<CommuteView>('/api/commute', 60_000);
 export const guardPoll = createSharedPoll<GuardView>('/api/guard', 30_000);
 export const musicPoll = createSharedPoll<MusicHome>('/api/music/home', 60_000);
+
+/** Liste « Maintenant » calculée par le Pi ; relue aussi aux bascules d'heure et quand un capteur change */
+export const feedPoll = createSharedPoll<HomeFeed>('/api/home-feed', 20_000);
 
 /** Réglages Auto / Toujours / Masqué, partagés par la tablette et le téléphone (server/homeWidgets.js) */
 export interface PinsView { pins: Partial<Record<WidgetId, Pin>> }

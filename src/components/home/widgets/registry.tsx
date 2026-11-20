@@ -11,8 +11,8 @@ import { MovesCard } from '../../moves/MovesCard';
 import { SkyCard } from '../../sky/SkyCard';
 import { GuardCard } from '../../guard/GuardCard';
 import { MusicCard } from '../../music/MusicCard';
-import { WIDGET_META } from './relevance';
-import type { WidgetId, WidgetState } from './relevance';
+import { WIDGET_META } from './meta';
+import type { FeedItem, WidgetId } from './meta';
 import './Widgets.css';
 
 // ── Registre des widgets de l'accueil ────────────────────────────────────────
@@ -23,6 +23,8 @@ import './Widgets.css';
 export interface WidgetCtx {
     home: Home;
     onAdd: () => void;
+    /** L'état du widget selon le Pi (celui du moment du toucher pour une pastille ouverte) */
+    itemOf: (id: WidgetId) => FeedItem | undefined;
 }
 
 const RENDER: Record<WidgetId, (ctx: WidgetCtx) => ReactNode> = {
@@ -32,7 +34,7 @@ const RENDER: Record<WidgetId, (ctx: WidgetCtx) => ReactNode> = {
     mail: () => <MailboxCard />,
     music: ({ home }) => <MusicCard cast={home.cast} />,
     house: ({ home, onAdd }) => <HouseCard sensors={home.sensors} onAdd={onAdd} />,
-    moves: () => <MovesCard />,
+    moves: ({ itemOf }) => <MovesCard form={itemOf('moves')?.form ?? null} />,
     sky: () => <SkyCard />,
     journal: ({ home }) => <Journal log={home.log} />,
 };
@@ -48,7 +50,7 @@ export function HomeWidgets({ ctx, ids }: { ctx: WidgetCtx; ids: WidgetId[] }) {
 
 /** Bandeau « Rien de neuf » : une pastille par widget calme ; la toucher ouvre sa carte un moment. */
 export function WidgetChips({ states, ids, open, onToggle }: {
-    states: WidgetState[];
+    states: FeedItem[];
     ids: WidgetId[];
     open: WidgetId[];
     onToggle: (id: WidgetId) => void;

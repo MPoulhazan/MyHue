@@ -1,9 +1,8 @@
 import { BixiCard } from '../bixi/BixiCard';
 import { MetroCard } from '../city/MetroCard';
-import { useCity } from '../city/useCity';
 import { CommunautoCard, CommunautoLauncher } from '../communauto/CommunautoCard';
-import { bixiPoll, communautoPoll, commutePoll } from '../home/widgets/polls';
-import { movesForm } from '../home/widgets/relevance';
+import { communautoPoll } from '../home/widgets/polls';
+import type { MovesForm } from '../home/widgets/meta';
 
 // ── Carte « Déplacements » : une seule carte pour BIXI, bus, métro et Communauto ──
 
@@ -18,15 +17,11 @@ function CommunautoMore() {
 }
 
 /**
- * Montre la forme qui compte maintenant, choisie par movesForm (la même règle que la pastille) :
+ * Montre la forme choisie par le Pi avec la pastille (server/homeFeedLogic.js movesForm) :
  * Communauto en cours, conseil de trajet en saison BIXI, état du métro hors saison, Communauto au repos.
  */
-export function MovesCard() {
-    const commute = commutePoll.use();
-    const bixi = bixiPoll.use();
+export function MovesCard({ form }: { form: MovesForm }) {
     const communauto = communautoPoll.use();
-    const { view: city } = useCity();
-    const form = movesForm({ commute, bixi, city, communauto });
 
     if (form === 'communauto' || form === 'communauto-idle') return <CommunautoCard />;
     const more = communauto ? <CommunautoMore /> : null;

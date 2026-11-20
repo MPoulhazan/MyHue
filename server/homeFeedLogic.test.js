@@ -1,14 +1,19 @@
-// Pertinence et mise en page des widgets de l'accueil (src/components/home/widgets/relevance.ts)
+// Pertinence et mise en page des widgets de l'accueil (server/homeFeedLogic.js)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     arrange, cityRelevance, cooperRelevance, houseRelevance,
     journalRelevance, mailRelevance, movesForm, movesRelevance, musicRelevance, skyRelevance,
-} from '../src/components/home/widgets/relevance.ts';
+    buildFeed, feedBriefingLine, guardRelevance, nextAt,
+} from './homeFeedLogic.js';
 
 const s = (id, relevance) => ({ id, relevance, summary: '' });
-// Jeudi 5 novembre 2026 à différentes heures (heure locale)
-const at = (h, day = 5) => new Date(2026, 10, day, h, 15);
+// Jeudi 5 novembre 2026 à différentes heures, heure de Montréal (UTC−5 en novembre)
+const at = (h, day = 5, m = 15) => Date.UTC(2026, 10, day, h + 5, m);
+// Compare seulement les champs attendus (les états portent aussi until et form)
+const same = (actual, expected) => (Array.isArray(expected) || expected === null || typeof expected !== 'object'
+    ? assert.deepEqual(actual, expected)
+    : assert.deepEqual(Object.fromEntries(Object.keys(expected).map((k) => [k, actual?.[k]])), expected));
 const NOON = at(12);
 
 test('Cooper : oublié en alerte, repas bientôt maintenant, sinon calme', () => {
@@ -47,13 +52,13 @@ test('Courrier, Maison, BIXI, Métro, Ciel, Journal', () => {
 
 test('arrange : Cooper reste une carte même calme, les autres calmes deviennent des pastilles', () => {
     const r = arrange([s('city', 'calm'), s('cooper', 'calm'), s('mail', 'calm'), s('journal', 'calm')]);
-    assert.deepEqual(r.cards, ['cooper']);
-    assert.deepEqual(r.chips, ['city', 'mail', 'journal']);
+    same(r.cards, ['cooper']);
+    same(r.chips, ['city', 'mail', 'journal']);
 });
 
 test('arrange : les alertes passent devant, puis l’ordre du registre', () => {
     const r = arrange([s('city', 'now'), s('cooper', 'alert'), s('mail', 'now'), s('sky', 'alert')]);
-    assert.deepEqual(r.cards, ['cooper', 'sky', 'city', 'mail']);
+    same(r.cards, ['cooper', 'sky', 'city', 'mail']);
 });
 
 test('arrange : 5 cartes au plus, Cooper compris, les moins pressées retombent en pastilles', () => {
@@ -63,15 +68,15 @@ test('arrange : 5 cartes au plus, Cooper compris, les moins pressées retombent 
     ]);
     assert.equal(r.cards.length, 5);
     assert.ok(r.cards.includes('cooper'));
-    assert.deepEqual(r.cards, ['sky', 'guard', 'city', 'mail', 'cooper']);
-    assert.deepEqual(r.chips, ['house', 'moves', 'journal']);
+    same(r.cards, ['sky', 'guard', 'city', 'mail', 'cooper']);
+    same(r.chips, ['house', 'moves', 'journal']);
 });
 
 test('arrange : caché ou masqué n’apparaît nulle part, Toujours force la carte', () => {
     const r = arrange([s('city', 'hidden'), s('cooper', 'calm'), s('mail', 'alert'), s('sky', 'calm')],
         { mail: 'hidden', sky: 'always', cooper: 'auto' });
-    assert.deepEqual(r.cards, ['sky']);
-    assert.deepEqual(r.chips, ['cooper']);
+    same(r.cards, ['sky']);
+    same(r.chips, ['cooper']);
 });
 
 test('pastilles : un texte court pour chaque widget calme', () => {
@@ -98,17 +103,17 @@ test('Cooper reste une carte à toute heure, même quand tout est calme', () => 
         cooperRelevance(calm),
         skyRelevance({ aurora: null, highlight: { kind: 'planet' }, night: { quality: { level: 'good' } } }, at(14)),
     ]);
-    assert.deepEqual(r.cards, ['cooper']);
+    same(r.cards, ['cooper']);
 });
 
 test('musicRelevance : habitude du créneau ou matin en carte, rien pendant la lecture', () => {
     const habit = { suggestion: { habit: true, name: 'Zen' } };
     const plain = { suggestion: { habit: false, name: 'Dîner' } };
     assert.equal(musicRelevance(null, false, NOON).relevance, 'hidden');
-    assert.deepEqual(musicRelevance(habit, false, NOON), { id: 'music', relevance: 'now', summary: 'Zen' });
+    same(musicRelevance(habit, false, NOON), { id: 'music', relevance: 'now', summary: 'Zen' });
     assert.equal(musicRelevance(plain, false, NOON).relevance, 'calm');
     assert.equal(musicRelevance(plain, false, at(7)).relevance, 'now', 'le matin, on propose');
-    assert.deepEqual(musicRelevance(habit, true, at(7)), { id: 'music', relevance: 'calm', summary: 'en lecture' });
+    same(musicRelevance(habit, true, at(7)), { id: 'music', relevance: 'calm', summary: 'en lecture' });
 });
 
 // Déplacements : une carte, quatre formes ; l'heure vient de l'horaire de la personne (phase du Pi)
@@ -117,7 +122,7 @@ const bixiOff = { ...bixiOn, season: 'closed' };
 const commute = (phase) => ({ enabled: true, configured: true, phase, best: { title: 'BIXI', minutes: 15 } });
 const metroOk = { metro: { show: true, error: null, lines: [{ ok: true }] } };
 const idle = { updatedAt: 1, radiusM: 500, nearby: [{ dist: 200 }], search: null };
-const moves = (o) => movesRelevance({ commute: null, bixi: null, city: null, communauto: null, ...o });
+const moves = (o, now) => movesRelevance({ commute: null, bixi: null, city: null, communauto: null, ...o }, now);
 
 test('movesForm : Communauto en cours d’abord, puis trajet en saison BIXI, métro hors saison, Communauto au repos', () => {
     const search = { active: true, radiusM: 300, found: [] };
@@ -130,9 +135,9 @@ test('movesForm : Communauto en cours d’abord, puis trajet en saison BIXI, mé
 
 test('movesRelevance : carte à l’heure de départ de la personne, pastille après', () => {
     assert.equal(moves({ bixi: bixiOn, commute: commute('before') }).relevance, 'calm');
-    assert.deepEqual(moves({ bixi: bixiOn, commute: commute('soon') }), { id: 'moves', relevance: 'now', summary: 'BIXI, 15 min' });
+    same(moves({ bixi: bixiOn, commute: commute('soon') }), { id: 'moves', relevance: 'now', summary: 'BIXI, 15 min' });
     assert.equal(moves({ bixi: bixiOn, commute: commute('now') }).relevance, 'now');
-    assert.deepEqual(moves({ bixi: bixiOn, commute: commute('after') }), { id: 'moves', relevance: 'calm', summary: '12 °C, parfait pour le vélo' });
+    same(moves({ bixi: bixiOn, commute: commute('after') }), { id: 'moves', relevance: 'calm', summary: '12 °C, parfait pour le vélo' });
     // Sans horaire réglé, la fenêtre de départ des trajets BIXI du Pi
     assert.equal(moves({ bixi: { ...bixiOn, window: true } }).relevance, 'now');
     assert.equal(moves({ bixi: bixiOn }).relevance, 'calm');
@@ -141,17 +146,56 @@ test('movesRelevance : carte à l’heure de départ de la personne, pastille ap
 test('movesRelevance : métro hors saison, perturbé ou à l’heure de partir', () => {
     assert.equal(moves({ bixi: bixiOff, city: metroOk }).relevance, 'calm');
     assert.equal(moves({ bixi: bixiOff, city: metroOk, commute: commute('now') }).relevance, 'now');
-    assert.deepEqual(moves({ bixi: bixiOff, city: { metro: { show: true, error: null, lines: [{ ok: false }] } } }), { id: 'moves', relevance: 'now', summary: 'métro perturbé' });
+    same(moves({ bixi: bixiOff, city: { metro: { show: true, error: null, lines: [{ ok: false }] } } }), { id: 'moves', relevance: 'now', summary: 'métro perturbé' });
 });
 
 test('movesRelevance : Communauto au repos en pastille, en tête quand une auto est trouvée ou bloquée', () => {
-    assert.deepEqual(moves({ communauto: idle }), { id: 'moves', relevance: 'calm', summary: '1 Communauto à 500 m' });
+    same(moves({ communauto: idle }), { id: 'moves', relevance: 'calm', summary: '1 Communauto à 500 m' });
     assert.equal(moves({ communauto: { ...idle, updatedAt: null } }).summary, 'Communauto ne répond pas');
     const search = { active: true, radiusM: 300, found: [] };
     assert.equal(moves({ bixi: bixiOn, communauto: { ...idle, search } }).relevance, 'now');
     const found = { ...search, found: [{ model: 'Kia Niro EV', dist: 240 }] };
-    assert.deepEqual(moves({ communauto: { ...idle, search: found } }), { id: 'moves', relevance: 'alert', summary: 'Kia Niro EV à 240 m' });
+    same(moves({ communauto: { ...idle, search: found } }), { id: 'moves', relevance: 'alert', summary: 'Kia Niro EV à 240 m' });
     assert.equal(moves({ communauto: { ...idle, search: { ...search, found: [{ model: 'X', dist: 1, gone: true }] } } }).relevance, 'now');
     assert.equal(moves({}).relevance, 'hidden');
-    assert.deepEqual(moves({ communauto: { ...idle, booked: { car: { model: 'Toyota Corolla L' } } } }), { id: 'moves', relevance: 'alert', summary: 'Toyota Corolla L bloquée' });
+    same(moves({ communauto: { ...idle, booked: { car: { model: 'Toyota Corolla L' } } } }), { id: 'moves', relevance: 'alert', summary: 'Toyota Corolla L bloquée' });
+});
+
+test('nextAt : la prochaine bascule, aujourd’hui ou demain', () => {
+    assert.equal(nextAt(at(8), [7 * 60, 9 * 60]), at(9, 5, 0));
+    assert.equal(nextAt(at(10), [7 * 60, 9 * 60]), at(7, 6, 0));
+});
+
+test('échéances : la musique du matin, le ciel du soir, le trajet à la bascule de phase', () => {
+    assert.equal(musicRelevance({ suggestion: { habit: false, name: 'Zen' } }, false, at(8)).until, at(9, 5, 0));
+    assert.equal(skyRelevance({ aurora: null, highlight: { kind: 'planet' }, night: { quality: { level: 'good' } } }, at(14)).until, at(18, 5, 0));
+    const c = { enabled: true, configured: true, phase: 'before', plan: { kind: 'work', from: '08:00', to: '08:30' }, best: null };
+    // 6 h 15 : la carte viendra à 7 h 15, 45 min avant 8 h
+    assert.equal(moves({ bixi: bixiOn, commute: c }, at(6)).until, at(7, 5, 15));
+    assert.equal(guardRelevance({ mode: 'alarm', events: [{ at: at(8) }] }, at(8) + 60_000).until, at(8) + 30 * 60_000);
+});
+
+test('buildFeed : cartes, pastilles, ordre et prochaine bascule', () => {
+    const feed = buildFeed({
+        guard: { mode: null, events: [] }, city: null, cooper: { enabled: true, sensor: {}, mood: 'fed', meals: [] },
+        mail: null, music: { suggestion: { habit: false, name: 'Zen' } }, playing: false, sensors: [],
+        commute: null, bixi: bixiOn, communauto: idle, sky: null, journalCount: 3,
+    }, {}, at(14));
+    same(feed.cards, ['cooper']);
+    same(feed.chips, ['guard', 'music', 'house', 'moves', 'journal']);
+    same(feed.items.find((i) => i.id === 'moves'), { relevance: 'calm', form: 'trip', order: 4 });
+    assert.equal(feed.items.find((i) => i.id === 'city').order, null);
+    // Sans ciel lu, la prochaine bascule est la musique de demain matin
+    assert.equal(feed.nextChange, at(7, 6, 0));
+});
+
+test('feedBriefingLine : l’urgent seulement, pas ce que le briefing dit déjà', () => {
+    const items = [
+        { id: 'moves', relevance: 'now', summary: 'BIXI, 15 min' },
+        { id: 'house', relevance: 'calm', summary: 'tout est fermé' },
+        { id: 'city', relevance: 'alert', summary: 'orage' },
+        { id: 'cooper', relevance: 'now', summary: 'repas bientôt' },
+    ];
+    assert.equal(feedBriefingLine({ items }), 'À voir sur l’écran : Déplacements, BIXI, 15 min.');
+    assert.equal(feedBriefingLine({ items: [] }), null);
 });

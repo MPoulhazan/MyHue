@@ -31,6 +31,7 @@ import * as kitchenDisplay from '../kitchenDisplay.js';
 import * as alarm from '../alarm.js';
 import * as weeklyDigest from '../weeklyDigest.js';
 import * as homeWidgets from '../homeWidgets.js';
+import * as homeFeed from '../homeFeed.js';
 import * as cube from '../cube.js';
 import * as bixi from '../bixi.js';
 import * as commute from '../commute.js';
@@ -193,9 +194,20 @@ router.post('/api/kitchen-display/show', async (_req, res) => {
 
 router.get('/api/home-widgets', (_req, res) => res.json(homeWidgets.getPins()));
 
+// Liste « Maintenant » : pertinence, résumé, ordre et échéance de chaque widget (server/homeFeed.js)
+router.get('/api/home-feed', async (req, res) => {
+    try {
+        res.json(await homeFeed.getFeed({ fresh: req.query.fresh === '1' }));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 router.put('/api/home-widgets', (req, res) => {
     try {
-        res.json(homeWidgets.updatePins(req.body || {}));
+        const pins = homeWidgets.updatePins(req.body || {});
+        homeFeed.invalidate();
+        res.json(pins);
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

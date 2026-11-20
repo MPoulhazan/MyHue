@@ -5,7 +5,7 @@ import { Icon } from '../Icon';
 import { MomentButton } from '../MomentButton';
 import { HueStatus, RoomCard, fmt } from '../home/cards';
 import { HomeWidgets, WidgetChips } from '../home/widgets/registry';
-import { WIDGET_META } from '../home/widgets/relevance';
+import { WIDGET_META } from '../home/widgets/meta';
 import type { useHomeWidgets } from '../home/widgets/useHomeWidgets';
 import './PhoneHome.css';
 
@@ -60,7 +60,7 @@ export function PhoneHome({ home, roomLights, onAdd, widgets }: {
             </div>
 
             <h2 className="phone-section">Maintenant</h2>
-            <HomeWidgets ctx={{ home, onAdd }} ids={[...widgets.arrangement.cards, ...widgets.peek].filter((id) => !WIDGET_META[id].tabletOnly)} />
+            <HomeWidgets ctx={{ home, onAdd, itemOf: widgets.itemOf }} ids={[...widgets.arrangement.cards, ...widgets.peek].filter((id) => !WIDGET_META[id].tabletOnly)} />
             <WidgetChips states={widgets.states} ids={widgets.arrangement.chips.filter((id) => !WIDGET_META[id].tabletOnly)}
                 open={widgets.peek} onToggle={widgets.togglePeek} />
         </div>

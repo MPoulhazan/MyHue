@@ -65,7 +65,7 @@ export function Dashboard() {
     const phone = useIsPhone();
     const widgets = useHomeWidgets(home);
     const { states, arrangement, peek, togglePeek } = widgets;
-    const widgetCtx = { home, onAdd: () => setAdding(true) };
+    const widgetCtx = { home, onAdd: () => setAdding(true), itemOf: widgets.itemOf };
     // Les pastilles touchées s'ouvrent en carte sous les autres
     const nowIds = [...arrangement.cards, ...peek];
 

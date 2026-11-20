@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { pinsPoll } from '../components/home/widgets/polls';
-import { DEFAULT_PINS, WIDGET_META, WIDGET_ORDER } from '../components/home/widgets/relevance';
-import type { Pin, WidgetId } from '../components/home/widgets/relevance';
+import { DEFAULT_PINS, WIDGET_META, WIDGET_ORDER } from '../components/home/widgets/meta';
+import type { Pin, WidgetId } from '../components/home/widgets/meta';
 import './Dashboard.css';
 import './Settings.css';
 

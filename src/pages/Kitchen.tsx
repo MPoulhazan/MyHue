@@ -36,7 +36,7 @@ export function KitchenShell() {
 function Kitchen() {
     const home = useHomeData();
     const clock = useClock();
-    const { arrangement } = useHomeWidgets(home);
+    const { arrangement, itemOf } = useHomeWidgets(home);
 
     useEffect(() => {
         const t = window.setTimeout(() => window.location.reload(), RELOAD_MS);
@@ -75,7 +75,7 @@ function Kitchen() {
                     onClickCapture={(e) => {
                         if ((e.target as HTMLElement).closest('a')) e.preventDefault();
                     }}>
-                    <HomeWidgets ctx={{ home, onAdd: () => {} }} ids={arrangement.cards.slice(0, MAX_CARDS)} />
+                    <HomeWidgets ctx={{ home, onAdd: () => {}, itemOf }} ids={arrangement.cards.slice(0, MAX_CARDS)} />
                 </section>
 
                 <aside className="kitchen-side" aria-label="Lumières">
