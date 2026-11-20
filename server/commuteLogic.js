@@ -174,4 +174,4 @@ export const adviceText = (who, best, verdict, tz = 'America/Toronto') => {
 
 /** « Comment j'y vais ? », « Je prends le bus ? », « Comment aller au travail ? » */
 export const isCommuteQuestion = (text) =>
-    /comment (j[e’']|tu |on )?(y vais|vas|va|aller|me rendre)|aller au (travail|boulot|bureau)|je prends (le )?(bus|bixi|v[ée]lo)|quel (bus|trajet)/i.test(text);
+    /comment (j[e’']?\s*|tu |on )?(y vais|vas|va|aller|me rendre)|aller au (travail|boulot|bureau)|je prends (le )?(bus|bixi|v[ée]lo)|quel (bus|trajet)/i.test(text);

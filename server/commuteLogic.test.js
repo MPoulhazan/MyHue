@@ -83,6 +83,7 @@ test('commuteOptions : verglas → jamais le vélo ; bus raté → à pied', () 
 test('isCommuteQuestion et walkMinutes', () => {
     assert.ok(isCommuteQuestion('Comment j’y vais ce matin ?'));
     assert.ok(isCommuteQuestion('je prends le bus ?'));
+    assert.ok(isCommuteQuestion('Comment j y vais ce matin ?'));
     assert.ok(!isCommuteQuestion('allume le salon'));
     assert.equal(walkMinutes(1500), 26);
 });
