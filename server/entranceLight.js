@@ -1,35 +1,33 @@
 /**
- * Lampe de l'entrée (Yeelight) : s'allume quand la porte d'entrée s'ouvre ou que le
- * capteur de mouvement de l'entrée voit quelqu'un, à toute heure, et s'éteint 2 min
- * après le dernier passage.
+ * Lampe de l'entrée (Hue) : s'allume quand la porte d'entrée s'ouvre ou que le capteur de
+ * mouvement de l'entrée voit quelqu'un, à toute heure, et s'éteint 2 min après le dernier passage.
  *
  * L'interrupteur est bloqué sur ON : l'ampoule s'éteint toujours 2 min après le dernier
- * passage, même allumée autrement (appli, retour du courant) ; une ronde chaque minute
- * rattrape ces cas. La nuit, blanc plus chaud.
+ * passage, même allumée autrement (appli Hue, retour du courant) ; une ronde chaque minute
+ * rattrape ces cas. Allumée à la main depuis MyHue, elle reste 15 min. La nuit, blanc plus chaud.
  *
- * Le matin, autour de la sortie (même plage que lightSignals), elle montre d'abord
- * quelques secondes la couleur de ce qui attend dehors (pluie, orage, verglas, BIXI,
- * courrier), une fois par matin, puis passe en blanc. En mode alarme ou vacances
- * (guard.js), elle clignote en rouge à chaque allumage.
+ * Le matin, autour de la sortie (même plage que lightSignals), elle montre d'abord quelques
+ * secondes la couleur de ce qui attend dehors (pluie, orage, verglas, BIXI, courrier), une fois
+ * par matin, puis passe en blanc. En mode alarme ou vacances (guard.js), elle clignote en rouge.
+ * Les couleurs ne servent que si l'ampoule est une Hue couleur.
  */
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dataFile } from './dataDir.js';
 import { bus } from './events.js';
+import { hueClient, hueBaseUrl } from './hue.js';
 import * as sensorPause from './sensorPause.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
 import * as journal from './journal.js';
-import * as yeelight from './yeelight.js';
+import * as circadian from './circadian.js';
 import * as lightSignals from './lightSignals.js';
 
 const FILE = dataFile('entrance-light.json');
 const TZ = process.env.TZ || 'America/Toronto';
-const RETRY_DISCOVERY_MS = 10 * 60_000;
 
 const DEFAULTS = {
     enabled: true,
-    ip: null, // trouvée toute seule (SSDP puis balayage), gardée ici
-    bulbId: null,
+    lightId: null, // lampe Hue ; null = celle qui s'appelle « Entrée » ou qui est dans la pièce Entrée
     offAfterSec: 120,
     nightFrom: '22:30',
     nightTo: '06:30',
@@ -39,21 +37,26 @@ const DEFAULTS = {
     colorsShownOn: null, // date locale du dernier signal du matin
 };
 
-// Couleurs Yeelight (0xRRGGBB), mêmes sens que les lampes-signal Hue
+// Couleurs en xy (gamut C), mêmes sens que les lampes-signal du salon
 export const COLORS = {
-    rain: 0x1e5cff, // pluie
-    storm: 0xff9000, // orage, tempête
-    ice: 0x9fdcff, // verglas, neige, grand froid
-    bixi: 0xff2a00, // plus de BIXI
-    aurora: 0x20ff70, // aurores
-    alert: 0xff5a00, // alerte en ville
-    mail: 0xffd000, // courrier qui attend
+    rain: [0.167, 0.04], // pluie
+    storm: [0.56, 0.41], // orage, tempête
+    ice: [0.21, 0.29], // verglas, neige, grand froid
+    bixi: [0.675, 0.322], // plus de BIXI
+    aurora: [0.17, 0.7], // aurores
+    alert: [0.62, 0.36], // alerte en ville
+    mail: [0.46, 0.47], // courrier qui attend
 };
-const ALARM_RED = 0xff0000;
+const ALARM_RED = [0.69, 0.3];
 
 let config = { ...DEFAULTS };
 try {
-    if (existsSync(FILE)) config = { ...DEFAULTS, ...JSON.parse(readFileSync(FILE, 'utf8')) };
+    if (existsSync(FILE)) {
+        const saved = JSON.parse(readFileSync(FILE, 'utf8'));
+        delete saved.ip; // ancienne Yeelight
+        delete saved.bulbId;
+        config = { ...DEFAULTS, ...saved };
+    }
 } catch (err) {
     console.error('❌ entrance-light.json illisible, réglages par défaut:', err.message);
 }
@@ -87,18 +90,24 @@ const localMinutes = (ts) => {
 /** Réglage d'allumage selon l'heure. */
 export const sceneFor = (ts, cfg = config) => (inRange(localMinutes(ts), cfg.nightFrom, cfg.nightTo) ? { ...cfg.night, mode: 'night' } : { ...cfg.day, mode: 'day' });
 
+/** Ordre Hue pour un blanc : kelvins → mireds (bornés par l'ampoule), luminosité % → 1-254. */
+export const whiteState = ({ ct, bright }, ctRange = { min: 153, max: 500 }) => {
+    const state = { on: true, bri: Math.max(1, Math.min(254, Math.round((bright / 100) * 254))), transitiontime: 3 };
+    if (ctRange) state.ct = Math.max(ctRange.min, Math.min(ctRange.max, Math.round(1e6 / ct)));
+    return state;
+};
+
 /**
- * Animation Yeelight (set_scene « cf ») : chaque couleur tenue 3 s, ou le rouge qui clignote.
- * Renvoie { count, expr, ms } ; count = nombre d'étapes, la lampe reste sur la dernière.
+ * Étapes de couleurs : chaque couleur tenue 3 s, ou le rouge qui clignote.
+ * Renvoie [{ state, ms }] à envoyer l'une après l'autre.
  */
 export const flowFor = (kinds) => {
-    const steps = [];
     if (kinds.includes('alarm')) {
-        for (let i = 0; i < 8; i++) steps.push([300, 1, ALARM_RED, 100], [300, 1, ALARM_RED, 1]);
-    } else {
-        for (const k of kinds) if (COLORS[k] != null) steps.push([300, 1, COLORS[k], 100], [2700, 7, 0, 0]);
+        const out = [];
+        for (let i = 0; i < 6; i++) out.push({ state: { on: true, xy: ALARM_RED, bri: 254, transitiontime: 0 }, ms: 400 }, { state: { bri: 1, transitiontime: 0 }, ms: 400 });
+        return out;
     }
-    return { count: steps.length, expr: steps.flat().join(','), ms: steps.reduce((t, s) => t + s[0], 0) };
+    return kinds.filter((k) => COLORS[k]).map((k) => ({ state: { on: true, xy: COLORS[k], bri: 254, transitiontime: 3 }, ms: 3000 }));
 };
 
 const localDate = (ts) => new Date(ts).toLocaleDateString('en-CA', { timeZone: TZ });
@@ -109,65 +118,50 @@ const localDate = (ts) => new Date(ts).toLocaleDateString('en-CA', { timeZone: T
  */
 export const shouldSweep = (now, lastTriggerAt, offAfterSec, owned) => !owned && (!lastTriggerAt || now - lastTriggerAt >= offAfterSec * 1000);
 
+/** La lampe de l'entrée parmi celles du pont : réglée, sinon nommée « Entrée », sinon seule dans la pièce Entrée. */
+export const pickEntrance = (lights = {}, groups = {}, wanted = null) => {
+    if (wanted && lights[wanted]) return String(wanted);
+    const named = Object.entries(lights).find(([, l]) => /^entr[ée]e$/i.test((l.name || '').trim()));
+    if (named) return named[0];
+    const room = Object.values(groups).find((g) => g.type === 'Room' && /entr[ée]e/i.test(g.name || ''));
+    return room?.lights?.length ? String(room.lights[0]) : null;
+};
+
 // --- Ampoule ---
 
-let lastDiscoveryAt = 0;
-let discovering = null;
+let bulb = null; // { id, color, ct: {min,max} | null }
 
-const locate = () => {
-    if (discovering) return discovering;
-    discovering = (async () => {
-        lastDiscoveryAt = Date.now();
-        // Plusieurs Yeelight à la maison (chambre d'amis…) : on ne suit que la nôtre, par son identifiant
-        const bulbs = await yeelight.discover();
-        const mine = config.bulbId ? bulbs.find((b) => b.id === config.bulbId) : bulbs.find((b) => b.ip === config.ip);
-        if (mine && mine.id !== config.bulbId) {
-            config.bulbId = mine.id;
-            save();
-        }
-        let ip = mine?.ip || null;
-        if (!ip && !config.bulbId && !config.ip) {
-            // Première recherche : seulement s'il n'y a aucun doute sur l'ampoule
-            if (bulbs.length === 1) {
-                ip = bulbs[0].ip;
-                config.bulbId = bulbs[0].id;
-            } else if (!bulbs.length) {
-                const hits = await yeelight.scan();
-                if (hits.length === 1) ip = hits[0];
-            }
-        }
-        if (ip && ip !== config.ip) {
-            config.ip = ip;
-            save();
-            console.log(`💡 Lampe de l’entrée trouvée : Yeelight ${ip}`);
-            journal.log({ kind: 'system', title: `Lampe de l’entrée trouvée (Yeelight ${ip})`, data: { ip } });
-        }
-        return config.ip;
-    })().finally(() => {
-        discovering = null;
-    });
-    return discovering;
-};
-
-/** Commande avec une nouvelle recherche si l'ampoule a changé d'adresse. */
-const withBulb = async (fn) => {
-    if (!config.ip) await locate();
-    if (!config.ip) throw new Error('Yeelight introuvable : activer « Contrôle LAN » dans l’appli Yeelight');
-    try {
-        return await fn(config.ip);
-    } catch (err) {
-        if (Date.now() - lastDiscoveryAt < 60_000) throw err;
-        const before = config.ip;
-        await locate();
-        if (!config.ip || config.ip === before) throw err;
-        return fn(config.ip);
+const locate = async () => {
+    const [{ data: lights }, { data: groups }] = await Promise.all([hueClient.get('/lights'), hueClient.get('/groups')]);
+    const id = pickEntrance(lights, groups, config.lightId);
+    if (!id) {
+        bulb = null;
+        return null;
     }
+    const l = lights[id];
+    bulb = { id, name: l.name, color: Boolean(l.state?.xy), ct: l.capabilities?.control?.ct || (l.state?.ct != null ? { min: 153, max: 500 } : null) };
+    if (config.lightId !== id) {
+        config.lightId = id;
+        save();
+        console.log(`💡 Lampe de l’entrée : Hue ${id} (${l.name})`);
+        journal.log({ kind: 'system', title: `Lampe de l’entrée : Hue « ${l.name} »`, data: { lightId: id } });
+    }
+    return bulb;
 };
+
+const withBulb = async (fn) => {
+    if (!bulb) await locate();
+    if (!bulb) throw new Error('Lampe Hue de l’entrée introuvable : nomme-la « Entrée » dans l’appli Hue');
+    return fn(bulb);
+};
+
+const put = (state) => hueClient.put(`/lights/${bulb.id}/state`, state);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // --- Allumage / extinction ---
 
 let owned = null; // { scene } quand c'est nous qui l'avons allumée
-// Allumée à la main depuis MyHue (page Lumières) : on la laisse tranquille jusqu'à cette heure
+// Allumée à la main depuis MyHue : on la laisse tranquille jusqu'à cette heure
 let manualUntil = 0;
 export const MANUAL_HOLD_MS = 15 * 60_000;
 const manualHold = () => Date.now() < manualUntil;
@@ -175,8 +169,8 @@ let offTimer = null;
 let busy = Promise.resolve();
 const lastTrigger = { at: null, source: null };
 
-const OFF_RETRY_MS = 10_000; // l'ampoule ne répond que par moments : on retente souvent
-const OFF_MAX_TRIES = 120; // ~20 min de Wi-Fi capricieux avant d'abandonner
+const OFF_RETRY_MS = 15_000;
+const OFF_MAX_TRIES = 40;
 
 const scheduleOff = (delayMs = config.offAfterSec * 1000) => {
     clearTimeout(offTimer);
@@ -188,17 +182,13 @@ const scheduleOff = (delayMs = config.offAfterSec * 1000) => {
 const turnOff = async () => {
     if (!owned || manualHold()) return;
     try {
-        await withBulb((ip) => yeelight.setPower(ip, false, 800));
+        await withBulb(() => put({ on: false, transitiontime: 8 }));
         owned = null;
     } catch (err) {
-        // Ampoule injoignable : on la garde à notre charge et on réessaie, sinon elle resterait
-        // allumée et le prochain passage la prendrait pour une lampe allumée à la main.
         owned.offTries = (owned.offTries || 0) + 1;
         console.warn(`⚠️  Lampe de l’entrée (extinction, essai ${owned.offTries}):`, err.message);
-        if (owned.offTries >= OFF_MAX_TRIES) {
-            owned = null;
-            journal.log({ kind: 'system', title: 'Lampe de l’entrée injoignable : extinction abandonnée', data: { error: err.message } });
-        } else scheduleOff(OFF_RETRY_MS);
+        if (owned.offTries >= OFF_MAX_TRIES) owned = null;
+        else scheduleOff(OFF_RETRY_MS);
     }
 };
 
@@ -220,35 +210,34 @@ const colorsFor = async (now) => {
     return kinds;
 };
 
+const playFlow = async (steps) => {
+    for (const s of steps) {
+        await put(s.state);
+        await wait(s.ms);
+    }
+};
+
 const turnOn = async (source) => {
     lastTrigger.at = Date.now();
     lastTrigger.source = source;
     if (manualHold()) return; // réglée à la main : un passage ne change ni la couleur ni l'intensité
     if (owned) return scheduleOff(); // déjà allumée par nous : on repousse l'extinction
     try {
-        await withBulb(async (ip) => {
-            // Même déjà allumée (interrupteur, appli), on la prend en charge : elle s'éteindra après le délai
+        await withBulb(async (b) => {
+            circadian.markManual([b.id]); // le circadien ne touche pas à son blanc
             const now = Date.now();
-            const kinds = await colorsFor(now);
+            const kinds = b.color ? await colorsFor(now) : [];
             if (kinds.length) {
-                const flow = flowFor(kinds);
-                // Ampoule sans couleur : l'animation échoue, on passe directement au blanc
-                const ok = await yeelight.command(ip, 'set_scene', ['cf', flow.count, 1, flow.expr]).then(() => true, () => false);
-                if (ok) {
-                    if (!kinds.includes('alarm')) {
-                        config.colorsShownOn = localDate(now);
-                        save();
-                        journal.log({ kind: 'system', title: `Lampe de l’entrée : ${kinds.join(', ')} (matin)`, data: { kinds } });
-                    }
-                    await new Promise((r) => setTimeout(r, flow.ms + 200));
+                await playFlow(flowFor(kinds));
+                if (!kinds.includes('alarm')) {
+                    config.colorsShownOn = localDate(now);
+                    save();
+                    journal.log({ kind: 'system', title: `Lampe de l’entrée : ${kinds.join(', ')} (matin)`, data: { kinds } });
                 }
             }
             const scene = sceneFor(Date.now());
-            // Ampoule blanche simple : pas de température de couleur, juste la luminosité
-            await yeelight.setWhite(ip, scene.ct, scene.bright).catch(async () => {
-                await yeelight.setPower(ip, true, 300);
-                await yeelight.command(ip, 'set_bright', [scene.bright, 'sudden', 0]);
-            });
+            await put(whiteState(scene, b.ct));
+            circadian.markManual([b.id]);
             owned = { scene };
             scheduleOff();
         });
@@ -258,17 +247,19 @@ const turnOn = async (source) => {
 };
 
 // Ronde chaque minute : l'ampoule est toujours alimentée (interrupteur bloqué sur ON). Si elle
-// est allumée sans passage récent (courant revenu, extinction ratée, appli), on l'éteint.
+// est allumée sans passage récent (courant revenu, appli Hue), on l'éteint.
 const SWEEP_MS = 60_000;
 let sweepFailing = false;
 const sweep = async () => {
-    if (!config.enabled || !config.ip || manualHold() || !shouldSweep(Date.now(), lastTrigger.at, config.offAfterSec, owned)) return;
+    if (!config.enabled || manualHold() || !shouldSweep(Date.now(), lastTrigger.at, config.offAfterSec, owned)) return;
     try {
-        const props = await yeelight.getProps(config.ip);
-        sweepFailing = false;
-        if (props.power !== 'on' || owned) return;
-        await yeelight.setPower(config.ip, false, 800);
-        console.log('💡 Lampe de l’entrée allumée sans passage : éteinte');
+        await withBulb(async (b) => {
+            const { data } = await hueClient.get(`/lights/${b.id}`);
+            sweepFailing = false;
+            if (!data.state?.on || data.state.reachable === false || owned) return;
+            await put({ on: false, transitiontime: 8 });
+            console.log('💡 Lampe de l’entrée allumée sans passage : éteinte');
+        });
     } catch (err) {
         if (!sweepFailing) console.warn('⚠️  Lampe de l’entrée (ronde):', err.message);
         sweepFailing = true;
@@ -281,6 +272,19 @@ export const trigger = (source) => {
     return busy;
 };
 
+/**
+ * Commande Hue envoyée à la main depuis MyHue (proxy /api/hue) : allumée ainsi, elle reste
+ * MANUAL_HOLD_MS, puis la règle « éteinte 2 min après le dernier passage » reprend.
+ */
+export const noteHueCommand = (path, body) => {
+    if (!bulb || !body) return;
+    const m = path.match(/^\/lights\/(\d+)\/state/);
+    if (!m || m[1] !== bulb.id) return;
+    clearTimeout(offTimer);
+    owned = null;
+    manualUntil = body.on === false ? 0 : Date.now() + MANUAL_HOLD_MS;
+};
+
 // --- Déclencheurs ---
 
 const entranceMotion = (ieee) => {
@@ -289,6 +293,7 @@ const entranceMotion = (ieee) => {
 };
 
 export const start = () => {
+    if (!hueBaseUrl) return console.log('💡 Lampe de l’entrée : pont Hue non configuré');
     // Porte d'entrée qui s'ouvre
     bus.on('sensor', ({ sensor, prop, value }) => {
         if (prop === 'isOpen' && value === true && sensor.type === 'door' && sensorRegistry.isEntrance(sensor.name)) trigger(sensor.name);
@@ -303,97 +308,22 @@ export const start = () => {
     setInterval(() => {
         busy = busy.then(sweep, sweep);
     }, SWEEP_MS);
-    // Le matin, c'est elle qui montre la météo : le salon ne « respire » plus à l'ouverture de la porte
-    lightSignals.setDoorDelegate(() => config.enabled && config.morningColors && Boolean(config.ip));
-    // Adresse donnée à la main : on apprend l'identifiant de l'ampoule pour la retrouver si l'adresse change
-    if (config.ip && !config.bulbId) setTimeout(() => locate().catch(() => null), 5000);
-    if (config.enabled && !config.ip) {
-        const retry = () =>
-            locate()
-                .catch(() => null)
-                .then((ip) => !ip && setTimeout(retry, RETRY_DISCOVERY_MS));
-        setTimeout(retry, 8000);
-    }
-    console.log(`💡 Lampe de l’entrée ${config.enabled ? 'active' : 'désactivée'}${config.ip ? ` (Yeelight ${config.ip})` : ' (Yeelight à trouver)'}`);
-};
-
-// --- Lampe sur les pages Lumières et Accueil ---
-
-let lightCache = { at: 0, value: null }; // dernière lecture réussie
-let lastAsk = 0;
-
-/** État de l'ampoule (relu au plus toutes les 2 s) : { present, reachable, on, bright, ct, rgb, mode, manualUntil } */
-export const getLight = async () => {
-    if (!config.ip) return { present: false };
-    const withHold = (v) => ({ ...v, manualUntil: manualHold() ? manualUntil : null });
-    if (Date.now() - lastAsk < 2000 && lightCache.value) return withHold(lightCache.value);
-    lastAsk = Date.now();
-    try {
-        const p = await yeelight.getProps(config.ip, ['power', 'bright', 'ct', 'rgb', 'color_mode']);
-        lightCache = {
-            at: Date.now(),
-            value: {
-                present: true,
-                reachable: true,
-                on: p.power === 'on',
-                bright: Number(p.bright) || 0,
-                ct: Number(p.ct) || null,
-                rgb: Number(p.rgb) || null,
-                mode: p.color_mode === '1' ? 'color' : 'white',
-            },
-        };
-        return withHold(lightCache.value);
-    } catch {
-        // Wi-Fi capricieux : la dernière lecture vaut encore 20 s avant de la dire injoignable
-        if (lightCache.value && Date.now() - lightCache.at < 20_000) return withHold(lightCache.value);
-        return withHold({ present: true, reachable: false, on: false, bright: 0, ct: null, rgb: null, mode: 'white' });
-    }
-};
-
-/**
- * Réglage à la main : { on, bright 1-100, ct en kelvins, rgb 0xRRGGBB }.
- * Allumée ainsi, elle reste allumée MANUAL_HOLD_MS, puis la règle « éteinte 2 min après le dernier passage » reprend.
- */
-export const setLight = async ({ on, bright, ct, rgb } = {}) => {
-    const lit = on !== false;
-    if (!lit) {
-        clearTimeout(offTimer);
-        manualUntil = 0;
-        try {
-            await withBulb((ip) => yeelight.setPower(ip, false, 400));
-            owned = null;
-        } catch (err) {
-            // Wi-Fi de l'ampoule capricieux : l'extinction demandée n'est pas perdue,
-            // on la retente en tâche de fond (toutes les 10 s, ~20 min) comme l'extinction automatique
-            console.warn('⚠️  Lampe de l’entrée (extinction à la main), nouvel essai en tâche de fond:', err.message);
-            owned = { scene: null, offTries: 0 };
-            scheduleOff(10_000);
-            lastAsk = 0;
-            return { ...(await getLight()), pendingOff: true };
-        }
-        lastAsk = 0;
-        return getLight();
-    }
-    await withBulb(async (ip) => {
-        const b =Math.max(1, Math.min(100, Math.round(Number(bright) || lightCache.value?.bright || 100)));
-        if (rgb != null) await yeelight.setColor(ip, Number(rgb) & 0xffffff, b);
-        else if (ct != null) await yeelight.setWhite(ip, Math.max(1700, Math.min(6500, Math.round(Number(ct)))), b);
-        else if (bright != null) await yeelight.command(ip, 'set_scene', ['ct', lightCache.value?.ct || 4000, b]);
-        else await yeelight.setPower(ip, true, 300);
-    });
-    clearTimeout(offTimer);
-    owned = null;
-    manualUntil = Date.now() + MANUAL_HOLD_MS;
-    lastAsk = 0;
-    return getLight();
+    // Le matin, c'est elle qui montre la météo (si elle fait la couleur) : le salon ne « respire » plus à la porte
+    lightSignals.setDoorDelegate(() => config.enabled && config.morningColors && Boolean(bulb?.color));
+    locate()
+        .then((b) => console.log(`💡 Lampe de l’entrée ${config.enabled ? 'active' : 'désactivée'}${b ? ` (Hue ${b.id}, ${b.name})` : ' (aucune lampe Hue « Entrée »)'}`))
+        .catch((err) => console.warn('⚠️  Lampe de l’entrée (pont Hue):', err.message));
+    // Ampoule renommée ou remplacée : on la retrouve de temps en temps
+    setInterval(() => locate().catch(() => null), 10 * 60_000);
 };
 
 // --- API ---
 
 export const getStatus = () => ({
     enabled: config.enabled,
-    ip: config.ip,
-    bulbId: config.bulbId,
+    lightId: bulb?.id ?? config.lightId,
+    lightName: bulb?.name ?? null,
+    color: Boolean(bulb?.color),
     offAfterSec: config.offAfterSec,
     nightFrom: config.nightFrom,
     nightTo: config.nightTo,
@@ -402,23 +332,24 @@ export const getStatus = () => ({
     morningColors: config.morningColors,
     colorsShownOn: config.colorsShownOn,
     lit: Boolean(owned),
+    manualUntil: manualHold() ? manualUntil : null,
     lastTrigger: lastTrigger.at ? { ...lastTrigger } : null,
 });
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const level = (v, cur) => ({
-    ct: v?.ct !== undefined ? Math.max(1700, Math.min(6500, Math.round(Number(v.ct)))) : cur.ct,
+    ct: v?.ct !== undefined ? Math.max(2000, Math.min(6500, Math.round(Number(v.ct)))) : cur.ct,
     bright: v?.bright !== undefined ? Math.max(1, Math.min(100, Math.round(Number(v.bright)))) : cur.bright,
 });
 
 export const update = (patch = {}) => {
     if (patch.enabled !== undefined) config.enabled = Boolean(patch.enabled);
     if (patch.morningColors !== undefined) config.morningColors = Boolean(patch.morningColors);
-    if (patch.ip !== undefined) {
-        if (patch.ip !== null && !/^\d{1,3}(\.\d{1,3}){3}$/.test(String(patch.ip))) throw new Error('Adresse IP invalide');
-        if (patch.ip !== config.ip) config.bulbId = null; // autre ampoule : on réapprend son identifiant
-        config.ip = patch.ip;
-        if (config.ip) setTimeout(() => locate().catch(() => null), 0);
+    if (patch.lightId !== undefined) {
+        if (patch.lightId !== null && !/^\d+$/.test(String(patch.lightId))) throw new Error('Lampe invalide');
+        config.lightId = patch.lightId === null ? null : String(patch.lightId);
+        bulb = null;
+        setTimeout(() => locate().catch(() => null), 0);
     }
     if (patch.offAfterSec !== undefined) {
         const s = Number(patch.offAfterSec);
@@ -436,13 +367,17 @@ export const update = (patch = {}) => {
     return getStatus();
 };
 
-/** Essai depuis l'interface : allume comme si quelqu'un passait. */
+/** Essai depuis l'interface : allume comme si quelqu'un passait, ou montre une couleur. */
 export const test = async (kind) => {
-    if (!config.ip) await locate();
     if (kind) {
         if (!COLORS[kind] && kind !== 'alarm') throw new Error('Couleur inconnue');
-        const flow = flowFor([kind]);
-        await withBulb((ip) => yeelight.command(ip, 'set_scene', ['cf', flow.count, 0, flow.expr]));
+        await withBulb(async (b) => {
+            if (!b.color) throw new Error('Cette ampoule ne fait pas la couleur');
+            await playFlow(flowFor([kind]));
+            await put(whiteState(sceneFor(Date.now()), b.ct));
+        });
+        owned = owned || { scene: null };
+        scheduleOff();
         return getStatus();
     }
     await trigger('essai');

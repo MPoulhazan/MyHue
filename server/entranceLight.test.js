@@ -1,8 +1,23 @@
 // node --test server/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inRange, sceneFor, shouldSweep } from './entranceLight.js';
+import { inRange, sceneFor, shouldSweep, whiteState, pickEntrance } from './entranceLight.js';
 import { parseAdvert } from './yeelight.js';
+
+test('whiteState : kelvins en mireds bornés, pourcentage en 1-254', () => {
+    assert.deepEqual(whiteState({ ct: 4000, bright: 100 }), { on: true, bri: 254, transitiontime: 3, ct: 250 });
+    assert.equal(whiteState({ ct: 2000, bright: 50 }, { min: 153, max: 454 }).ct, 454);
+    assert.equal(whiteState({ ct: 2700, bright: 0 }).bri, 1);
+    assert.equal(whiteState({ ct: 2700, bright: 100 }, null).ct, undefined, 'ampoule blanche sans température');
+});
+
+test('pickEntrance : réglée, sinon nommée Entrée, sinon pièce Entrée', () => {
+    const lights = { 1: { name: 'Salon' }, 17: { name: 'Entrée' }, 18: { name: 'Hue white lamp 1' } };
+    assert.equal(pickEntrance(lights, {}, '1'), '1');
+    assert.equal(pickEntrance(lights, {}, '99'), '17');
+    assert.equal(pickEntrance({ 18: lights[18] }, { 86: { type: 'Room', name: 'Entrée', lights: ['18'] } }), '18');
+    assert.equal(pickEntrance({ 1: lights[1] }, {}), null);
+});
 
 const ts = (hhmm) => Date.parse(`2026-11-16T${hhmm}:00-05:00`);
 const cfg = { nightFrom: '22:30', nightTo: '06:30', day: { ct: 4000, bright: 100 }, night: { ct: 2700, bright: 12 } };

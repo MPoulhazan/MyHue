@@ -135,7 +135,7 @@ router.post('/api/signals/test', async (req, res) => {
     }
 });
 
-// --- Lampe de l'entrée (Yeelight) ---
+// --- Lampe de l'entrée (Hue) ---
 
 router.get('/api/entrance-light', (_req, res) => res.json(entranceLight.getStatus()));
 
@@ -144,16 +144,6 @@ router.put('/api/entrance-light', (req, res) => {
         res.json(entranceLight.update(req.body || {}));
     } catch (err) {
         res.status(400).json({ error: err.message });
-    }
-});
-
-// La lampe sur les pages Lumières et Accueil
-router.get('/api/entrance-light/state', async (_req, res) => res.json(await entranceLight.getLight()));
-router.put('/api/entrance-light/state', async (req, res) => {
-    try {
-        res.json(await entranceLight.setLight(req.body || {}));
-    } catch (err) {
-        res.status(502).json({ error: err.message });
     }
 });
 

@@ -35,19 +35,6 @@ export const SWATCHES: Swatch[] = [
     { label: 'Vert', hex: '#2FD98A' },
 ];
 
-// ── Yeelight de l'entrée (server/entranceLight.js) ───────────────────────────
-export const YEELIGHT_ID = 'yl-entree';
-
-interface YeelightState {
-    present: boolean;
-    reachable?: boolean;
-    on?: boolean;
-    bright?: number;
-    ct?: number | null; // kelvins
-    rgb?: number | null;
-    mode?: 'white' | 'color';
-}
-
 interface HueBody {
     on?: boolean;
     bri?: number;
@@ -55,27 +42,6 @@ interface HueBody {
     xy?: number[];
     _hex?: string;
 }
-
-const yeelightToLight = (y: YeelightState): DashLight => ({
-    id: YEELIGHT_ID,
-    name: 'Lampe entrée',
-    room: 'Entrée',
-    color: y.mode === 'color' && y.rgb ? `#${y.rgb.toString(16).padStart(6, '0').toUpperCase()}` : ctToHex(Math.round(1e6 / (y.ct || 4000))),
-    level: y.on ? Math.max(1, y.bright || 100) : 0,
-    reachable: y.reachable !== false,
-    dimmable: true,
-    colorable: true,
-});
-
-/** Ordre au format Hue → ordre pour la Yeelight (luminosité 1-100, blanc en kelvins, couleur en 0xRRGGBB). */
-const toYeelight = (b: HueBody, hex?: string) => {
-    if (b.on === false) return { on: false };
-    return {
-        on: true,
-        ...(b.bri != null ? { bright: Math.max(1, Math.round((b.bri / 254) * 100)) } : {}),
-        ...(b.ct ? { ct: Math.round(1e6 / b.ct) } : hex ? { rgb: parseInt(hex.replace('#', ''), 16) } : {}),
-    };
-};
 
 export interface LogEntry {
     id: number;
@@ -240,17 +206,14 @@ export function useHome() {
         setLog((l) => [{ id: ++logSeq, t: now(), msg, color, href }, ...l].slice(0, 40));
     }, []);
 
-    // --- Hue (et la Yeelight de l'entrée, ajoutée à la liste comme une lampe de plus) ---
+    // --- Hue ---
     const loadLights = useCallback(async () => {
-        const yeelight = axios.get('/api/entrance-light/state').then(({ data }) => data as YeelightState).catch(() => null);
         try {
             const { data } = await axios.get('/api/hue/lights');
-            const yl = await yeelight;
             setOnline((o) => ({ ...o, hue: true }));
             setLights((prev) => {
                 const byId = Object.fromEntries(prev.map((l) => [l.id, l]));
-                const extra = !yl?.present ? [] : byId[YEELIGHT_ID] && Date.now() - (editing.current[YEELIGHT_ID] || 0) < 2500 ? [byId[YEELIGHT_ID]] : [yeelightToLight(yl)];
-                return [...Object.entries<any>(data).map(([id, l]) => {
+                return Object.entries<any>(data).map(([id, l]) => {
                     // Ne pas écraser une lampe que l'utilisateur est en train de régler
                     if (byId[id] && Date.now() - (editing.current[id] || 0) < 2500) return byId[id];
                     const dimmable = l.state.bri !== undefined;
@@ -264,7 +227,7 @@ export function useHome() {
                         dimmable,
                         colorable: Boolean(l.state.colormode),
                     };
-                }), ...extra];
+                });
             });
         } catch {
             setOnline((o) => ({ ...o, hue: false }));
@@ -302,15 +265,11 @@ export function useHome() {
         return () => clearInterval(t);
     }, [loadGroups, loadLights]);
 
-    // body au format Hue ; _hex = la couleur voulue, pour la Yeelight qui ne parle pas en xy
+    // body au format Hue ; _hex (la couleur voulue) n'est pas envoyé au pont
     const sendState = useCallback((id: string, body: HueBody, delay = 120) => {
         clearTimeout(pending.current[id]);
         pending.current[id] = setTimeout(() => {
-            const { _hex, ...hue } = body;
-            if (id === YEELIGHT_ID) {
-                axios.put('/api/entrance-light/state', toYeelight(hue, _hex)).catch(() => {});
-                return;
-            }
+            const { _hex: _unused, ...hue } = body;
             axios.put(`/api/hue/lights/${id}/state`, { ...hue, transitiontime: 2 }).catch(() => {});
         }, delay);
     }, []);
@@ -319,8 +278,7 @@ export function useHome() {
     lightsRef.current = lights;
 
     const setLevel = useCallback((ids: string[], pct: number) => {
-        // La Yeelight décroche souvent du Wi-Fi : une extinction lui est toujours envoyée, le serveur la retente
-        const targets = lightsRef.current.filter((l) => ids.includes(l.id) && (l.reachable || (pct === 0 && l.id === YEELIGHT_ID)));
+        const targets = lightsRef.current.filter((l) => ids.includes(l.id) && l.reachable);
         targets.forEach((l) => {
             editing.current[l.id] = Date.now();
             sendState(l.id, pct === 0 ? { on: false } : l.dimmable ? { on: true, bri: pctToBri(pct) } : { on: true });

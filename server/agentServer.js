@@ -56,7 +56,10 @@ app.use(mediaRoutes);
 app.use(homeRoutes);
 // Proxy Hue ; un réglage de couleur ou de blanc fait à la main suspend le circadien sur ces lampes
 app.use('/api/hue', (req, res) => {
-    if (req.method === 'PUT') circadian.noteHueCommand(req.url, req.body);
+    if (req.method === 'PUT') {
+        circadian.noteHueCommand(req.url, req.body);
+        entranceLight.noteHueCommand(req.url, req.body); // allumée à la main : elle reste 15 min
+    }
     hueProxy(req, res);
 });
 

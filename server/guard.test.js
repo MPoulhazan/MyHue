@@ -33,12 +33,12 @@ test('guardSpeech', () => {
 
 test('flowFor : couleurs du matin et rouge de l’alarme', () => {
     const rain = flowFor(['rain']);
-    assert.equal(rain.count, 2);
-    assert.equal(rain.ms, 3000);
-    assert.equal(rain.expr, `300,1,${0x1e5cff},100,2700,7,0,0`);
-    assert.equal(flowFor(['rain', 'mail']).count, 4);
-    assert.equal(flowFor(['inconnu']).count, 0);
+    assert.equal(rain.length, 1);
+    assert.equal(rain[0].ms, 3000);
+    assert.deepEqual(rain[0].state.xy, [0.167, 0.04]);
+    assert.equal(flowFor(['rain', 'mail']).length, 2);
+    assert.equal(flowFor(['inconnu']).length, 0);
     const alarm = flowFor(['alarm']);
-    assert.equal(alarm.count, 16);
-    assert.equal(alarm.ms, 4800);
+    assert.equal(alarm.length, 12);
+    assert.equal(alarm.reduce((t, s) => t + s.ms, 0), 4800);
 });
