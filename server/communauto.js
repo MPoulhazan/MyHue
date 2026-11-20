@@ -25,11 +25,14 @@ import * as lightSignals from './lightSignals.js';
 import { RADII, DURATIONS, carsWithin, newArrivals, foundText, carLabel, whereLabel, walkLink, carAppLink } from './communautoLogic.js';
 import { weekCount } from './communautoAppLogic.js';
 import * as app from './communautoApp.js';
+import * as haService from './haService.js';
+import { getPeople } from './myDay.js';
 
 const FILE = dataFile('communauto.json');
 const TZ = process.env.TZ || 'America/Toronto';
 const FEED = 'https://www.reservauto.net/WCF/LSI/LSIBookingServiceV3.svc/GetAvailableVehicles?BranchID=1&LanguageID=2';
-const SEARCH_EVERY_MS = 20_000;
+// 5 s : une Flex libre près de chez nous part vite ; ~90 Ko compressé par lecture
+const SEARCH_EVERY_MS = 5_000;
 const IDLE_MAX_AGE_MS = 60_000;
 // Assez loin pour la carte au repos, même quand on cherche dans un petit rayon
 const NEARBY_MAX = 6;
@@ -114,15 +117,16 @@ const kitchenSpeaker = async () => {
     return speakers.find((s) => s.available && (/cuisine|kitchen/i.test(s.name) || /cuisine|kitchen/i.test(s.id)))?.id || null;
 };
 
-const speak = async (text) => {
+const speak = async (text, quiet = false) => {
+    if (quiet) return;
     const minutes = localParts(Date.now(), TZ).minutes;
     if (!config.voice || presence.anyoneHome() === false || minutes < 7 * 60 || minutes >= 23 * 60) return;
     const speaker = await kitchenSpeaker();
     if (speaker) await announce([speaker], text, { volume: 0.6 }).catch((err) => console.warn('[Communauto] voix :', err.message));
 };
 
-/** Prévient partout : Telegram (avec « J'ai réservé »), enceinte de la cuisine, lampe. */
-const tell = async (cars, note = '') => {
+/** Prévient : Telegram (avec « J'ai réservé ») ; à la maison, aussi l'enceinte de la cuisine et la lampe. */
+const tell = async (cars, note = '', quiet = false) => {
     const text = foundText(cars);
     const first = cars[0];
     await notifier.notify({
@@ -133,8 +137,8 @@ const tell = async (cars, note = '') => {
         ],
     }).catch((err) => console.warn('[Communauto] Telegram :', err.message));
     journal.log({ kind: 'system', title: `Communauto trouvée : ${carLabel(first)}, ${whereLabel(first)}`, data: { cars: cars.map((c) => c.id) } });
-    await speak(text);
-    if (config.lamp) await lightSignals.pulse(['communauto'], 'Communauto').catch((err) => console.warn('[Communauto] lampe :', err.message));
+    await speak(text, quiet);
+    if (config.lamp && !quiet) await lightSignals.pulse(['communauto'], 'Communauto').catch((err) => console.warn('[Communauto] lampe :', err.message));
 };
 
 // --- Réservation automatique (appli pilotée sur la tablette) ---
@@ -149,13 +153,14 @@ const bookedText = (car, count) => {
 };
 
 /** Essaie de bloquer les autos trouvées, de la plus proche à la plus loin ; sinon alerte simple. */
-const tryBook = async (cars) => {
+const tryBook = async (cars, quiet = false) => {
     booking = true;
     try {
         let failure = null;
         for (const car of cars.slice(0, 3)) {
             const res = await app.block(car.id);
             if (res.ok) {
+                car.street ??= await streetOf(car);
                 const now = Date.now();
                 config.bookings = [...(config.bookings || []).filter((t) => now - t < 30 * 24 * 3600_000), now];
                 config.lastBooking = { car, at: now, until: now + BLOCK_MS };
@@ -163,13 +168,13 @@ const tryBook = async (cars) => {
                 save();
                 schedule();
                 const count = weekCount(config.bookings, now);
-                journal.log({ kind: 'system', title: `Communauto bloquée automatiquement : ${carLabel(car)}, ${whereLabel(car)} (${count} en 7 jours)` });
+                journal.log({ kind: 'system', title: `Communauto bloquée automatiquement : ${carLabel(car)}, ${whereLabel(car)} (${count} en 7 jours, tap ${res.ms} ms)` });
                 await notifier.notify({
                     text: `${bookedText(car, count)}\nItinéraire : ${walkLink(car)}`,
                     buttons: [{ label: '❌ Annuler le blocage', run: async () => (await cancelBooking('Telegram'), 'Blocage annulé.') }],
                 }).catch((err) => console.warn('[Communauto] Telegram :', err.message));
-                await speak(`J’ai bloqué une Communauto : ${carLabel(car)}, ${whereLabel(car)}. Tu as 30 minutes.`);
-                if (config.lamp) await lightSignals.pulse(['communauto'], 'Communauto bloquée').catch(() => {});
+                await speak(`J’ai bloqué une Communauto : ${carLabel(car)}, ${whereLabel(car)}. Tu as 30 minutes.`, quiet);
+                if (config.lamp && !quiet) await lightSignals.pulse(['communauto'], 'Communauto bloquée').catch(() => {});
                 return;
             }
             failure = res;
@@ -177,7 +182,10 @@ const tryBook = async (cars) => {
             if (res.reason !== 'gone') break; // tablette ou écran : inutile d'essayer la suivante
         }
         // Toutes prises avant qu'on les bloque : rien à annoncer, la recherche continue
-        if (failure && failure.reason !== 'gone') await tell(cars, `je n’ai pas pu la bloquer : ${failure.detail}`);
+        if (failure && failure.reason !== 'gone') {
+            for (const c of cars.slice(0, 3)) c.street ??= await streetOf(c);
+            await tell(cars, `je n’ai pas pu la bloquer : ${failure.detail}`, quiet);
+        }
     } finally {
         booking = false;
     }
@@ -208,10 +216,11 @@ const doCheck = async () => {
         if (!found) await notifier.notify({ text: `🚗 Recherche Communauto terminée : aucune auto à moins de ${s.radiusM} m.`, silent: true }).catch(() => {});
         return;
     }
-    await ensureFresh(SEARCH_EVERY_MS - 2_000);
+    await ensureFresh(SEARCH_EVERY_MS - 1_000);
     if (!feed.at) return;
-    const home = await getLocation();
-    const cars = carsWithin(feed.vehicles, home, s.radiusM);
+    if (s.nearMe) s.center = await phoneLocation(s.person).catch(() => s.center); // on suit le téléphone
+    const center = s.center || (await getLocation());
+    const cars = carsWithin(feed.vehicles, center, s.radiusM);
     const here = new Set(cars.map((c) => c.id));
 
     // Les autos déjà trouvées qui ne sont plus libres : quelqu'un d'autre les a prises
@@ -219,14 +228,20 @@ const doCheck = async () => {
     if (booking) return save(); // la tablette est en train de bloquer une auto
     const fresh = newArrivals(cars, s.announced);
     if (!fresh.length) return save();
-    for (const c of fresh.slice(0, 3)) c.street = await streetOf(c);
     s.announced.push(...fresh.map((c) => c.id));
     s.found = [...fresh, ...s.found].slice(0, 6);
     save();
     // Sans attendre : la tablette met ~15 s à bloquer, la lampe respire 15 s ;
     // la réponse à la carte ou à la voix part tout de suite
-    if (s.autoBook && config.tablet?.host) tryBook(fresh).catch((err) => console.warn('[Communauto] blocage :', err.message));
-    else tell(fresh).catch((err) => console.warn('[Communauto] annonce :', err.message));
+    if (s.autoBook && config.tablet?.host) {
+        tryBook(fresh, s.quiet).catch((err) => console.warn('[Communauto] blocage :', err.message));
+    } else {
+        (async () => {
+            for (const c of fresh.slice(0, 3)) c.street = await streetOf(c);
+            save();
+            await tell(fresh, '', s.quiet);
+        })().catch((err) => console.warn('[Communauto] annonce :', err.message));
+    }
 };
 
 let timer = null;
@@ -239,7 +254,22 @@ const schedule = () => {
 };
 
 /** Lance (ou relance) une recherche ; une auto déjà dans le rayon est annoncée tout de suite. */
-export const startSearch = async ({ radiusM, durationMin, autoBook = false, by = 'MyHue' } = {}) => {
+/**
+ * Position du téléphone (HA Companion → person.*) de la personne qui demande, ou de la
+ * première personne de « Ma journée » reliée à Home Assistant.
+ */
+export const phoneLocation = async (personId = null) => {
+    const people = getPeople().filter((p) => p.haPerson);
+    const who = people.find((p) => p.id === personId) || people[0];
+    if (!who) throw new Error('aucun téléphone relié à Home Assistant');
+    const st = await haService.getState(who.haPerson);
+    const { latitude: lat, longitude: lon } = st?.attributes || {};
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('position du téléphone inconnue');
+    const age = Date.now() - Date.parse(st.last_updated || st.last_changed || 0);
+    return { lat, lon, who: who.name, ageMin: Number.isFinite(age) ? Math.round(age / 60_000) : null };
+};
+
+export const startSearch = async ({ radiusM, durationMin, autoBook = false, nearMe = false, quiet = false, person = null, by = 'MyHue' } = {}) => {
     if (autoBook && !config.tablet?.host) throw new Error('la tablette n’est pas appairée pour réserver');
     if (autoBook && config.lastBooking) {
         await ensureFresh(15_000);
@@ -253,9 +283,16 @@ export const startSearch = async ({ radiusM, durationMin, autoBook = false, by =
     config.radiusM = Math.round(r);
     config.durationMin = Math.round(d);
     const now = Date.now();
-    config.search = { radiusM: config.radiusM, startedAt: now, until: now + config.durationMin * 60_000, by, autoBook: Boolean(autoBook), announced: [], found: [] };
+    const center = nearMe ? await phoneLocation(person) : null; // erreur claire si le téléphone ne remonte pas sa position
+    config.search = {
+        radiusM: config.radiusM, startedAt: now, until: now + config.durationMin * 60_000, by,
+        autoBook: Boolean(autoBook), nearMe: Boolean(nearMe), quiet: Boolean(quiet || nearMe), person, center,
+        announced: [], found: [],
+    };
     save();
-    journal.log({ kind: 'system', title: `Recherche Communauto lancée (${config.radiusM} m, ${config.durationMin} min${autoBook ? ', réservation auto' : ''}, ${by})` });
+    journal.log({ kind: 'system', title: `Recherche Communauto lancée (${config.radiusM} m${nearMe ? ' autour du téléphone' : ''}, ${config.durationMin} min${autoBook ? ', réservation auto' : ''}, ${by})` });
+    // Appli relancée propre sur la tablette avant la course (le premier blocage attend qu'elle soit prête)
+    if (autoBook) app.prewarm().catch((err) => console.warn('[Communauto] préparation :', err.message));
     feed.at = 0; // relire tout de suite
     await check();
     schedule();
@@ -302,8 +339,8 @@ const checkBookingStillHeld = () => {
 export const getView = async ({ fresh = false } = {}) => {
     await ensureFresh(isActive() ? SEARCH_EVERY_MS : fresh || config.lastBooking ? 15_000 : IDLE_MAX_AGE_MS);
     checkBookingStillHeld();
-    const home = await getLocation().catch(() => null);
     const s = isActive() ? config.search : null;
+    const home = s?.center || (await getLocation().catch(() => null));
     const radiusM = s?.radiusM ?? config.radiusM;
     const nearby = home && feed.at ? carsWithin(feed.vehicles, home, radiusM).slice(0, NEARBY_MAX).map(strip) : [];
     return {
@@ -321,6 +358,8 @@ export const getView = async ({ fresh = false } = {}) => {
             until: s.until,
             by: s.by,
             autoBook: Boolean(s.autoBook),
+            nearMe: Boolean(s.nearMe),
+            quiet: Boolean(s.quiet),
             found: s.found.map(strip),
         },
         // Réservation automatique : possible si la tablette est appairée

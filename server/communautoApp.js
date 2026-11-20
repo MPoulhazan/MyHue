@@ -12,7 +12,7 @@
 import { execFile } from 'child_process';
 import { mkdirSync } from 'fs';
 import { dataFile } from './dataDir.js';
-import { parseNodes, screenState, blockButton, tipOk, cancelButton, confirmCancelButton, isGreen, pixelAt, vehicleLink } from './communautoAppLogic.js';
+import { parseNodes, screenState, blockButton, tipOk, cancelButton, confirmCancelButton, isGreen, vehicleLink } from './communautoAppLogic.js';
 
 const PKG = 'com.communauto.reservauto';
 const MYHUE_APP = 'com.android.chrome'; // MyHue tourne dans Chrome sur la tablette
@@ -112,52 +112,90 @@ const waitFor = async (states, timeoutMs) => {
 
 const tap = ({ x, y }) => shell('input', 'tap', String(x), String(y));
 
-/** La couleur réelle à l'endroit du bouton, en portrait (l'appli est verrouillée en portrait). */
-const greenAt = async (p) => {
-    const raw = await adb(['-s', serial(), 'exec-out', 'screencap'], { binary: true });
-    return isGreen(pixelAt(raw, p.x, p.y));
-};
-
 const backToMyHue = () => shell('monkey', '-p', MYHUE_APP, '-c', 'android.intent.category.LAUNCHER', '1').catch(() => {});
 
-// Une seule manipulation de la tablette à la fois
-let busy = null;
+/**
+ * Couleur d'un pixel lue sur la tablette même : capture dans un fichier, puis 4 octets
+ * extraits par dd (≈ 0,4 s, contre plus de 2 s pour un dump uiautomator ou une capture rapatriée).
+ */
+const pixelOnDevice = async (p, size) => {
+    const skip = 4 + p.y * size.w + p.x; // en-tête de 16 octets = 4 blocs de 4
+    const out = await shell(`screencap /data/local/tmp/myhue.raw && dd if=/data/local/tmp/myhue.raw bs=4 skip=${skip} count=1 2>/dev/null | od -An -tu1`);
+    const [r, g, b] = out.trim().split(/\s+/).map(Number);
+    return { r, g, b };
+};
+
+// Une manipulation de la tablette à la fois : les suivantes attendent leur tour
+let queue = Promise.resolve();
 const exclusive = (fn) => {
-    if (busy) return Promise.reject(new Error('la tablette est déjà occupée'));
-    busy = fn().finally(() => (busy = null));
-    return busy;
+    const run = queue.then(fn, fn);
+    queue = run.catch(() => {});
+    return run;
+};
+
+let size = null; // taille d'écran, lue une fois
+
+/** Connexion gardée ouverte : on ne refait « adb connect » que si la tablette ne répond plus. */
+const ensureOnline = async () => {
+    const state = serial() ? await adb(['-s', serial(), 'get-state'], { timeout: 3_000 }).catch(() => '') : '';
+    if (state.trim() !== 'device') await connect();
+    size ??= await screenSize();
 };
 
 /**
- * Bloque une Flex dans l'appli.
- * @returns {{ ok: true } | { ok: false, reason: 'gone'|'already'|'screen'|'offline', detail: string }}
+ * Prépare la course : appli relancée à froid (carte propre, aucune fiche d'une autre auto
+ * restée ouverte), puis retour à MyHue. Appelé au lancement d'une recherche avec blocage.
+ */
+export const prewarm = () => exclusive(async () => {
+    await ensureOnline();
+    await shell(`input keyevent KEYCODE_WAKEUP; am force-stop ${PKG}; monkey -p ${PKG} -c android.intent.category.LAUNCHER 1`);
+    await waitFor(['other', 'blocked'], 12_000); // l'appli a fini de démarrer
+    await sleep(3000); // la carte charge les autos
+    await backToMyHue();
+});
+
+/**
+ * Bloque une Flex dans l'appli, au plus vite : lien direct vers sa fiche, on guette le
+ * vert du bouton sur la tablette même, un tap, puis on vérifie le blocage à l'écran.
+ * @returns {{ ok: true, ms: number } | { ok: false, reason: 'gone'|'already'|'screen'|'offline', detail: string }}
  */
 export const block = (carId) => exclusive(async () => {
+    const t0 = Date.now();
     try {
-        await connect();
+        await ensureOnline();
     } catch (err) {
         return { ok: false, reason: 'offline', detail: err.message };
     }
+    let blocked = false;
     try {
-        await shell('input', 'keyevent', 'KEYCODE_WAKEUP');
-        await shell('am', 'start', '-a', 'android.intent.action.VIEW', '-d', vehicleLink(carId), PKG);
-        const first = await waitFor(['sheet', 'gone', 'blocked'], 15_000);
-        if (first.state === 'gone') return { ok: false, reason: 'gone', detail: 'plus disponible' };
-        if (first.state === 'blocked') return { ok: false, reason: 'already', detail: 'une Flex est déjà bloquée' };
-        if (first.state !== 'sheet') return { ok: false, reason: 'screen', detail: 'fiche de l’auto pas affichée' };
-
-        await sleep(800); // la feuille finit de monter
-        const size = await screenSize();
+        await shell(`input keyevent KEYCODE_WAKEUP; am start -a android.intent.action.VIEW -d '${vehicleLink(carId)}' ${PKG}`);
+        // Le bouton vert, vu deux fois de suite (pas une image de transition)
         const button = blockButton(size);
-        if (!(await greenAt(button))) return { ok: false, reason: 'screen', detail: 'bouton « Block » introuvable' };
+        let seen = 0;
+        const until = Date.now() + 12_000;
+        while (Date.now() < until && seen < 2) {
+            seen = isGreen(await pixelOnDevice(button, size).catch(() => ({}))) ? seen + 1 : 0;
+        }
+        if (seen < 2) {
+            const state = screenState(await readScreen().catch(() => []));
+            if (state === 'blocked') return { ok: false, reason: 'already', detail: 'une Flex est déjà bloquée' };
+            return { ok: false, reason: 'screen', detail: 'fiche de l’auto pas affichée' };
+        }
         await tap(button);
+        const tapMs = Date.now() - t0;
 
-        const after = await waitFor(['blocked', 'gone'], 12_000);
-        if (after.state === 'blocked') return { ok: true };
-        if (after.state === 'gone') return { ok: false, reason: 'gone', detail: 'prise juste avant' };
-        return { ok: false, reason: 'screen', detail: 'blocage pas confirmé à l’écran' };
+        // « The vehicle is waiting » : bloquée. Le même vert sert aussi au « Ok » de « plus disponible ».
+        const after = await waitFor(['blocked', 'gone'], 8_000);
+        if (after.state === 'blocked') {
+            blocked = true;
+            console.log(`[Communauto] Flex ${carId} bloquée, tap à ${tapMs} ms`);
+            return { ok: true, ms: tapMs };
+        }
+        return { ok: false, reason: 'gone', detail: 'prise juste avant' };
     } finally {
-        await sleep(1500);
+        // Ne pas laisser une fiche ouverte : la prochaine course partirait d'une carte propre
+        if (!blocked) await shell('input', 'keyevent', 'KEYCODE_BACK').catch(() => {});
+        await sleep(blocked ? 1500 : 300);
         await backToMyHue();
     }
 });

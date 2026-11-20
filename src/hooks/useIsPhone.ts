@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const PHONE_QUERY = '(max-width: 760px)';
+export const PHONE_QUERY = '(max-width: 760px)';
 
 /** Téléphone : onglets en bas et une colonne ; sinon la tablette avec son rail. */
 export function useIsPhone() {

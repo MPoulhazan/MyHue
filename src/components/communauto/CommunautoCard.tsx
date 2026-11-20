@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { communautoPoll } from '../home/widgets/polls';
+import { useIsPhone } from '../../hooks/useIsPhone';
+import { readDayPick } from '../../pages/myDayPick';
 import './Communauto.css';
 
 // ── Données de /api/communauto (server/communauto.js) ────────────────────────
@@ -27,7 +29,7 @@ export interface CommunautoView {
     radii: number[];
     durations: number[];
     nearby: Car[];
-    search: { active: boolean; radiusM: number; startedAt: number; until: number; by: string; autoBook: boolean; found: Car[] } | null;
+    search: { active: boolean; radiusM: number; startedAt: number; until: number; by: string; autoBook: boolean; nearMe?: boolean; quiet?: boolean; found: Car[] } | null;
     /** La tablette est appairée : MyHue peut bloquer la Flex lui-même */
     canAutoBook: boolean;
     /** La tablette est en train de bloquer une auto */
@@ -67,6 +69,10 @@ export function CommunautoCard() {
     const [radius, setRadius] = useState<number | null>(null);
     const [duration, setDuration] = useState<number | null>(null);
     const [autoBook, setAutoBook] = useState(false);
+    // Sur le téléphone : recherche autour de soi par défaut, et rien d'annoncé à la maison
+    const phone = useIsPhone();
+    const [nearMe, setNearMe] = useState(phone);
+    const [error, setError] = useState<string | null>(null);
     // Le « encore 27 min » avance tout seul
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
@@ -77,15 +83,17 @@ export function CommunautoCard() {
 
     const call = async (fn: () => Promise<{ data: CommunautoView }>) => {
         setBusy(true);
+        setError(null);
         try {
             communautoPoll.publish((await fn()).data);
-        } catch {
+        } catch (err) {
+            setError(axios.isAxiosError(err) ? err.response?.data?.error ?? err.message : String(err));
             communautoPoll.load();
         } finally {
             setBusy(false);
         }
     };
-    const startSearch = () => call(() => axios.post('/api/communauto/search', { radiusM: radius ?? view.radiusM, durationMin: duration ?? view.durationMin, autoBook: autoBook && view.canAutoBook }));
+    const startSearch = () => call(() => axios.post('/api/communauto/search', { radiusM: radius ?? view.radiusM, durationMin: duration ?? view.durationMin, autoBook: autoBook && view.canAutoBook, nearMe: phone && nearMe, quiet: phone, person: readDayPick() }));
     const stopSearch = () => call(() => axios.delete('/api/communauto/search'));
     const cancelBlock = () => call(() => axios.delete('/api/communauto/booking'));
     const week = view.weekCount > 0 && (
@@ -137,7 +145,10 @@ export function CommunautoCard() {
                 {s.found.length ? (
                     <ul className="ca-cars">{s.found.slice(0, 3).map((c) => <CarRow key={c.id} car={c} />)}</ul>
                 ) : (
-                    <p className="ca-line">{s.autoBook ? 'Je surveille toutes les 20 s et je bloque la première auto qui apparaît.' : 'Je surveille toutes les 20 s. Telegram, cuisine et lampe dès qu’une auto apparaît.'}</p>
+                    <p className="ca-line">
+                        {s.nearMe ? 'Autour de ton téléphone. ' : ''}
+                        {s.autoBook ? 'Je surveille toutes les 5 s et je bloque la première auto qui apparaît.' : `Je surveille toutes les 5 s, ${s.quiet ? 'Telegram' : 'Telegram, cuisine et lampe'} dès qu’une auto apparaît.`}
+                    </p>
                 )}
                 <div className="ca-actions">
                     {live.length > 0 && <button type="button" className="ca-btn primary" disabled={busy} onClick={stopSearch}>J’ai réservé</button>}
@@ -173,6 +184,12 @@ export function CommunautoCard() {
                     <button key={m} type="button" className={`ca-chip ${m === d ? 'on' : ''}`} aria-pressed={m === d} onClick={() => setDuration(m)}>{m < 60 ? `${m} min` : `${m / 60} h`}</button>
                 ))}
             </div>
+            {phone && (
+                <label className="ca-auto">
+                    <input type="checkbox" checked={nearMe} onChange={(e) => setNearMe(e.target.checked)} />
+                    <span>Autour de moi<small>la recherche suit la position de ton téléphone</small></span>
+                </label>
+            )}
             {view.canAutoBook && (
                 <label className="ca-auto">
                     <input type="checkbox" checked={autoBook} onChange={(e) => setAutoBook(e.target.checked)} />
@@ -180,6 +197,7 @@ export function CommunautoCard() {
                 </label>
             )}
             {week}
+            {error && <p className="ca-week warn" role="alert">{error}</p>}
             <div className="ca-actions">
                 <button type="button" className="ca-btn primary" disabled={busy} onClick={startSearch}>{autoBook && view.canAutoBook ? 'Chercher et bloquer' : 'Lancer la recherche'}</button>
                 <a className="ca-btn" href={APP_LINK}>Ouvrir l’appli</a>

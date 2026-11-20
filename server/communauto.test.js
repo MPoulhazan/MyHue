@@ -62,11 +62,12 @@ test('communautoSpeech : au repos, en recherche, trouvée', () => {
 });
 
 test('parseCommunautoCommand : lancer, arrêter, demander', () => {
-    assert.deepEqual(parseCommunautoCommand('Trouve-moi une Communauto'), { action: 'start', radiusM: null, autoBook: false });
-    assert.deepEqual(parseCommunautoCommand('cherche une communauto à 300 mètres'), { action: 'start', radiusM: 300, autoBook: false });
-    assert.deepEqual(parseCommunautoCommand("j'ai besoin d'une communauto dans 1 km"), { action: 'start', radiusM: 1000, autoBook: false });
-    assert.deepEqual(parseCommunautoCommand('réserve-moi une communauto à 500 m'), { action: 'start', radiusM: 500, autoBook: true });
+    assert.deepEqual(parseCommunautoCommand('Trouve-moi une Communauto'), { action: 'start', radiusM: null, autoBook: false, nearMe: false });
+    assert.deepEqual(parseCommunautoCommand('cherche une communauto à 300 mètres'), { action: 'start', radiusM: 300, autoBook: false, nearMe: false });
+    assert.deepEqual(parseCommunautoCommand("j'ai besoin d'une communauto dans 1 km"), { action: 'start', radiusM: 1000, autoBook: false, nearMe: false });
+    assert.deepEqual(parseCommunautoCommand('réserve-moi une communauto à 500 m'), { action: 'start', radiusM: 500, autoBook: true, nearMe: false });
     assert.deepEqual(parseCommunautoCommand('annule le blocage de la communauto'), { action: 'cancel' });
+    assert.deepEqual(parseCommunautoCommand('réserve-moi une communauto autour de moi à 400 m'), { action: 'start', radiusM: 400, autoBook: true, nearMe: true });
     assert.deepEqual(parseCommunautoCommand('arrête de chercher la communauto'), { action: 'stop' });
     assert.deepEqual(parseCommunautoCommand("c'est bon j'ai réservé la communauto"), { action: 'stop' });
     assert.deepEqual(parseCommunautoCommand('il y a des communauto autour ?'), { action: 'status' });

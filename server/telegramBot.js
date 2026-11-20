@@ -260,6 +260,7 @@ bot.on('message', async (msg) => {
             {
                 message: text,
                 history: history,
+                source: 'telegram',
             },
             { timeout: 30000 }
         );

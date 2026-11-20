@@ -82,7 +82,7 @@ router.delete('/api/agent/learned', (req, res) => {
 
 router.post('/api/agent', async (req, res) => {
     try {
-        const { message, history, person } = req.body || {};
+        const { message, history, person, source } = req.body || {};
 
         if (!message || typeof message !== 'string') {
             return res.status(400).json({ error: 'Message is required.' });
@@ -187,7 +187,15 @@ router.post('/api/agent', async (req, res) => {
             let speech;
             try {
                 if (autoCmd.action === 'start') {
-                    const view = await communauto.startSearch({ radiusM: autoCmd.radiusM ?? undefined, autoBook: autoCmd.autoBook, by: 'Jarvis' });
+                    const view = await communauto.startSearch({
+                        radiusM: autoCmd.radiusM ?? undefined,
+                        autoBook: autoCmd.autoBook,
+                        nearMe: autoCmd.nearMe,
+                        // Demandé depuis le téléphone ou Telegram : rien à annoncer à la maison
+                        quiet: source === 'telegram' || source === 'phone',
+                        person: typeof person === 'string' ? person : null,
+                        by: source === 'telegram' ? 'Telegram' : source === 'phone' ? 'téléphone' : 'Jarvis',
+                    });
                     speech = `${autoCmd.autoBook ? 'Je la bloque dès qu’elle apparaît. ' : ''}${communautoSpeech(view)}`;
                 } else if (autoCmd.action === 'cancel') {
                     await communauto.cancelBooking('Jarvis');
