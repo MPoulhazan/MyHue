@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Home } from '../../../hooks/useHome';
 import { useCity } from '../../city/useCity';
 import { useSky } from '../../sky/sky';
-import { bixiPoll, cooperPoll, guardPoll, mailboxPoll, musicPoll, pinsPoll } from './polls';
+import { bixiPoll, communautoPoll, cooperPoll, guardPoll, mailboxPoll, musicPoll, pinsPoll } from './polls';
 import {
-    arrange, bixiRelevance, cityRelevance, cooperRelevance, guardRelevance, houseRelevance,
+    arrange, bixiRelevance, cityRelevance, communautoRelevance, cooperRelevance, guardRelevance, houseRelevance,
     journalRelevance, mailRelevance, metroRelevance, musicRelevance, skyRelevance,
 } from './relevance';
 import type { Arrangement, WidgetId, WidgetState } from './relevance';
@@ -24,6 +24,7 @@ export function useHomeWidgets(home: Home): {
     const mail = mailboxPoll.use();
     const bixi = bixiPoll.use();
     const guard = guardPoll.use();
+    const communauto = communautoPoll.use();
     const music = musicPoll.use();
     const sky = useSky();
     const pins = pinsPoll.use();
@@ -44,6 +45,7 @@ export function useHomeWidgets(home: Home): {
         houseRelevance(home.sensors),
         bixiRelevance(bixi, clock),
         metroRelevance(city, clock),
+        communautoRelevance(communauto),
         skyRelevance(sky, clock),
         journalRelevance(home.log.length),
     ];

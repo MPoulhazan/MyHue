@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    arrange, bixiRelevance, cityRelevance, cooperRelevance, houseRelevance,
+    arrange, bixiRelevance, cityRelevance, communautoRelevance, cooperRelevance, houseRelevance,
     journalRelevance, mailRelevance, metroRelevance, musicRelevance, skyRelevance,
 } from '../src/components/home/widgets/relevance.ts';
 
@@ -127,4 +127,16 @@ test('musicRelevance : habitude du créneau ou matin en carte, rien pendant la l
     assert.equal(musicRelevance(plain, false, NOON).relevance, 'calm');
     assert.equal(musicRelevance(plain, false, at(7)).relevance, 'now', 'le matin, on propose');
     assert.deepEqual(musicRelevance(habit, true, at(7)), { id: 'music', relevance: 'calm', summary: 'en lecture' });
+});
+
+test('communautoRelevance : pastille au repos, carte en recherche, en tête quand une auto est trouvée', () => {
+    const idle = { updatedAt: 1, radiusM: 500, nearby: [{ dist: 200 }], search: null };
+    assert.deepEqual(communautoRelevance(idle), { id: 'communauto', relevance: 'calm', summary: '1 à 500 m' });
+    assert.equal(communautoRelevance({ ...idle, updatedAt: null }).summary, 'pas de réponse');
+    const search = { active: true, radiusM: 300, found: [] };
+    assert.equal(communautoRelevance({ ...idle, search }).relevance, 'now');
+    const found = { ...search, found: [{ model: 'Kia Niro EV', dist: 240 }] };
+    assert.deepEqual(communautoRelevance({ ...idle, search: found }), { id: 'communauto', relevance: 'alert', summary: 'Kia Niro EV à 240 m' });
+    assert.equal(communautoRelevance({ ...idle, search: { ...search, found: [{ model: 'X', dist: 1, gone: true }] } }).relevance, 'now');
+    assert.equal(communautoRelevance(null).relevance, 'hidden');
 });

@@ -33,6 +33,7 @@ import * as weeklyDigest from '../weeklyDigest.js';
 import * as homeWidgets from '../homeWidgets.js';
 import * as cube from '../cube.js';
 import * as bixi from '../bixi.js';
+import * as communauto from '../communauto.js';
 import * as city from '../city.js';
 import * as collecte from '../collecte.js';
 import * as health from '../health.js';
@@ -292,6 +293,42 @@ router.get('/api/bixi/settings', (_req, res) => res.json(bixi.getSettings()));
 router.put('/api/bixi/settings', (req, res) => {
     try {
         res.json(bixi.update(req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Communauto Flex : recherche d'une auto autour de la maison ---
+
+router.get('/api/communauto', async (req, res) => {
+    try {
+        res.json(await communauto.getView({ fresh: req.query.fresh === '1' }));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/api/communauto/search', async (req, res) => {
+    try {
+        res.json(await communauto.startSearch({ ...(req.body || {}), by: 'MyHue' }));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.delete('/api/communauto/search', async (_req, res) => {
+    try {
+        res.json(await communauto.stop('MyHue'));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/api/communauto/settings', (_req, res) => res.json(communauto.getSettings()));
+
+router.put('/api/communauto/settings', (req, res) => {
+    try {
+        res.json(communauto.update(req.body || {}));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

@@ -10,7 +10,7 @@ export type Relevance = 'alert' | 'now' | 'calm' | 'hidden';
 /** Réglage par widget : Auto suit la pertinence, Toujours garde la carte, Masqué l'enlève. */
 export type Pin = 'auto' | 'always' | 'hidden';
 
-export type WidgetId = 'guard' | 'city' | 'cooper' | 'mail' | 'music' | 'house' | 'bixi' | 'metro' | 'sky' | 'journal';
+export type WidgetId = 'guard' | 'city' | 'cooper' | 'mail' | 'music' | 'house' | 'bixi' | 'metro' | 'communauto' | 'sky' | 'journal';
 
 export interface WidgetState {
     id: WidgetId;
@@ -20,7 +20,7 @@ export interface WidgetState {
 }
 
 /** Ordre du registre : il départage deux widgets de même pertinence. */
-export const WIDGET_ORDER: WidgetId[] = ['guard', 'city', 'cooper', 'mail', 'music', 'house', 'bixi', 'metro', 'sky', 'journal'];
+export const WIDGET_ORDER: WidgetId[] = ['guard', 'city', 'cooper', 'mail', 'music', 'house', 'bixi', 'metro', 'communauto', 'sky', 'journal'];
 
 export interface WidgetMeta {
     label: string;
@@ -39,13 +39,14 @@ export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
     house: { label: 'Maison', when: 'Une porte ou une fenêtre ouverte, une pile faible' },
     bixi: { label: 'BIXI', when: 'De 7 h à 9 h en semaine' },
     metro: { label: 'Métro', when: 'Hors saison BIXI : de 7 h à 9 h en semaine, ou si une ligne est perturbée' },
+    communauto: { label: 'Communauto', when: 'Pendant une recherche, en tête quand une auto est trouvée' },
     sky: { label: 'Ciel', when: 'Le soir, et toujours quand une aurore est possible' },
     journal: { label: 'Journal', when: 'Jamais en carte : pastille seulement', tabletOnly: true },
 };
 
 /** Cooper reste toujours une carte : c'est le widget préféré de la maison. */
 export const DEFAULT_PINS: Record<WidgetId, Pin> = {
-    guard: 'auto', city: 'auto', cooper: 'always', mail: 'auto', music: 'auto', house: 'auto', bixi: 'auto', metro: 'auto', sky: 'auto', journal: 'auto',
+    guard: 'auto', city: 'auto', cooper: 'always', mail: 'auto', music: 'auto', house: 'auto', bixi: 'auto', metro: 'auto', communauto: 'auto', sky: 'auto', journal: 'auto',
 };
 
 /** Cartes pleines au plus dans « Maintenant », Cooper compris. */
@@ -160,6 +161,25 @@ export function metroRelevance(v: MetroIn | null, now = new Date()): WidgetState
     if (!m.error && m.lines.some((l) => !l.ok)) return state('metro', 'now', 'ligne perturbée');
     const said = m.error ? 'état inconnu' : 'service normal';
     return state('metro', isCommute(now) ? 'now' : 'calm', said);
+}
+
+interface CommunautoIn {
+    updatedAt: number | null;
+    radiusM: number;
+    nearby: { dist: number }[];
+    search: { active: boolean; radiusM: number; found: { gone?: boolean; dist: number; model: string }[] } | null;
+}
+/** Recherche en cours : carte ; une auto trouvée et encore libre : en tête. Au repos : pastille. */
+export function communautoRelevance(v: CommunautoIn | null): WidgetState {
+    if (!v) return state('communauto', 'hidden', 'pas encore lu');
+    if (v.search?.active) {
+        const live = v.search.found.filter((c) => !c.gone);
+        if (live.length) return state('communauto', 'alert', `${live[0].model} à ${live[0].dist} m`);
+        return state('communauto', 'now', `recherche ${v.search.radiusM} m`);
+    }
+    if (!v.updatedAt) return state('communauto', 'calm', 'pas de réponse');
+    const n = v.nearby.length;
+    return state('communauto', 'calm', n ? `${n} à ${v.radiusM} m` : `aucune à ${v.radiusM} m`);
 }
 
 interface SkyIn {

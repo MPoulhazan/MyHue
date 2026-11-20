@@ -1,0 +1,37 @@
+/* Carte « Communauto » de l'accueil */
+
+.ca-card { --ca-green: #9ad65a; --ca-green-bg: #22331a; --ca-green-text: #cdeeb0; gap: 12px; }
+.ca-card.on { box-shadow: inset 0 0 0 2px var(--ca-green-bg); }
+.ca-card.found { box-shadow: inset 0 0 0 2px var(--ca-green); }
+
+.ca-title { display: inline-flex; align-items: center; gap: 8px; }
+.ca-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ca-green); flex: none; }
+.ca-dot.live { animation: ca-pulse 1.6s ease-in-out infinite; }
+@keyframes ca-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.8); } }
+@media (prefers-reduced-motion: reduce) { .ca-dot.live { animation: none; } }
+
+.ca-pill { font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px; white-space: nowrap; background: var(--ca-green-bg); color: var(--ca-green-text); }
+.ca-pill.off { background: var(--h-surface-2); color: var(--h-muted); }
+
+.ca-line { margin: 0; color: var(--h-muted); font-size: 15px; line-height: 1.4; }
+
+.ca-pick { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; }
+.ca-pick > span { color: var(--h-muted); min-width: 58px; }
+.ca-chip { min-height: 40px; min-width: 56px; padding: 0 12px; border: none; border-radius: 999px; background: var(--h-surface-2); color: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.ca-chip.on { background: var(--ca-green); color: #142008; }
+
+.ca-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.ca-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 18px; border: none; border-radius: 999px; background: var(--h-surface-2); color: inherit; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; }
+.ca-btn.primary { background: var(--ca-green); color: #142008; }
+.ca-btn:disabled { opacity: 0.6; cursor: default; }
+
+.ca-cars { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.ca-car { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--h-surface-2); }
+.ca-car-text { display: grid; gap: 2px; min-width: 0; }
+.ca-car-text b { font-size: 16px; }
+.ca-car-text span { font-size: 14px; color: var(--h-muted); overflow-wrap: anywhere; }
+.ca-batt { font-weight: 500; color: var(--ca-green-text); }
+.ca-car-actions { display: flex; gap: 8px; }
+.ca-car-actions .ca-btn { min-height: 44px; flex: 1; }
+.ca-car.gone { opacity: 0.55; }
+.ca-car.gone b { text-decoration: line-through; }

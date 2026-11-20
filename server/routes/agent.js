@@ -27,6 +27,8 @@ import { isKitchenShowCommand } from '../kitchenDisplayLogic.js';
 import * as bixi from '../bixi.js';
 import { bixiSpeech, isBixiQuestion } from '../bixiLogic.js';
 import * as city from '../city.js';
+import * as communauto from '../communauto.js';
+import { communautoSpeech, parseCommunautoCommand } from '../communautoLogic.js';
 import * as collecte from '../collecte.js';
 import { citySpeech, isCityQuestion } from '../cityLogic.js';
 import { getHomeState, recentEvents } from '../homeState.js';
@@ -169,6 +171,26 @@ router.post('/api/agent', async (req, res) => {
         if (isBixiQuestion(message)) {
             const view = await bixi.getView({ fresh: true }).catch(() => null);
             if (view) return res.json({ message: bixiSpeech(view), actions: [], actionResults: [], tier: 'local', intent: 'bixi' });
+        }
+
+        // Niveau 0 : « Trouve-moi une Communauto à 300 m », « Arrête de chercher la Communauto »
+        const autoCmd = parseCommunautoCommand(message);
+        if (autoCmd) {
+            let speech;
+            try {
+                if (autoCmd.action === 'start') {
+                    speech = communautoSpeech(await communauto.startSearch({ radiusM: autoCmd.radiusM ?? undefined, by: 'Jarvis' }));
+                } else if (autoCmd.action === 'stop') {
+                    const was = (await communauto.getView()).search;
+                    communauto.stop('Jarvis');
+                    speech = was ? 'D’accord, j’arrête de chercher.' : 'Aucune recherche Communauto en cours.';
+                } else {
+                    speech = communautoSpeech(await communauto.getView({ fresh: true }));
+                }
+            } catch (err) {
+                speech = `Communauto : ${err.message}.`;
+            }
+            return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'communauto' });
         }
 
         // Niveau 0 : « J'ai sorti la poubelle »
