@@ -1,0 +1,8 @@
+/* Matin de Noël « Il est passé ! » */
+.noel-card { border-color: #6a5220; box-shadow: 0 0 140px rgba(255, 196, 90, 0.25); }
+.noel-title { font-size: 64px !important; color: var(--advent-gold) !important; }
+.noel-cooper { font-style: italic; }
+.advent-flake.noel-gold { background: var(--advent-gold); opacity: 0.8; box-shadow: 0 0 8px var(--advent-gold-glow); }
+@media (max-width: 760px) {
+    .noel-title { font-size: 42px !important; }
+}

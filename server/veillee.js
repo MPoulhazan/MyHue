@@ -68,7 +68,7 @@ export function getStatus(now = Date.now()) {
 // --- Les morceaux de la veillée ---
 
 /** Les lampes du salon et de la salle à manger, avec leur état complet. */
-async function fireLights() {
+export async function fireLights() {
     const [{ data: lights }, { data: groups }] = await Promise.all([hueClient.get('/lights'), hueClient.get('/groups')]);
     const ids = new Set(Object.values(groups)
         .filter((g) => g.type === 'Room' && FIRE_ROOMS.test(String(g.name).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()))

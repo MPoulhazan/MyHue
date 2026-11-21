@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { adventPoll } from '../components/home/widgets/polls';
+import axios from 'axios';
+import { adventPoll, noelPoll } from '../components/home/widgets/polls';
+import type { NoelView } from '../components/noel/NoelMorning';
 import { openAdventCase } from '../components/advent/api';
 import { dodos } from '../components/advent/types';
 import '../components/advent/Advent.css';
@@ -41,11 +43,30 @@ export function Advent() {
         }
     };
 
+    // Le vrai se lance seul le 25 au premier mouvement ; l'essai ne le consomme pas
+    const tryMorning = async () => {
+        setBusy(true);
+        try {
+            const { data } = await axios.post<NoelView>('/api/noel/try');
+            noelPoll.publish(data);
+        } catch {
+            setNote('Le matin de Noël n’a pas pu démarrer.');
+        } finally {
+            setBusy(false);
+        }
+    };
+
     return (
         <div className="advent-page">
             <header className="advent-head">
                 <h1 className="advent-h1">Calendrier de l’Avent</h1>
-                {dodos(season) && <span className="advent-count">{dodos(season)}</span>}
+                <div className="advent-head-right">
+                    {dodos(season) && <span className="advent-count">{dodos(season)}</span>}
+                    <button type="button" className="advent-ghost small" disabled={busy} onClick={tryMorning}
+                        title="Le salon scintille, un chant joue et la tablette affiche l’écran du 25, pendant 5 min">
+                        Essayer le matin du 25
+                    </button>
+                </div>
             </header>
 
             <div className="advent-body">

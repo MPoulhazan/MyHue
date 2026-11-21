@@ -21,6 +21,9 @@ import * as advent from '../advent.js';
 import { isAdventCommand } from '../adventLogic.js';
 import * as veillee from '../veillee.js';
 import { veilleeCommand } from '../veilleeLogic.js';
+import * as noel from '../noel.js';
+import { isSantaQuestion } from '../noelLogic.js';
+import { christmasSeason } from '../seasonLogic.js';
 import * as mailbox from '../mailbox.js';
 import * as guard from '../guard.js';
 import * as sensorRegistry from '../sensorRegistry.js';
@@ -118,6 +121,11 @@ router.post('/api/agent', async (req, res) => {
         if (veilleeCmd) {
             const speech = await veillee.voiceAnswer(veilleeCmd).catch((e) => `La veillée n’a pas pu démarrer : ${e.message}.`);
             return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'veillee' });
+        }
+
+        // Niveau 0 : « Est-ce qu'il est passé ? » (le père Noël)
+        if (isSantaQuestion(message, christmasSeason(Date.now(), process.env.TZ || 'America/Toronto').phase)) {
+            return res.json({ message: noel.voiceAnswer(), actions: [], actionResults: [], tier: 'local', intent: 'noel' });
         }
 
         // Niveau 0 : « Ouvre la case du jour » (calendrier de l'Avent, en décembre)

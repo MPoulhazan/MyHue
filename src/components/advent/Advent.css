@@ -28,6 +28,8 @@
 .advent-page { display: flex; flex-direction: column; gap: 24px; height: 100%; min-height: 0; padding: 8px 8px 16px; }
 .advent-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .advent-h1 { font-family: var(--advent-serif); font-size: 40px; font-weight: 600; color: var(--h-light-text); }
+.advent-head-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.advent-ghost.small { height: 40px; padding: 0 16px; font-size: 14px; }
 .advent-count { padding: 8px 16px; border-radius: 999px; background: var(--h-warn-bg); color: var(--h-warn-text); font-weight: 700; font-size: 15px; }
 .advent-muted { color: var(--h-muted); font-size: 15px; }
 .advent-muted.small { font-size: 13px; }

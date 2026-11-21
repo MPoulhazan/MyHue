@@ -26,6 +26,7 @@ import * as circadian from '../circadian.js';
 import * as cooper from '../cooper.js';
 import * as advent from '../advent.js';
 import * as veillee from '../veillee.js';
+import * as noel from '../noel.js';
 import * as mailbox from '../mailbox.js';
 import * as entranceLight from '../entranceLight.js';
 import * as guard from '../guard.js';
@@ -253,6 +254,17 @@ router.post('/api/veillee/stop', async (_req, res) => {
         res.status(400).json({ error: err.message });
     }
 });
+
+// Matin de Noël « Il est passé ! » : l'écran de la tablette, et un essai à la main
+router.get('/api/noel', (_req, res) => res.json(noel.getView()));
+router.post('/api/noel/try', async (_req, res) => {
+    try {
+        res.json(await noel.fire('essai'));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+router.post('/api/noel/end', async (_req, res) => res.json(await noel.end()));
 
 router.get('/api/cooper', (_req, res) => res.json(cooper.getView()));
 

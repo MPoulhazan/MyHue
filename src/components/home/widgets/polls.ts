@@ -9,6 +9,7 @@ import type { CommuteView } from '../../commute/CommuteCard';
 import type { MusicHome } from '../../../services/musicApi';
 import type { AdventView } from '../../advent/types';
 import type { VeilleeStatus } from '../../veillee/VeilleeCard';
+import type { NoelView } from '../../noel/NoelMorning';
 import type { HomeFeed, Pin, WidgetId } from './meta';
 
 // Lectures partagées par les cartes et le registre des widgets : une requête par intervalle
@@ -28,6 +29,8 @@ const adventDemo = typeof window !== 'undefined' ? new URLSearchParams(window.lo
 export const adventPoll = createSharedPoll<AdventView>(adventDemo ? `/api/advent?at=${encodeURIComponent(adventDemo)}` : '/api/advent', 15_000);
 // Veillée de Noël (décembre)
 export const veilleePoll = createSharedPoll<VeilleeStatus>('/api/veillee', 30_000);
+// Matin de Noël : l'écran « Il est passé ! » doit arriver vite
+export const noelPoll = createSharedPoll<NoelView>('/api/noel', 15_000);
 export const musicPoll = createSharedPoll<MusicHome>('/api/music/home', 60_000);
 
 /** Liste « Maintenant » calculée par le Pi ; relue aussi aux bascules d'heure et quand un capteur change */
