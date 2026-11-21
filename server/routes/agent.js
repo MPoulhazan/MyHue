@@ -17,6 +17,8 @@ import * as journal from '../journal.js';
 import { getSensors, getOutdoorWeather } from '../sensors.js';
 import { getSky, isSkyQuestion, skySpeech } from '../astro.js';
 import * as cooper from '../cooper.js';
+import * as advent from '../advent.js';
+import { isAdventCommand } from '../adventLogic.js';
 import * as mailbox from '../mailbox.js';
 import * as guard from '../guard.js';
 import * as sensorRegistry from '../sensorRegistry.js';
@@ -107,6 +109,12 @@ router.post('/api/agent', async (req, res) => {
             if (sky) {
                 return res.json({ message: skySpeech(sky), actions: [], actionResults: [], tier: 'local', intent: 'sky' });
             }
+        }
+
+        // Niveau 0 : « Ouvre la case du jour » (calendrier de l'Avent, en décembre)
+        if (isAdventCommand(message)) {
+            const speech = await advent.voiceAnswer();
+            return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'advent' });
         }
 
         // Niveau 0 : « Est-ce que Cooper a mangé ? », d'après la boîte de croquettes

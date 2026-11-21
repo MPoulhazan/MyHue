@@ -8,7 +8,7 @@ export type Relevance = 'alert' | 'now' | 'calm' | 'hidden';
 /** Réglage par widget : Auto suit la pertinence, Toujours garde la carte, Masqué l'enlève. */
 export type Pin = 'auto' | 'always' | 'hidden';
 
-export type WidgetId = 'guard' | 'city' | 'cooper' | 'mail' | 'music' | 'house' | 'moves' | 'sky' | 'journal';
+export type WidgetId = 'guard' | 'city' | 'advent' | 'cooper' | 'mail' | 'music' | 'house' | 'moves' | 'sky' | 'journal';
 
 /** La forme de la carte Déplacements, choisie par le Pi avec la pastille. */
 export type MovesForm = 'communauto' | 'trip' | 'metro' | 'communauto-idle' | null;
@@ -53,7 +53,7 @@ export function phoneLayout(cards: WidgetId[], chips: WidgetId[], opened: Widget
 }
 
 /** Ordre du registre (le même que sur le Pi), pour l'écran de réglages. */
-export const WIDGET_ORDER: WidgetId[] = ['guard', 'city', 'cooper', 'mail', 'music', 'house', 'moves', 'sky', 'journal'];
+export const WIDGET_ORDER: WidgetId[] = ['guard', 'city', 'advent', 'cooper', 'mail', 'music', 'house', 'moves', 'sky', 'journal'];
 
 export interface WidgetMeta {
     label: string;
@@ -66,6 +66,7 @@ export interface WidgetMeta {
 export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
     guard: { label: 'Alarme', when: 'Quand le mode alarme ou vacances est actif' },
     city: { label: 'En ville', when: 'Alerte météo, collecte la veille au soir, avis du quartier' },
+    advent: { label: 'Calendrier de l’Avent', when: 'Du 24 novembre au 31 décembre ; en carte tant que la case du jour n’est pas ouverte' },
     cooper: { label: 'Cooper', when: 'Toujours affiché, en tête s’il est oublié' },
     mail: { label: 'Courrier', when: 'Du passage du facteur jusqu’à l’ouverture de la boîte' },
     music: { label: 'Musique', when: 'Quand tu as l’habitude d’écouter à ce moment, et de 7 h à 9 h' },
@@ -77,5 +78,5 @@ export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
 
 /** Cooper reste toujours une carte : c'est le widget préféré de la maison. */
 export const DEFAULT_PINS: Record<WidgetId, Pin> = {
-    guard: 'auto', city: 'auto', cooper: 'always', mail: 'auto', music: 'auto', house: 'auto', moves: 'auto', sky: 'auto', journal: 'auto',
+    guard: 'auto', city: 'auto', advent: 'auto', cooper: 'always', mail: 'auto', music: 'auto', house: 'auto', moves: 'auto', sky: 'auto', journal: 'auto',
 };

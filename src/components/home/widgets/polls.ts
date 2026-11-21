@@ -7,6 +7,7 @@ import type { ActiveAlarm } from '../../alarm/HomeAlarm';
 import type { CommunautoView } from '../../communauto/CommunautoCard';
 import type { CommuteView } from '../../commute/CommuteCard';
 import type { MusicHome } from '../../../services/musicApi';
+import type { AdventView } from '../../advent/types';
 import type { HomeFeed, Pin, WidgetId } from './meta';
 
 // Lectures partagées par les cartes et le registre des widgets : une requête par intervalle
@@ -20,6 +21,10 @@ export const commutePoll = createSharedPoll<CommuteView>('/api/commute', 60_000)
 // Fumée et fuite : l'écran d'alarme doit arriver vite
 export const alarmPoll = createSharedPoll<{ active: ActiveAlarm[] }>('/api/alarm', 3_000);
 export const guardPoll = createSharedPoll<GuardView>('/api/guard', 30_000);
+// Calendrier de l'Avent : 15 s pour que la case ouverte à la voix s'affiche vite sur la tablette
+// ?adventdemo=2026-12-12 : l'écran du calendrier tel qu'il sera ce jour-là (sans rien ouvrir)
+const adventDemo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('adventdemo') : null;
+export const adventPoll = createSharedPoll<AdventView>(adventDemo ? `/api/advent?at=${encodeURIComponent(adventDemo)}` : '/api/advent', 15_000);
 export const musicPoll = createSharedPoll<MusicHome>('/api/music/home', 60_000);
 
 /** Liste « Maintenant » calculée par le Pi ; relue aussi aux bascules d'heure et quand un capteur change */

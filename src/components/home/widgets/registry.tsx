@@ -7,6 +7,7 @@ import type { IconName } from '../../Icon';
 import { HouseCard, Journal } from '../cards';
 import { CityCard } from '../../city/CityCard';
 import { CooperCard } from '../../cooper/CooperCard';
+import { AdventCard } from '../../advent/AdventCard';
 import { MailboxCard } from '../../mailbox/MailboxCard';
 import { MovesCard } from '../../moves/MovesCard';
 import { SkyCard } from '../../sky/SkyCard';
@@ -32,6 +33,7 @@ export interface WidgetCtx {
 const RENDER: Record<WidgetId, (ctx: WidgetCtx) => ReactNode> = {
     guard: () => <GuardCard />,
     city: () => <CityCard />,
+    advent: () => <AdventCard />,
     cooper: () => <CooperCard />,
     mail: () => <MailboxCard />,
     music: ({ home }) => <MusicCard cast={home.cast} />,
@@ -42,7 +44,7 @@ const RENDER: Record<WidgetId, (ctx: WidgetCtx) => ReactNode> = {
 };
 
 const CHIP_ICON: Record<WidgetId, IconName | null> = {
-    guard: 'shield', city: 'city', cooper: null, mail: 'mail', music: 'music', house: 'home', moves: 'bike', sky: 'moon', journal: 'list',
+    guard: 'shield', city: 'city', advent: 'gift', cooper: null, mail: 'mail', music: 'music', house: 'home', moves: 'bike', sky: 'moon', journal: 'list',
 };
 
 /** Les cartes pleines des widgets demandés, dans l'ordre donné. */

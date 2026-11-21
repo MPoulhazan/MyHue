@@ -9,6 +9,7 @@ import { Icon } from '../Icon';
 import type { IconName } from '../Icon';
 import { MiniPlayer } from './MiniPlayer';
 import { AlertHost } from '../alerts/AlertHost';
+import { AdventReveal } from '../advent/AdventReveal';
 import './AppShell.css';
 
 // ── Structure commune : rail à gauche (tablette), onglets en bas (téléphone) ──
@@ -118,6 +119,8 @@ export function AppShell() {
                 <div className="shell-main">
                     {/* Toutes les alertes : bannières ici, plein écran au-dessus de tout */}
                     <AlertHost services={home.health} sensors={home.sensors} />
+                    {/* La case du jour en plein écran, ouverte ici ou à la voix */}
+                    <AdventReveal />
                     <div className="shell-page">
                         {backToSettings && (
                             <Link to="/settings" className="shell-back">

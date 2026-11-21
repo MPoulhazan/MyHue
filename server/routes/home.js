@@ -24,6 +24,7 @@ import * as briefing from '../briefing.js';
 import * as lightSignals from '../lightSignals.js';
 import * as circadian from '../circadian.js';
 import * as cooper from '../cooper.js';
+import * as advent from '../advent.js';
 import * as mailbox from '../mailbox.js';
 import * as entranceLight from '../entranceLight.js';
 import * as guard from '../guard.js';
@@ -214,6 +215,22 @@ router.put('/api/home-widgets', (req, res) => {
 });
 
 // --- Repas de Cooper ---
+
+// Calendrier de l'Avent (décembre) : la vue, et une case à ouvrir (celle du jour par défaut)
+// ?at=2026-12-12 : la vue à cette date (démo, lecture seule)
+router.get('/api/advent', (req, res) => {
+    const at = /^\d{4}-\d{2}-\d{2}$/.test(req.query.at || '') ? Date.parse(`${req.query.at}T12:00:00-05:00`) : Date.now();
+    res.json(advent.getView(at));
+});
+router.post('/api/advent/open', async (req, res) => {
+    try {
+        const result = await advent.open(req.body?.n ?? null, 'écran');
+        homeFeed.invalidate();
+        res.json(result);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
 
 router.get('/api/cooper', (_req, res) => res.json(cooper.getView()));
 
