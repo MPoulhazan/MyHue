@@ -19,6 +19,8 @@ import { getSky, isSkyQuestion, skySpeech } from '../astro.js';
 import * as cooper from '../cooper.js';
 import * as advent from '../advent.js';
 import { isAdventCommand } from '../adventLogic.js';
+import * as veillee from '../veillee.js';
+import { veilleeCommand } from '../veilleeLogic.js';
 import * as mailbox from '../mailbox.js';
 import * as guard from '../guard.js';
 import * as sensorRegistry from '../sensorRegistry.js';
@@ -109,6 +111,13 @@ router.post('/api/agent', async (req, res) => {
             if (sky) {
                 return res.json({ message: skySpeech(sky), actions: [], actionResults: [], tier: 'local', intent: 'sky' });
             }
+        }
+
+        // Niveau 0 : « Lance la veillée », « fin de la veillée » (décembre)
+        const veilleeCmd = veilleeCommand(message);
+        if (veilleeCmd) {
+            const speech = await veillee.voiceAnswer(veilleeCmd).catch((e) => `La veillée n’a pas pu démarrer : ${e.message}.`);
+            return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'veillee' });
         }
 
         // Niveau 0 : « Ouvre la case du jour » (calendrier de l'Avent, en décembre)

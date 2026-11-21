@@ -9,6 +9,7 @@ import * as guard from './guard.js';
 import * as city from './city.js';
 import * as cooper from './cooper.js';
 import * as advent from './advent.js';
+import * as veillee from './veillee.js';
 import * as mailbox from './mailbox.js';
 import * as musicPlayer from './musicPlayer.js';
 import * as castService from './castService.js';
@@ -50,6 +51,7 @@ async function gather() {
         city: await safe(() => city.getView()),
         cooper: await safe(() => cooper.getView()),
         advent: await safe(() => advent.getView()),
+        veillee: await safe(() => veillee.getStatus()),
         mail: await safe(() => mailbox.getView()),
         music: await safe(() => ({ suggestion: musicPlayer.suggestion() })),
         playing: Boolean(castService.getNowPlaying()),

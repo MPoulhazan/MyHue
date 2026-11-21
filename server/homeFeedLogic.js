@@ -10,7 +10,7 @@
 export const RELEVANCES = ['alert', 'now', 'calm', 'hidden'];
 
 /** Ordre du registre : il départage deux widgets de même pertinence. */
-export const WIDGET_ORDER = ['guard', 'city', 'advent', 'cooper', 'mail', 'music', 'house', 'moves', 'sky', 'journal'];
+export const WIDGET_ORDER = ['guard', 'city', 'advent', 'veillee', 'cooper', 'mail', 'music', 'house', 'moves', 'sky', 'journal'];
 
 /** Cooper reste toujours une carte : c'est le widget préféré de la maison. */
 export const DEFAULT_PINS = Object.fromEntries(WIDGET_ORDER.map((id) => [id, id === 'cooper' ? 'always' : 'auto']));
@@ -19,6 +19,7 @@ export const DEFAULT_PINS = Object.fromEntries(WIDGET_ORDER.map((id) => [id, id 
 export const MAX_CARDS = 5;
 
 import { adventRelevance } from './adventLogic.js';
+import { veilleeRelevance } from './veilleeLogic.js';
 
 const TZ = 'America/Toronto';
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
@@ -233,13 +234,14 @@ export function arrange(states, pins = {}, max = MAX_CARDS) {
 
 /**
  * La liste complète servie par /api/home-feed.
- * @param d { guard, city, advent, cooper, mail, music, playing, sensors, commute, bixi, communauto, sky, journalCount }
+ * @param d { guard, city, advent, veillee, cooper, mail, music, playing, sensors, commute, bixi, communauto, sky, journalCount }
  */
 export function buildFeed(d, pins = {}, now = Date.now(), tz = TZ) {
     const states = [
         guardRelevance(d.guard, now),
         cityRelevance(d.city),
         adventRelevance(d.advent),
+        veilleeRelevance(d.veillee, d.veillee?.season),
         cooperRelevance(d.cooper),
         mailRelevance(d.mail),
         musicRelevance(d.music, d.playing, now, tz),

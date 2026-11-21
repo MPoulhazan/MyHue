@@ -416,3 +416,6 @@ export const removeCustomPlaylist = (playlistId) => {
     customPlaylists.delete(playlistId);
     try { writeFileSync(PLAYLISTS_FILE, JSON.stringify([...customPlaylists.values()], null, 2)); } catch { /* disque plein */ }
 };
+
+/** Recherche de vidéos de toute catégorie (la bûche de Noël n'est pas de la musique), via yt-dlp. */
+export const searchVideos = (query, limit = 8) => ytdlpList(`ytsearch${limit}:${String(query || '').slice(0, 100)}`, limit);

@@ -25,6 +25,7 @@ import * as lightSignals from '../lightSignals.js';
 import * as circadian from '../circadian.js';
 import * as cooper from '../cooper.js';
 import * as advent from '../advent.js';
+import * as veillee from '../veillee.js';
 import * as mailbox from '../mailbox.js';
 import * as entranceLight from '../entranceLight.js';
 import * as guard from '../guard.js';
@@ -227,6 +228,27 @@ router.post('/api/advent/open', async (req, res) => {
         const result = await advent.open(req.body?.n ?? null, 'écran');
         homeFeed.invalidate();
         res.json(result);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// Veillée de Noël (décembre) : bûche, jazz, feu de cheminée, un degré de plus
+router.get('/api/veillee', (_req, res) => res.json(veillee.getStatus()));
+router.post('/api/veillee/start', async (_req, res) => {
+    try {
+        const status = await veillee.start('écran');
+        homeFeed.invalidate();
+        res.json(status);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+router.post('/api/veillee/stop', async (_req, res) => {
+    try {
+        const status = await veillee.stop('écran');
+        homeFeed.invalidate();
+        res.json(status);
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

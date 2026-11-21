@@ -8,7 +8,7 @@ import { dataFile } from './dataDir.js';
 
 const FILE = dataFile('home-widgets.json');
 
-export const WIDGET_IDS = ['guard', 'city', 'advent', 'cooper', 'mail', 'music', 'house', 'moves', 'sky', 'journal'];
+export const WIDGET_IDS = ['guard', 'city', 'advent', 'veillee', 'cooper', 'mail', 'music', 'house', 'moves', 'sky', 'journal'];
 /** Anciens widgets fondus dans « Déplacements » (novembre 2026) */
 const MOVES_PARTS = ['bixi', 'metro', 'communauto'];
 export const PINS = ['auto', 'always', 'hidden'];

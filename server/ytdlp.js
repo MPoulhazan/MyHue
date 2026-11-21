@@ -31,3 +31,23 @@ export const getYtDlpAudioUrl = async (videoId) => {
     cache.set(videoId, { url, expiresAt: Date.now() + 4 * 60 * 60 * 1000 });
     return url;
 };
+
+const videoCache = new Map(); // videoId -> { url, expiresAt }
+
+/**
+ * URL vidéo directe (sans le son) d'une vidéo YouTube, pour un écran Cast : la bûche de la veillée.
+ * H.264 jusqu'à 1080p, sinon le MP4 360p avec le son.
+ */
+export const getYtDlpVideoUrl = async (videoId) => {
+    const cached = videoCache.get(videoId);
+    if (cached && cached.expiresAt > Date.now()) return cached.url;
+    const { stdout } = await execFileAsync(
+        'yt-dlp',
+        ['-f', 'bestvideo[ext=mp4][vcodec^=avc1][height<=1080]/18', '--get-url', '--no-warnings', '--no-playlist', `https://www.youtube.com/watch?v=${videoId}`],
+        { timeout: 20000 },
+    );
+    const url = stdout.trim().split('\n')[0];
+    if (!url) throw new Error('yt-dlp returned empty URL');
+    videoCache.set(videoId, { url, expiresAt: Date.now() + 4 * 60 * 60 * 1000 });
+    return url;
+};
