@@ -8,6 +8,9 @@ import * as yt from './youtubeService.js';
 import { getYtDlpAudioUrl } from './ytdlp.js';
 import { dataFile } from './dataDir.js';
 import * as habits from './musicHabits.js';
+import { christmasMusicOn, christmasQuery, christmasHint, christmasDefault } from './christmasMusic.js';
+
+const TZ = process.env.TZ || 'America/Toronto';
 
 const PORT = Number(process.env.AGENT_PORT || 5174);
 const MAX_QUEUE = 100;
@@ -32,6 +35,8 @@ export const MOODS = [
     { id: 'diner', name: 'Dîner', hint: 'Jazz, soul, bossa', radio: 'jazz' },
     { id: 'soiree', name: 'Soirée', hint: 'Détente entre amis', radio: 'chillout' },
     { id: 'dodo', name: 'Dodo', hint: 'S’arrête tout seul après 45 min', radio: 'ambient', sleepMinutes: 45 },
+    // De fin novembre au 31 décembre seulement ; sans playlist, une recherche qui suit l'heure
+    { id: 'noel', name: 'Noël', hint: 'Chants, tubes et jazz de Noël', radio: 'jazz', seasonal: true },
 ];
 
 const readJson = (file, fallback) => {
@@ -45,7 +50,15 @@ const writeJson = (file, data) => {
 const MOODS_FILE = dataFile('music-moods.json');
 let moodLinks = readJson(MOODS_FILE, {}); // moodId -> { playlistId, playlistName }
 
-export const getMoods = () => MOODS.map((m) => ({ ...m, playlistId: moodLinks[m.id]?.playlistId || null, playlistName: moodLinks[m.id]?.playlistName || null }));
+/** Les ambiances du moment : « Noël » n'existe qu'en saison, et son sous-titre suit l'heure. */
+export const getMoods = (now = Date.now()) => MOODS
+    .filter((m) => !m.seasonal || christmasMusicOn(now, TZ))
+    .map((m) => ({
+        ...m,
+        hint: m.id === 'noel' ? christmasHint(habits.slotOf(now, TZ).band) : m.hint,
+        playlistId: moodLinks[m.id]?.playlistId || null,
+        playlistName: moodLinks[m.id]?.playlistName || null,
+    }));
 
 export function linkMood(moodId, playlist) {
     if (!MOODS.some((m) => m.id === moodId)) throw new Error('Unknown mood');
@@ -164,7 +177,7 @@ export async function play(req) {
         setSleep(0);
     } else if (kind === 'mood') {
         const mood = getMoods().find((m) => m.id === req.id);
-        if (!mood) throw new Error('Unknown mood');
+        if (!mood) throw new Error(req.id === 'noel' ? 'La musique de Noël revient fin novembre' : 'Unknown mood');
         source = { kind: 'mood', id: mood.id, name: mood.name, thumbnail: null };
         let played = false;
         if (mood.playlistId) {
@@ -174,6 +187,16 @@ export async function play(req) {
                 played = true;
             } catch (err) {
                 console.warn(`music: mood ${mood.id} playlist failed, using its radio (${err?.message})`);
+            }
+        }
+        // Noël sans playlist : des titres trouvés pour ce moment de la journée
+        if (!played && mood.id === 'noel') {
+            try {
+                const found = await yt.search(christmasQuery(habits.slotOf(Date.now(), TZ).band), 30);
+                await playTracks(deviceId, shuffled(found), 0, source);
+                played = true;
+            } catch (err) {
+                console.warn(`music: Christmas search failed, using its radio (${err?.message})`);
             }
         }
         if (!played) await playRadio(deviceId, RADIOS.find((r) => r.id === mood.radio), source);
@@ -208,7 +231,8 @@ export async function play(req) {
         throw new Error('Unknown kind');
     }
 
-    if (kind !== 'resume' && source?.id) habits.record({ ...source, deviceId });
+    // Noël n'est pas une habitude : en janvier, il ne faudrait pas le resuggérer
+    if (kind !== 'resume' && source?.id && source.id !== 'noel') habits.record({ ...source, deviceId });
     return { source, state: state() };
 }
 
@@ -285,9 +309,12 @@ export function state() {
 export function suggestion(now = Date.now()) {
     const playing = cast.getNowPlaying() && session?.source?.id ? `${session.source.kind}:${session.source.id}` : null;
     const habit = habits.suggest(habits.getEntries(), now, { exclude: playing });
-    const s = habit || habits.defaultMood(now);
+    const band = habits.slotOf(now, TZ).band;
+    const s = habit || (christmasMusicOn(now, TZ) && christmasDefault(band)
+        ? { kind: 'mood', id: 'noel', habit: false, reason: 'C’est la saison' }
+        : habits.defaultMood(now));
     if (s.kind === 'mood') {
-        const mood = MOODS.find((m) => m.id === s.id);
+        const mood = getMoods(now).find((m) => m.id === s.id) || MOODS.find((m) => m.id === s.id);
         return { ...s, name: mood.name, hint: mood.hint };
     }
     return s;

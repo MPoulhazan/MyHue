@@ -29,6 +29,7 @@ const MUSIC_WORD = /\b(musique|son|volume|pause|reprends?|reprendre|chanson|morc
 const PLAY_WORD = /\b(mets?|mettre|lance[rz]?|joue[rz]?|demarre[rz]?|envoie[rz]?)\b/;
 // Ambiances de l'écran Musique (server/musicPlayer.js), mots normalisés
 const MUSIC_MOODS = [
+    { id: 'noel', words: /\b(noel|christmas)\b/ },
     { id: 'zen', words: /\b(zen|calme|douce|relaxante?|detente)\b/ },
     { id: 'focus', words: /\b(focus|concentr\w*|travail(ler)?)\b/ },
     { id: 'energie', words: /\b(energie|energique|dynamique|menage|sport)\b/ },

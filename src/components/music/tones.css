@@ -6,4 +6,5 @@
 .tone-lilac { --tone-bg: #c7b3ff; --tone-fg: #1c1236; --tone-deep: #b49ef5; }
 .tone-night { --tone-bg: #262f4a; --tone-fg: #dfe6ff; --tone-deep: #313c5e; }
 .tone-lime { --tone-bg: #c8f560; --tone-fg: #141513; --tone-deep: #b5e24a; }
+.tone-noel { --tone-bg: #1f3b2a; --tone-fg: #ffd98a; --tone-deep: #27493a; }
 .tone-dark { --tone-bg: var(--h-surface); --tone-fg: var(--h-text); --tone-deep: var(--h-surface-2); }

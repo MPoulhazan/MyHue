@@ -70,6 +70,7 @@ test('musique : lancer la suggestion, une ambiance ou une radio', () => {
     assert.deepEqual(play('Jean-Claude mets de la musique'), [{ type: 'music_play', what: 'suggestion' }]);
     assert.deepEqual(play('mets de la musique zen dans la cuisine'), [{ type: 'music_play', what: 'mood', id: 'zen', deviceName: 'Cuisine' }]);
     assert.deepEqual(play('lance de la musique pour dormir'), [{ type: 'music_play', what: 'mood', id: 'dodo' }]);
+    assert.deepEqual(play('mets de la musique de Noël'), [{ type: 'music_play', what: 'mood', id: 'noel' }]);
     assert.deepEqual(play('mets la radio jazz'), [{ type: 'music_play', what: 'radio', id: 'jazz' }]);
     assert.deepEqual(play('musique pour travailler'), [{ type: 'music_play', what: 'mood', id: 'focus' }]);
 });

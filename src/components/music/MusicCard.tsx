@@ -14,6 +14,7 @@ const MOOD_LOOK: Record<string, { icon: IconName; tone: string }> = {
     diner: { icon: 'bowl', tone: 'peach' },
     soiree: { icon: 'glass', tone: 'lilac' },
     dodo: { icon: 'moon', tone: 'night' },
+    noel: { icon: 'gift', tone: 'noel' },
 };
 
 /** Carte « Musique » de l'accueil : la suggestion du moment, à lancer d'une touche. */

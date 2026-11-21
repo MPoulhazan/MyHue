@@ -6,3 +6,21 @@
 @media (max-width: 760px) {
     .noel-title { font-size: 42px !important; }
 }
+
+/* Ambiance de la saison : guirlande discrète et neige qui tombe quand il neige dehors */
+.season-garland {
+    position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 50; pointer-events: none; opacity: 0.75;
+    background: repeating-linear-gradient(90deg, #e0574f 0 28px, #ffb547 28px 56px, #3f8f5a 56px 84px);
+}
+.season-snow { position: fixed; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; }
+.season-flake {
+    position: absolute; top: -10px; border-radius: 50%; background: #f4f5ee;
+    animation: season-fall linear infinite; will-change: transform;
+}
+@keyframes season-fall {
+    from { transform: translate3d(0, -10px, 0); }
+    to { transform: translate3d(var(--drift, 20px), 105vh, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .season-snow { display: none; }
+}

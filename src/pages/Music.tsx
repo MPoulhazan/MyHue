@@ -19,6 +19,7 @@ const MOOD_LOOK: Record<string, { icon: IconName; tone: string }> = {
     diner: { icon: 'bowl', tone: 'peach' },
     soiree: { icon: 'glass', tone: 'lilac' },
     dodo: { icon: 'moon', tone: 'night' },
+    noel: { icon: 'gift', tone: 'noel' },
 };
 
 const RADIO_TONES = ['amber', 'sky', 'lime', 'peach', 'lilac', 'mint', 'night', 'amber'];

@@ -27,6 +27,8 @@ import * as cooper from '../cooper.js';
 import * as advent from '../advent.js';
 import * as veillee from '../veillee.js';
 import * as noel from '../noel.js';
+import { christmasSeason } from '../seasonLogic.js';
+import { snowIntensity } from '../christmasMusic.js';
 import * as mailbox from '../mailbox.js';
 import * as entranceLight from '../entranceLight.js';
 import * as guard from '../guard.js';
@@ -265,6 +267,20 @@ router.post('/api/noel/try', async (_req, res) => {
     }
 });
 router.post('/api/noel/end', async (_req, res) => res.json(await noel.end()));
+
+// Ambiance de la saison sur la tablette : la neige qui tombe quand il neige vraiment
+// ?snow=1 : aperçu (neige modérée, même hors saison)
+router.get('/api/christmas/ambience', async (req, res) => {
+    if (req.query.snow === '1') return res.json({ on: true, snow: 0.7, code: 73, preview: true });
+    const season = christmasSeason(Date.now(), process.env.TZ || 'America/Toronto');
+    if (!season.on) return res.json({ on: false, snow: 0, code: null });
+    try {
+        const code = (await getForecast()).current?.weather_code ?? null;
+        res.json({ on: true, snow: snowIntensity(code), code });
+    } catch {
+        res.json({ on: true, snow: 0, code: null });
+    }
+});
 
 router.get('/api/cooper', (_req, res) => res.json(cooper.getView()));
 
