@@ -1025,6 +1025,16 @@ router.get('/api/outdoor', async (_req, res) => {
 router.get('/api/stove', (_req, res) => res.json(stove.getView()));
 router.patch('/api/stove', (req, res) => res.json(stove.update(req.body || {})));
 
+// Carte « Maison » : ce que les capteurs seuls ne disent pas (cuisinière, balcon, mode garde)
+router.get('/api/house', async (_req, res) => {
+    const g = guard.getView();
+    res.json({
+        stove: stove.getView(),
+        balcony: await outdoor.getBrief().catch(() => null),
+        guard: g.mode ? { mode: g.mode, since: g.since } : null,
+    });
+});
+
 // --- Ciel de la nuit (lune, planètes, étoiles filantes, aurores) ---
 
 router.get('/api/sky/alerts', (_req, res) => res.json(skyAlerts.getStatus()));

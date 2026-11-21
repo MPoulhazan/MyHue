@@ -190,6 +190,22 @@ const checkCooling = async () => {
 
 // --- Vue ---
 
+/** Résumé court pour la carte Maison : mesure, tendance sur 1 h, min/max du jour. */
+export const getBrief = async () => {
+    const local = await getLocal();
+    const now = Date.now();
+    const latest = samples[samples.length - 1];
+    const hourAgo = [...samples].reverse().find((s) => s.ts <= now - 50 * 60_000 && s.ts >= now - 120 * 60_000);
+    const diff = latest && hourAgo ? latest.t - hourAgo.t : 0;
+    const today = records.days[dayKey()] || null;
+    return {
+        temperature: local?.temperature ?? null,
+        humidity: local?.humidity ?? null,
+        trend: diff >= 0.5 ? 'up' : diff <= -0.5 ? 'down' : null,
+        today: today ? { min: round1(today.min), max: round1(today.max) } : null,
+    };
+};
+
 export const getView = async () => {
     const sensors = await getSensors();
     const forecast = await forecastTemp();

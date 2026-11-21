@@ -156,6 +156,34 @@ a.weather-pill:hover { background: var(--h-surface-2); }
 .house-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
 .house-list li { display: flex; justify-content: space-between; gap: 12px; }
 .house-list li span:last-child { text-align: right; }
+.house-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.house-chip { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; background: var(--h-surface-2); font-size: 15px; }
+.house-chip b { color: var(--h-text); font-weight: 600; }
+.house-chip.hot { background: var(--h-light-dim); color: var(--h-light-text); }
+.house-chip.hot b { color: var(--h-light); }
+.house-motion { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--h-muted); }
+.house-sheet .warn { color: var(--h-warn); }
+.house-sheet .muted { color: var(--h-muted); }
+.house-section { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--h-line); }
+.house-section h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--h-muted); }
+.house-climate, .house-health { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; font-size: 15px; }
+.house-climate li { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; align-items: center; gap: 14px; }
+.house-climate-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.house-climate-name .muted { font-size: 13px; }
+.house-climate-val { text-align: right; white-space: nowrap; }
+.house-spark { display: block; width: 120px; height: 28px; color: var(--h-accent); }
+.house-health li { display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(0, auto); align-items: center; gap: 12px; }
+.house-health li > span:last-child { text-align: right; font-size: 14px; }
+.house-batt { position: relative; display: flex; align-items: center; height: 18px; border-radius: 999px; background: var(--h-surface-2); overflow: hidden; }
+.house-batt i { position: absolute; inset: 0 auto 0 0; background: var(--h-ok-bg); }
+.house-batt.low i { background: var(--h-bad-bg); }
+.house-batt b { position: relative; width: 100%; text-align: center; font-size: 12px; font-weight: 500; }
+@media (max-width: 520px) {
+    .house-climate li { grid-template-columns: minmax(0, 1fr) auto; }
+    .house-climate .house-spark { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+    .house-health li { grid-template-columns: minmax(0, 1fr) 72px; }
+    .house-health li > span:last-child { grid-column: 1 / -1; text-align: left; }
+}
 
 .journal ul, .journal-sheet ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; font-size: 14px; max-height: 300px; overflow-y: auto; }
 .journal-sheet ul { max-height: none; overflow: visible; }

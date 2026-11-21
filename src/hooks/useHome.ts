@@ -104,7 +104,9 @@ export interface Sensor {
     pausedUntil: number | 'forever' | null;
     isOnline: boolean;
     lastUpdated: string | null;
-    props: { temperature: number | null; humidity: number | null; pressure: number | null; battery: number | null; isOpen: boolean | null; leak?: boolean | null; smoke?: boolean | null };
+    props: { temperature: number | null; humidity: number | null; pressure: number | null; battery: number | null; isOpen: boolean | null; leak?: boolean | null; smoke?: boolean | null; lastMotion?: string | null; lastOpen?: string | null };
+    /** Porte ou boîte : depuis quand elle est dans son état actuel (ISO) */
+    stateSince?: string | null;
 }
 
 /** Service dont dépend la maison (pont Hue, Zigbee, Home Assistant...), vu par le serveur. */

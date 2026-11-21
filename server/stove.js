@@ -247,6 +247,8 @@ export const getView = () => ({
     lights: config.lights,
     boilVoice: config.boilVoice,
     lightOn: Boolean(config.lamp),
+    // Alerte « oubliée » déjà envoyée et toujours chaude : 'away' (personne) ou 'long' (1 h 30)
+    alerting: !config.state.on ? null : config.alerts.lastAwayAlertAt ? 'away' : config.alerts.lastLongAlertAt ? 'long' : null,
     text: statusText({ on: config.state.on, since: config.state.since }),
 });
 

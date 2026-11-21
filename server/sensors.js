@@ -8,10 +8,34 @@ import * as sensorPause from './sensorPause.js';
 import * as haService from './haService.js';
 import { roleOf } from './sensorRoles.js';
 import { localOutdoor } from './outdoorLogic.js';
+import * as journal from './journal.js';
+
+// Dernier mouvement vu par capteur (ieee -> ms) : messages « occupancy: true », repris de HA au démarrage
+const motionAt = new Map();
+zigbeeService.emitter.on('update', (name) => {
+    const d = zigbeeService.getDevice(name);
+    if (d?.state?.occupancy === true && Date.now() - (d.lastSeen || 0) < 5000) motionAt.set(d.ieeeAddr, Date.now());
+});
+
+/** Portes et boîtes : dernier changement d'état et dernière ouverture, d'après le journal (persisté). */
+const contactTimes = () => {
+    const out = new Map();
+    for (const e of journal.list({ limit: 2000, kind: 'door' })) {
+        const did = e.data?.did;
+        if (!did) continue;
+        const t = out.get(did) || { changedAt: null, lastOpen: null };
+        t.changedAt ??= e.ts;
+        if (e.data.isOpen && t.lastOpen == null) t.lastOpen = e.ts;
+        out.set(did, t);
+    }
+    return out;
+};
+const iso = (ts) => (ts ? new Date(ts).toISOString() : null);
 
 export const getSensors = async () => {
     const devices = zigbeeService.getDevices();
     const registry = sensorRegistry.getAll();
+    const contacts = contactTimes();
     return registry.map((entry) => {
         const device = devices.find((d) => d.ieeeAddr === entry.ieee) || null;
         const state = device?.state || {};
@@ -35,9 +59,11 @@ export const getSensors = async () => {
                 isOpen: 'contact' in state ? !state.contact : null,
                 leak: 'water_leak' in state ? Boolean(state.water_leak) : null,
                 smoke: 'smoke' in state ? Boolean(state.smoke) : null,
-                lastMotion: state.occupancy ? new Date().toISOString() : null,
-                lastOpen: null,
+                lastMotion: iso(motionAt.get(entry.ieee)),
+                lastOpen: iso(contacts.get(entry.ieee)?.lastOpen),
             },
+            // Porte ou boîte : depuis quand elle est dans son état actuel (journal)
+            stateSince: 'contact' in state ? iso(contacts.get(entry.ieee)?.changedAt) : null,
             lastUpdated: device?.lastSeen ? new Date(device.lastSeen).toISOString() : null,
             source: 'zigbee',
         };
@@ -91,6 +117,10 @@ export const seedFromHomeAssistant = async () => {
                 const value = toZ2mValue(prop, e.state);
                 if (value === undefined) continue;
                 state[prop] = value;
+                if (prop === 'occupancy' && !motionAt.has(device.ieeeAddr)) {
+                    const ts = Date.parse(e.last_changed);
+                    if (ts) motionAt.set(device.ieeeAddr, ts);
+                }
                 lastSeen = Math.max(lastSeen, Date.parse(e.last_reported || e.last_updated) || 0);
             }
             if (Object.keys(state).length) {
