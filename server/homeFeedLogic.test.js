@@ -128,9 +128,31 @@ test('movesForm : Communauto en cours d’abord, puis trajet en saison BIXI, mé
     const search = { active: true, radiusM: 300, found: [] };
     assert.equal(movesForm({ commute: null, bixi: bixiOn, city: metroOk, communauto: { ...idle, search } }), 'communauto');
     assert.equal(movesForm({ commute: null, bixi: bixiOn, city: metroOk, communauto: idle }), 'trip');
-    assert.equal(movesForm({ commute: null, bixi: bixiOff, city: metroOk, communauto: idle }), 'metro');
+    // Métro en service normal : la Communauto passe devant ; perturbé, le métro
+    assert.equal(movesForm({ commute: null, bixi: bixiOff, city: metroOk, communauto: idle }), 'communauto-idle');
+    assert.equal(movesForm({ commute: null, bixi: bixiOff, city: metroOk, communauto: null }), 'metro');
+    const metroBad = { metro: { show: true, error: null, lines: [{ ok: false }] } };
+    assert.equal(movesForm({ commute: null, bixi: bixiOff, city: metroBad, communauto: idle }), 'metro');
     assert.equal(movesForm({ commute: null, bixi: bixiOff, city: null, communauto: idle }), 'communauto-idle');
     assert.equal(movesForm({ commute: null, bixi: null, city: null, communauto: null }), null);
+});
+
+test('movesForm : le trajet de Camille seulement autour de son départ, sinon la Communauto', () => {
+    const camille = { ...bixiOn, trips: [{ who: 'Camille', handled: true }] };
+    const f = (phase, bixi = camille) => movesForm({ commute: commute(phase), bixi, city: metroOk, communauto: idle });
+    assert.equal(f(null), 'communauto-idle', 'pas de trajet aujourd’hui');
+    assert.equal(f('before'), 'communauto-idle');
+    assert.equal(f('soon'), 'trip');
+    assert.equal(f('now'), 'trip');
+    assert.equal(f('after'), 'communauto-idle');
+    // En saison BIXI de la maison, les trajets sans conseil restent montrés
+    assert.equal(f('after', { ...camille, trips: [...camille.trips, { who: 'Moi', handled: false }] }), 'trip');
+});
+
+test('movesRelevance : la Communauto au repos se relit au moment où le trajet revient', () => {
+    const c = { ...commute('before'), plan: { kind: 'work', from: '08:00', to: '08:30' } };
+    const r = moves({ bixi: { ...bixiOn, trips: [{ who: 'Camille', handled: true }] }, commute: c, communauto: idle }, at(6));
+    same(r, { form: 'communauto-idle', relevance: 'calm', until: at(7, 5, 15) });
 });
 
 test('movesRelevance : carte à l’heure de départ de la personne, pastille après', () => {

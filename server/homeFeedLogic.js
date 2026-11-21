@@ -128,23 +128,30 @@ export const journalRelevance = (count = 0) =>
 
 // ── Déplacements : BIXI et trajet, métro, Communauto dans une seule carte ───
 
+/** L'horaire de la personne réglé sur le Pi : 45 min avant sa fenêtre, puis la fenêtre elle-même. */
+const commuteOn = (c) => Boolean(c?.enabled && c.configured);
+const leaving = (c) => commuteOn(c) && (c.phase === 'soon' || c.phase === 'now');
+
 /**
- * La forme de la carte : Communauto en cours, conseil de trajet (saison BIXI), métro (hors
- * saison), Communauto au repos. Envoyée avec la pastille : la carte montre la même chose.
+ * La forme de la carte : Communauto en cours, conseil de trajet (saison BIXI), métro perturbé,
+ * Communauto au repos. Envoyée avec la pastille : la carte montre la même chose.
+ * Le trajet d'une personne qui a son horaire (Camille) n'est montré qu'autour de son départ ;
+ * le reste du temps la carte sert à tout le monde : la Communauto (le compte de la maison).
  * @param v { commute, bixi, city, communauto } les vues de /api/commute, /api/bixi, /api/city, /api/communauto
  */
 export function movesForm(v) {
     const ca = v.communauto;
     if (ca?.booked || ca?.search?.active) return 'communauto';
     const b = v.bixi;
-    if (b?.enabled && b.configured && b.season !== 'closed') return 'trip';
-    if (v.city?.metro?.show) return 'metro';
+    const bixiOpen = b?.enabled && b.configured && b.season !== 'closed';
+    // Des trajets BIXI sans conseil de trajet (ceux de la saison de la maison) restent montrés toute la saison
+    const ownTrips = (b?.trips || []).some((t) => !t.handled);
+    if (bixiOpen && (!ca || !commuteOn(v.commute) || ownTrips || leaving(v.commute))) return 'trip';
+    const m = v.city?.metro;
+    if (m?.show && (!ca || (!m.error && m.lines.some((l) => !l.ok)))) return 'metro';
     return ca ? 'communauto-idle' : null;
 }
 
-/** L'horaire de la personne réglé sur le Pi : 45 min avant sa fenêtre, puis la fenêtre elle-même. */
-const commuteOn = (c) => Boolean(c?.enabled && c.configured);
-const leaving = (c) => commuteOn(c) && (c.phase === 'soon' || c.phase === 'now');
 /** La prochaine bascule de phase (avant → bientôt → maintenant → après). */
 const phaseUntil = (c, now, tz) => {
     if (!commuteOn(c) || c.plan?.kind !== 'work' || !c.plan.from || !c.plan.to) return null;
@@ -187,9 +194,11 @@ export function movesRelevance(v, now = Date.now(), tz = TZ) {
     }
 
     // Communauto au repos : la plus proche, à lancer depuis la carte
-    if (!ca?.updatedAt) return state('moves', 'calm', 'Communauto ne répond pas', { form });
+    // La carte repasse au trajet 45 min avant le départ de la personne : relire à ce moment-là
+    const until = phaseUntil(c, now, tz);
+    if (!ca?.updatedAt) return state('moves', 'calm', 'Communauto ne répond pas', { form, until });
     const n = ca.nearby.length;
-    return state('moves', 'calm', n ? `${n} Communauto à ${ca.radiusM} m` : `aucune Communauto à ${ca.radiusM} m`, { form });
+    return state('moves', 'calm', n ? `${n} Communauto à ${ca.radiusM} m` : `aucune Communauto à ${ca.radiusM} m`, { form, until });
 }
 
 // ── Mise en page ─────────────────────────────────────────────────────────────
