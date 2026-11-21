@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { useHomeData } from '../../hooks/useHome';
+import { useHomeData, isRoomThermo } from '../../hooks/useHome';
 import type { useHome, DashLight, LogEntry, Sensor } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import { avgLevel, useLastLevel, useLevelGesture } from './levels';
@@ -115,7 +115,7 @@ export function ClimateCard({ home, onSchedule, compact = false }: { home: Retur
     const h = home.heating;
     const t = home.thermostat;
     const smart = Boolean(t?.enabled && t.target != null);
-    const room = home.sensors.find((s) => s.props.temperature != null);
+    const room = home.sensors.find(isRoomThermo);
     const openOutside = home.sensors.filter((s) => s.type === 'door' && s.outside && s.props.isOpen);
     // Thermostat actif : la consigne est celle de la pièce, et la changer crée une dérogation
     const setpoint = smart ? t!.target! : h?.temperature ?? 22;

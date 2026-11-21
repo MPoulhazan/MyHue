@@ -89,12 +89,17 @@ export interface Heating {
     uncertain?: { since: number; reason: string } | null;
 }
 
+/** Sonde de pièce (ni le balcon ni la hotte de la cuisinière). */
+export const isRoomThermo = (s: Sensor) => s.props.temperature != null && (!s.role || s.role === 'indoor');
+
 export interface Sensor {
     did: string;
     name: string;
     type: string;
     room: string | null;
     outside: boolean;
+    /** Thermomètre : pièce, balcon (outdoor) ou hotte de la cuisinière (stove) ; null sinon */
+    role?: 'indoor' | 'outdoor' | 'stove' | null;
     /** En pause : échéance (ms), 'forever' sans fin, null sinon */
     pausedUntil: number | 'forever' | null;
     isOnline: boolean;
@@ -320,7 +325,7 @@ export function useHome() {
                 const sensors = JSON.parse(ev.data) as any[];
                 setSensors(sensors);
                 setOnline((o) => ({ ...o, zigbee: true }));
-                const th = sensors.find((s) => s.props?.temperature != null);
+                const th = sensors.find((s) => s.props?.temperature != null && (!s.role || s.role === 'indoor'));
                 if (th) setClimate({ ...th.props, name: th.name });
                 const d = sensors.find((s) => s.type === 'door');
                 if (d) {

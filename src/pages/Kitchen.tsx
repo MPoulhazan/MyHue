@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { HomeContext, useHome, useHomeData } from '../hooks/useHome';
+import { HomeContext, useHome, useHomeData, isRoomThermo } from '../hooks/useHome';
 import { Icon } from '../components/Icon';
 import { MomentButton } from '../components/MomentButton';
 import type { IconName } from '../components/Icon';
@@ -46,8 +46,8 @@ function Kitchen() {
     const kitchenRoom = home.rooms.find((r) => /cuisine|kitchen/i.test(r));
     const kitchenLights = kitchenRoom ? home.lights.filter((l) => l.room === kitchenRoom) : [];
     const anyOn = home.lights.some((l) => l.reachable && l.level > 0);
-    const indoor = home.sensors.find((s) => s.room && /cuisine|kitchen/i.test(s.room) && s.props.temperature != null)
-        ?? home.sensors.find((s) => s.props.temperature != null);
+    const indoor = home.sensors.find((s) => s.room && /cuisine|kitchen/i.test(s.room) && isRoomThermo(s))
+        ?? home.sensors.find(isRoomThermo);
 
     return (
         <div className="home kitchen">

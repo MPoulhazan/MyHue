@@ -20,6 +20,8 @@ import * as noel from './noel.js';
 import * as kitchenDisplay from './kitchenDisplay.js';
 import * as circadian from './circadian.js';
 import * as cooper from './cooper.js';
+import * as stove from './stove.js';
+import * as outdoor from './outdoor.js';
 import * as mailbox from './mailbox.js';
 import * as cube from './cube.js';
 import * as bixi from './bixi.js';
@@ -105,6 +107,8 @@ app.listen(PORT, () => {
     kitchenDisplay.start();
     circadian.start();
     cooper.start();
+    stove.start(getSensors);
+    outdoor.start();
     mailbox.start();
     cube.start();
     bixi.start();

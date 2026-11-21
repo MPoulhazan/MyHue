@@ -12,6 +12,9 @@ import * as sensorPause from '../sensorPause.js';
 import * as haService from '../haService.js';
 import * as journal from '../journal.js';
 import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
+import { indoorClimate } from '../sensorRoles.js';
+import * as stove from '../stove.js';
+import * as outdoor from '../outdoor.js';
 import { getWeatherDetails, getForecast } from '../weather.js';
 import * as climateChart from '../climateChart.js';
 import { getSky } from '../astro.js';
@@ -936,7 +939,7 @@ router.get('/api/climate/chart/:deviceId', async (req, res) => {
     ]);
     const { sensorDid } = thermostat.getStatus().config;
     const room = sensors.find((s) => s.did === sensorDid && s.props.temperature != null)
-        || sensors.find((s) => s.props.temperature != null);
+        || indoorClimate(sensors)[0];
     res.json(climateChart.buildChart({ points: history.points || [], forecast, withSetpoint: room?.did === did }));
 });
 
@@ -1005,12 +1008,22 @@ router.get('/api/weather', async (_req, res) => {
 
 router.get('/api/weather/details', async (_req, res) => {
     try {
-        res.json(await getWeatherDetails());
+        const [details, balcony] = await Promise.all([getWeatherDetails(), outdoor.getView().catch(() => null)]);
+        res.json({ ...details, balcony });
     } catch (err) {
         console.warn('[Météo] Détails indisponibles:', err.message);
         res.status(503).json({ error: 'Météo indisponible' });
     }
 });
+
+// --- Sonde du balcon et cuisinière ---
+
+router.get('/api/outdoor', async (_req, res) => {
+    res.json(await outdoor.getView());
+});
+
+router.get('/api/stove', (_req, res) => res.json(stove.getView()));
+router.patch('/api/stove', (req, res) => res.json(stove.update(req.body || {})));
 
 // --- Ciel de la nuit (lune, planètes, étoiles filantes, aurores) ---
 

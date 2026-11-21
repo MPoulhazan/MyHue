@@ -494,12 +494,11 @@ const isDark = async () => {
     return darkCache.dark;
 };
 
-// Température extérieure Open-Meteo (en cache 15 min) ; null si inconnue
+// Température extérieure : sonde du balcon si elle est fraîche, sinon Open-Meteo ; null si inconnue
 const outsideTemp = async () => {
     try {
-        const { getForecast } = await import('./weather.js');
-        const temp = (await getForecast()).current?.temperature_2m;
-        return typeof temp === 'number' ? temp : null;
+        const { currentOutdoorTemp } = await import('./outdoor.js');
+        return await currentOutdoorTemp();
     } catch {
         return null;
     }
@@ -654,7 +653,13 @@ const runActions = async (a, actions, vars) => {
         try {
             switch (action.type) {
                 case 'notify': {
-                    const text = render(action.message, vars);
+                    let text = render(action.message, vars);
+                    // Fumée : on dit si la cuisinière chauffe (contexte seulement, l'alerte reste entière)
+                    if (a.trigger.prop === 'smoke' && vars.value === true) {
+                        const { smokeLine } = await import('./stove.js');
+                        const line = smokeLine();
+                        if (line) text += `\n${line}`;
+                    }
                     journal.log({ kind: 'automation', title: text, data: { automationId: a.id, did: vars.did, level: action.level || 'info' } });
                     await notifier.notify({
                         text,

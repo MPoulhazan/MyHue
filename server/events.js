@@ -17,7 +17,7 @@ bus.setMaxListeners(50);
 zigbeeService.emitter.on('change', ({ ieee, key, value, prev }) => {
     const entry = ieee && sensorRegistry.find(ieee);
     if (!entry) return; // appareil pas encore nommé
-    const sensor = { did: entry.ieee, name: entry.name, type: entry.type };
+    const sensor = { did: entry.ieee, name: entry.name, type: entry.type, room: entry.room || null, role: entry.role };
     const ts = Date.now();
 
     // Capteur en pause : son état reste visible, mais les événements « déclencheurs » ne partent plus

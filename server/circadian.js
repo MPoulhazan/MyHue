@@ -65,6 +65,13 @@ const COLOR_KEYS = ['ct', 'xy', 'hue', 'sat', 'scene', 'effect'];
 /** Un réglage de couleur ou de blanc fait à la main sur ces lampes : on ne les touche plus. */
 export const markManual = (ids) => ids.forEach((id) => manual.add(String(id)));
 
+/** Lampes rendues après un réglage temporaire (lumière de cuisson) : le circadien les reprend. */
+export const unmarkManual = (ids) =>
+    ids.forEach((id) => {
+        manual.delete(String(id));
+        applied.delete(String(id));
+    });
+
 /** Appelé pour chaque commande Hue sortante : lampe (`/lights/3/state`) ou groupe (`/groups/1/action`). */
 export const noteHueCommand = async (path, body) => {
     if (!body || !COLOR_KEYS.some((k) => k in body)) return;

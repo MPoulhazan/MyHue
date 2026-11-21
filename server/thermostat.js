@@ -19,6 +19,7 @@ import * as broadlinkService from './broadlinkService.js';
 import * as presence from './presence.js';
 import * as flexd from './flexd.js';
 import { bus } from './events.js';
+import { indoorClimate } from './sensorRoles.js';
 
 const FILE = dataFile('thermostat.json');
 const TZ = process.env.TZ || 'America/Toronto';
@@ -109,7 +110,7 @@ export const computeTarget = () => {
 
 const roomSensor = (sensors) =>
     sensors.find((s) => s.did === config.sensorDid && s.props.temperature != null) ||
-    sensors.find((s) => s.props.temperature != null);
+    indoorClimate(sensors)[0];
 
 const send = async (patch) => {
     lastCommandAt = Date.now();

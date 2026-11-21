@@ -58,9 +58,23 @@ interface Airing {
     outdoor: { temp: number; humidity: number };
     door: { name: string; open: boolean | null } | null;
 }
+interface RecordPoint { value: number; day: string }
+interface Balcony {
+    found: boolean;
+    local: { temperature: number; humidity: number | null; ts: number; name: string } | null;
+    ignored: { temperature: number | null; lastUpdated: string | null } | null;
+    forecast: number | null;
+    gap: number | null;
+    records: {
+        since: string | null;
+        winter: { label: string; coldest: RecordPoint | null; warmest: RecordPoint | null; firstFrost: RecordPoint | null; frostDays: number };
+        year: { label: string; coldest: RecordPoint | null; warmest: RecordPoint | null };
+    };
+}
 interface WeatherDetails {
     updatedAt: number;
-    current: { temp: number; feels: number; humidity: number; dewPoint: number; wind: number; gust: number; code: number; isDay: boolean };
+    current: { temp: number; source?: 'balcon' | 'météo'; forecastTemp?: number; feels: number; humidity: number; dewPoint: number; wind: number; gust: number; code: number; isDay: boolean };
+    balcony?: Balcony | null;
     outings: number[];
     barometer: Barometer | null;
     storm: Storm | null;
@@ -313,7 +327,7 @@ export function Weather() {
                 <div className="home-hello">
                     <Link to="/climate" className="round-btn" aria-label="Retour à Climat"><Icon name="back" size={22} strokeWidth={2} /></Link>
                     <h1>Météo</h1>
-                    {data && <span className="muted">Dehors <strong className="mono">{dec(data.current.temp, 0)}°</strong> · ressenti <span className="mono">{dec(data.current.feels, 0)}°</span></span>}
+                    {data && <span className="muted">Dehors <strong className="mono">{dec(data.current.temp, 0)}°</strong>{data.current.source === 'balcon' ? ' au balcon' : ''} · ressenti <span className="mono">{dec(data.current.feels, 0)}°</span></span>}
                 </div>
                 {storm && storm.level !== 'calm' && (
                     <span className="wx-alert"><Icon name="alert" size={18} strokeWidth={2} />{storm.window ? `${storm.label} · ${windowText(storm.window)}` : `Tempête : ${storm.label.toLowerCase()}`}</span>
@@ -422,6 +436,7 @@ export function Weather() {
                             </section>
                         )}
 
+                        {data.balcony?.found && <BalconyTile b={data.balcony} />}
                         {data.sun && <SunTile sun={data.sun} updatedAt={data.updatedAt} />}
                         <BriefingTile />
                         <DigestTile />
@@ -436,6 +451,45 @@ export function Weather() {
                 {sheet && b && <BarometerSheet key="baro" b={b} storm={storm} updatedAt={data?.updatedAt ?? 0} onClose={() => setSheet(false)} />}
             </AnimatePresence>
         </div>
+    );
+}
+
+const dayLabel = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' });
+const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${dec(Math.abs(n))}`;
+
+/** Sonde du balcon : mesure du moment, écart avec la météo, records de l'hiver et de l'année. */
+function BalconyTile({ b }: { b: Balcony }) {
+    const r = b.records;
+    const rows: [string, RecordPoint | null][] = [
+        [`Le plus froid de l’hiver ${r.winter.label}`, r.winter.coldest],
+        [`Le plus chaud de ${r.year.label}`, r.year.warmest],
+        ['Premier gel de la saison', r.winter.firstFrost],
+    ];
+    const shown = rows.filter((row): row is [string, RecordPoint] => row[1] != null);
+    return (
+        <section className="wx-tile" aria-label="Balcon">
+            <span className="wx-tile-head">
+                <strong>Au balcon</strong>
+                {b.local
+                    ? <span className="mono">{dec(b.local.temperature)}°{b.local.humidity != null ? ` · ${b.local.humidity} %` : ''}</span>
+                    : <span className="muted">écartée</span>}
+            </span>
+            {b.local && b.gap != null && Math.abs(b.gap) >= 1 && (
+                <span className="muted">{signed(b.gap)}° par rapport à la météo ({dec(b.forecast)}°)</span>
+            )}
+            {!b.local && b.ignored && (
+                <span className="muted">La sonde indique {dec(b.ignored.temperature)}°, trop loin de la météo ({dec(b.forecast)}°) : au soleil, collée au mur ou pas encore acclimatée. On garde la météo en attendant.</span>
+            )}
+            {shown.length > 0 && (
+                <ul className="wx-records">
+                    {shown.map(([label, p]) => (
+                        <li key={label}><span className="muted">{label}</span><b className="mono">{dec(p.value)}° <span className="muted">· {dayLabel(p.day)}</span></b></li>
+                    ))}
+                    {r.winter.frostDays > 0 && <li><span className="muted">Jours de gel cet hiver</span><b className="mono">{r.winter.frostDays}</b></li>}
+                </ul>
+            )}
+            {r.since && <span className="muted">Records depuis le {dayLabel(r.since)}.</span>}
+        </section>
     );
 }
 

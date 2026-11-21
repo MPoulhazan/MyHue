@@ -16,6 +16,7 @@ import * as broadlinkService from './broadlinkService.js';
 import { bus } from './events.js';
 import { rewrite } from './llm.js';
 import { getSensorHistory, getOutdoorWeather } from './sensors.js';
+import { roleOf, indoorClimate } from './sensorRoles.js';
 
 const FILE = dataFile('companion.json');
 const TZ = process.env.TZ || 'America/Toronto';
@@ -378,7 +379,7 @@ const run = async () => {
         const sensors = await getSensorsFn();
         const ctx = {
             sensors,
-            climate: sensors.filter((s) => s.props.temperature != null),
+            climate: indoorClimate(sensors), // pièces seulement : ni le balcon ni la hotte
             openDoors: openDoors(sensors),
             heating: broadlinkService.getState(),
             outdoor: await getOutdoorWeather(),
@@ -411,7 +412,7 @@ export const inspect = async () => {
     const sensors = await getSensorsFn();
     const ctx = {
         sensors,
-        climate: sensors.filter((s) => s.props.temperature != null),
+        climate: indoorClimate(sensors),
         openDoors: openDoors(sensors),
         heating: broadlinkService.getState(),
         outdoor: await getOutdoorWeather(),
@@ -428,13 +429,14 @@ export const start = (getSensors) => {
 
     bus.on('sensor', ({ sensor, prop, value, ts }) => {
         if (!['temperature', 'humidity', 'pressure'].includes(prop)) return;
+        if (roleOf({ ...sensor, props: { temperature: 0 } }) !== 'indoor') return; // balcon et hotte : pas des pièces
         pushSample(sensor.did, { ts, [prop]: value });
     });
 
     // Historique des dernières 24 h pour juger les tendances dès le démarrage
     setTimeout(async () => {
         const sensors = await getSensors();
-        for (const s of sensors.filter((x) => x.type === 'temperature_humidity')) {
+        for (const s of indoorClimate(sensors)) {
             const { points } = await getSensorHistory(s.did, 24);
             for (const p of points) pushSample(s.did, p);
         }

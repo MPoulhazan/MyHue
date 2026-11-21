@@ -18,6 +18,8 @@ import { bixiSpeech } from './bixiLogic.js';
 import * as city from './city.js';
 import * as collecte from './collecte.js';
 import { citySpeech } from './cityLogic.js';
+import * as stove from './stove.js';
+import * as outdoorMod from './outdoor.js';
 import { getSensors, getOutdoorWeather } from './sensors.js';
 
 const TZ = process.env.TZ || 'America/Toronto';
@@ -63,6 +65,10 @@ export const getHomeState = async () => {
         })(),
         // Collecte des bacs : tonight = bac à sortir ce soir (done = sorti), next = prochain soir
         collecte: collecte.getView(),
+        // Cuisinière (sonde sur la hotte) : on = plaque ou four qui chauffe, since = depuis quand
+        stove: (({ found, on, since, stove: hood, text }) => ({ found, on, since, hoodTemperature: hood, summary: text }))(stove.getView()),
+        // Sonde du balcon : mesure retenue, écart avec la météo, records de l'hiver et de l'année
+        balcony: await outdoorMod.getView().then(({ found, local, forecast, gap, records, speech }) => ({ found, local, forecast, gap, records, summary: speech })).catch(() => null),
         recentEvents: recentEvents(),
     };
 };

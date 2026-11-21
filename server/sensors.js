@@ -6,6 +6,8 @@ import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
 import * as sensorPause from './sensorPause.js';
 import * as haService from './haService.js';
+import { roleOf } from './sensorRoles.js';
+import { localOutdoor } from './outdoorLogic.js';
 
 export const getSensors = async () => {
     const devices = zigbeeService.getDevices();
@@ -13,7 +15,7 @@ export const getSensors = async () => {
     return registry.map((entry) => {
         const device = devices.find((d) => d.ieeeAddr === entry.ieee) || null;
         const state = device?.state || {};
-        return {
+        const sensor = {
             did: entry.ieee,
             name: entry.name,
             model: device?.model || 'Zigbee',
@@ -39,6 +41,9 @@ export const getSensors = async () => {
             lastUpdated: device?.lastSeen ? new Date(device.lastSeen).toISOString() : null,
             source: 'zigbee',
         };
+        // indoor / outdoor (balcon) / stove (hotte) ; null pour ce qui n'est pas un thermomètre
+        sensor.role = roleOf({ ...sensor, role: entry.role });
+        return sensor;
     });
 };
 
@@ -147,11 +152,23 @@ export const getSensorHistory = async (nameOrIeee, hours = 24) => {
 let weatherCache = { at: 0, value: null };
 export const getOutdoorWeather = async () => {
     if (!haService.isConfigured()) return null;
-    if (Date.now() - weatherCache.at < 10 * 60 * 1000) return weatherCache.value;
-    try {
-        weatherCache = { at: Date.now(), value: await haService.getWeather() };
-    } catch (err) {
-        console.warn('[Sensors] Météo HA indisponible:', err.message);
+    if (Date.now() - weatherCache.at >= 10 * 60 * 1000) {
+        try {
+            weatherCache = { at: Date.now(), value: await haService.getWeather() };
+        } catch (err) {
+            console.warn('[Sensors] Météo HA indisponible:', err.message);
+        }
     }
-    return weatherCache.value;
+    const weather = weatherCache.value;
+    if (!weather) return weather;
+    // Sonde du balcon fraîche et plausible : elle remplace la météo pour la température et l'humidité
+    const local = localOutdoor(await getSensors(), typeof weather.temperature === 'number' ? weather.temperature : null);
+    if (!local) return { ...weather, source: 'météo' };
+    return {
+        ...weather,
+        temperature: local.temperature,
+        humidity: local.humidity ?? weather.humidity,
+        forecastTemperature: weather.temperature,
+        source: 'balcon',
+    };
 };

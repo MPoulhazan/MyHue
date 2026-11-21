@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { useHomeData } from '../hooks/useHome';
+import { useHomeData, isRoomThermo } from '../hooks/useHome';
 import type { DashLight } from '../hooks/useHome';
 import { useIsPhone } from '../hooks/useIsPhone';
 import { Icon } from '../components/Icon';
@@ -167,7 +167,7 @@ export function Dashboard() {
 
 
             <NightMode
-                temperature={home.sensors.find((s) => s.props.temperature != null)?.props.temperature ?? null}
+                temperature={home.sensors.find(isRoomThermo)?.props.temperature ?? null}
                 outdoor={home.weather?.temperature ?? null}
                 allClosed={!home.sensors.some((s) => s.type === 'door' && s.props.isOpen)} />
         </div>

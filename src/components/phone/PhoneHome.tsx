@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import type { DashLight, Home } from '../../hooks/useHome';
+import { isRoomThermo } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import { MomentButton } from '../MomentButton';
 import { HueStatus, RoomCard, fmt } from '../home/cards';
@@ -25,7 +26,7 @@ export function PhoneHome({ home, roomLights, onAdd, widgets, shown, more, onSho
     onShowAll: () => void;
 }) {
     const navigate = useNavigate();
-    const climate = home.sensors.find((s) => s.props.temperature != null);
+    const climate = home.sensors.find(isRoomThermo);
     const openDoors = home.sensors.filter((s) => s.type === 'door' && s.props.isOpen);
 
     return (

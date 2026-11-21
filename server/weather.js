@@ -7,6 +7,8 @@
 import axios from 'axios';
 import * as haService from './haService.js';
 import { getSensors, getSensorHistory } from './sensors.js';
+import { indoorClimate } from './sensorRoles.js';
+import { localOutdoor } from './outdoorLogic.js';
 
 const HOUR = 3600 * 1000;
 // Heures de sortie (aller, retour) : WEATHER_OUTINGS=8,17
@@ -124,7 +126,8 @@ function trendLabel(per3h) {
 
 async function buildBarometer(forecast, sensors) {
     const now = Date.now();
-    const sensor = sensors.find((s) => s.props.pressure != null);
+    // Le salon (« baromètre » historique) : la hotte chauffe, le balcon n'a pas d'historique long
+    const sensor = indoorClimate(sensors).find((s) => s.props.pressure != null) || sensors.find((s) => s.props.pressure != null);
     const model = forecast.hours.filter((h) => h.pressure != null);
     let measured = [];
     let offset = 0;
@@ -303,7 +306,7 @@ function buildOutfits(forecast) {
 // --- Aérer ---
 
 function buildAiring(forecast, sensors) {
-    const indoor = sensors.find((s) => !s.outside && s.props.temperature != null && s.props.humidity != null);
+    const indoor = indoorClimate(sensors).find((s) => s.props.humidity != null);
     // Pour aérer : une porte de terrasse ou une fenêtre plutôt que la porte d'entrée
     const doors = sensors.filter((s) => s.type === 'door');
     const door = doors.find((s) => /balcon|fen[eê]tre|patio|terrasse/i.test(s.name)) || doors.find((s) => !/entr[ée]e/i.test(s.name)) || null;
@@ -392,13 +395,25 @@ export async function getWeatherDetails() {
         console.warn('[Météo] Baromètre :', err.message);
         return null;
     });
-    const c = forecast.current;
+    const model = forecast.current;
+    // Sonde du balcon fraîche et plausible : elle donne la température et l'humidité du moment
+    const local = localOutdoor(sensors, model.temperature_2m);
+    const c = local
+        ? {
+            ...model,
+            temperature_2m: local.temperature,
+            apparent_temperature: model.apparent_temperature + (local.temperature - model.temperature_2m),
+            relative_humidity_2m: local.humidity ?? model.relative_humidity_2m,
+        }
+        : model;
     return {
         updatedAt: Date.now(),
         offsetSec: forecast.offsetSec,
         outings: OUTINGS,
         current: {
             temp: round1(c.temperature_2m),
+            source: local ? 'balcon' : 'météo',
+            forecastTemp: round1(model.temperature_2m),
             feels: round1(c.apparent_temperature),
             humidity: Math.round(c.relative_humidity_2m),
             dewPoint: round1(c.dew_point_2m),
@@ -411,7 +426,7 @@ export async function getWeatherDetails() {
         barometer,
         storm: barometer ? buildStorm(forecast, barometer) : null,
         outfits: buildOutfits(forecast),
-        airing: buildAiring(forecast, sensors),
+        airing: buildAiring({ ...forecast, current: c }, sensors),
         rainSoon: buildRainSoon(forecast),
         sun: buildSun(forecast),
     };
