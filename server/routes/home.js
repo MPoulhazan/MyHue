@@ -622,6 +622,15 @@ router.put('/api/day/mails', (req, res) => {
     }
 });
 
+// La fiche sortie : idées à deux avec trajet, vélos, météo du soir et agendas
+router.get('/api/day/outings', async (req, res) => {
+    try {
+        res.json(await myDay.getOutings(String(req.query.filter || 'all')));
+    } catch (err) {
+        fail(res, err, 503);
+    }
+});
+
 router.put('/api/day/outings', (req, res) => {
     try {
         res.json(myDay.setOutings(req.body?.ideas));

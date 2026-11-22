@@ -66,7 +66,9 @@
 
 .md-outing { background: #1f231a; }
 .md-kind { font-size: 13px; font-weight: 700; color: var(--h-accent); }
-.md-idea { font-size: 20px; line-height: 1.25; }
+.md-idea { font-size: 20px; line-height: 1.25; font-weight: 700; }
+.md-idea-link { color: var(--h-text); text-decoration: none; }
+.md-idea-link:hover { text-decoration: underline; }
 .md-why { margin: 0; font-size: 14px; line-height: 1.45; color: #c9cac2; }
 .md-liked { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-weight: 700; color: var(--h-accent); }
 

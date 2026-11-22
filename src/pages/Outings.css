@@ -1,0 +1,87 @@
+/* Fiche sortie (maquette 1, 2026-11-22) : affiche, infos, trajet ; les autres idées en bas */
+
+.ot { gap: 20px; }
+.ot-muted { color: var(--h-muted); font-size: 15px; }
+.ot-label { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--h-muted); }
+
+.ot-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ot-title { display: flex; align-items: center; gap: 14px; }
+.ot-title > div { display: flex; flex-direction: column; gap: 2px; }
+.ot-eyebrow { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--h-accent); }
+.ot-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.ot-chip { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--h-line-2); background: transparent; font-size: 14px; }
+.ot-chip.on { border-color: var(--h-accent); background: var(--h-accent); color: var(--h-on-accent) !important; font-weight: 700; }
+
+.ot-main { display: grid; grid-template-columns: 320px minmax(0, 1fr) 330px; gap: 22px; flex: 1; min-height: 0; }
+
+.ot-poster { position: relative; border-radius: 24px; overflow: hidden; background: var(--h-light-dim); min-height: 300px; display: flex; }
+.ot-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ot-poster-empty { flex: 1; display: grid; place-items: center; color: var(--h-light-text); }
+.ot-poster.k-concert, .ot-poster.k-event { background: #2a2418; }
+.ot-poster.k-museum { background: var(--h-cool-dim); }
+.ot-poster.k-museum .ot-poster-empty { color: var(--h-cool-text); }
+.ot-poster.k-resto { background: #3a2030; }
+.ot-poster.k-resto .ot-poster-empty { color: #ffc4dd; }
+.ot-poster.k-activity { background: #2b3122; }
+.ot-poster.k-activity .ot-poster-empty { color: #e2ff9e; }
+.ot-kind { position: absolute; top: 18px; left: 18px; padding: 6px 12px; border-radius: 999px; background: rgba(20, 21, 19, 0.85); font-size: 13px; font-weight: 700; color: var(--h-light); }
+
+.ot-info { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ot-info h1 { margin: 0; font-size: 36px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; }
+.ot-when { font-size: 18px; color: #c9cac2; line-height: 1.4; }
+.ot-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.ot-fact { padding: 10px 16px; border-radius: 14px; background: var(--h-surface); font-size: 15px; }
+.ot-fact.info { background: var(--h-cool-dim); color: var(--h-cool-text); }
+.ot-why { margin: 0; font-size: 17px; line-height: 1.5; color: #c9cac2; }
+.ot-free { margin: 0; font-size: 15px; color: var(--h-accent); }
+.ot-actions { margin-top: auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ot-btn { min-height: 56px; padding: 0 22px; border-radius: 999px; border: 1px solid var(--h-line-2); background: transparent; font-size: 16px; display: inline-flex; align-items: center; color: var(--h-text); text-decoration: none; }
+.ot-btn:hover { background: var(--h-surface-2); }
+.ot-btn.primary { border: none; background: var(--h-accent); color: var(--h-on-accent) !important; font-weight: 800; font-size: 17px; padding: 0 26px; }
+.ot-btn.quiet { border-color: transparent; color: var(--h-muted) !important; font-size: 15px; padding: 0 14px; }
+.ot-btn:disabled { opacity: 0.5; cursor: default; }
+.ot-liked { display: inline-flex; align-items: center; gap: 8px; min-height: 56px; padding-right: 8px; font-size: 17px; font-weight: 800; color: var(--h-accent); }
+
+.ot-trip { display: flex; flex-direction: column; border-radius: 24px; background: var(--h-surface); overflow: hidden; min-width: 0; }
+.ot-trip > .ot-label, .ot-trip > .ot-muted { padding: 18px 18px 0; }
+.ot-trip > .ot-muted { padding-bottom: 18px; line-height: 1.45; margin: 0; }
+.ot-map-box { height: 200px; flex: none; }
+.ot-trip-rows { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.ot-row { display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
+.ot-row span { display: inline-flex; align-items: center; gap: 8px; }
+.ot-row strong { font-variant-numeric: tabular-nums; }
+.ot-bikes { font-size: 14px; color: var(--h-accent); line-height: 1.4; }
+.om-place { border-radius: 999px; background: var(--h-light); border: 3px solid #141513; box-shadow: 0 0 0 3px rgba(255, 181, 71, 0.35); }
+
+.ot-strip { display: flex; flex-direction: column; gap: 10px; }
+.ot-strip-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.ot-mini { padding: 12px 14px; border-radius: 18px; border: 2px solid transparent; background: var(--h-surface); display: flex; flex-direction: column; gap: 4px; text-align: left; min-width: 0; min-height: 44px; }
+.ot-mini.on { border-color: var(--h-accent); background: #1f231a; }
+.ot-mini strong { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ot-mini .ot-muted { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ot-mini-kind { font-size: 12px; font-weight: 700; color: var(--h-light); }
+.ot-mini.k-museum .ot-mini-kind { color: var(--h-cool); }
+.ot-mini.k-resto .ot-mini-kind { color: #ff8fc0; }
+.ot-mini.k-activity .ot-mini-kind, .ot-mini.on .ot-mini-kind { color: var(--h-accent); }
+
+.ot-empty { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; font-size: 18px; color: #c9cac2; }
+.ot-empty p { margin: 0; }
+.ot-hidden { margin: 0; font-size: 14px; color: var(--h-muted); }
+
+@media (max-width: 1100px) {
+    .ot-main { grid-template-columns: 260px minmax(0, 1fr); }
+    .ot-main .ot-trip { grid-column: 1 / -1; flex-direction: row; }
+    .ot-main .ot-trip .ot-map-box { width: 50%; height: auto; min-height: 200px; }
+    .ot-trip-rows { flex: 1; }
+    .ot-strip-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+    .ot-main { grid-template-columns: minmax(0, 1fr); }
+    .ot-poster { min-height: 200px; max-height: 260px; }
+    .ot-info h1 { font-size: 28px; }
+    .ot-main .ot-trip { flex-direction: column; }
+    .ot-main .ot-trip .ot-map-box { width: 100%; height: 200px; }
+    .ot-strip-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ot-btn { min-height: 48px; }
+}

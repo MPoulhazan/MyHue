@@ -60,7 +60,7 @@ const DAY_TOOLS = [
     },
     {
         name: 'set_outing_ideas',
-        description: 'Dépose 4 à 8 idées de sortie à deux pour les prochains jours (remplace les précédentes) : événements, musées, restos, activités. Île de Montréal seulement, du mercredi au samedi soir. Ajoute aussi les idées de jour de repos (champ person) décrites dans outings.restRules.',
+        description: 'Dépose 4 à 8 idées de sortie à deux pour les prochains jours (remplace les précédentes) : événements, cinéma, concerts, musées, restos, activités. Île de Montréal seulement, du mercredi au samedi soir. Remplis les détails (prix, durée, coordonnées, image, billetterie, intérieur, bande-annonce) quand tu les trouves, sans rien inventer : la tablette en fait une fiche avec le trajet depuis la maison. Évite le style des idées listées dans outings.notOurThing. Ajoute aussi les idées de jour de repos (champ person) décrites dans outings.restRules.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -69,13 +69,24 @@ const DAY_TOOLS = [
                     items: {
                         type: 'object',
                         properties: {
-                            kind: { type: 'string', enum: ['event', 'museum', 'resto', 'activity'] },
+                            kind: { type: 'string', enum: ['event', 'cinema', 'concert', 'museum', 'resto', 'activity'] },
                             title: { type: 'string' },
                             date: { type: 'string', description: 'AAAA-MM-JJ si l’idée est datée (événement)' },
                             when: { type: 'string', description: 'Ex. « Samedi 20 h » ou « Jeu–sam jusqu’à 21 h »' },
                             where: { type: 'string', description: 'Lieu et quartier' },
                             why: { type: 'string', description: 'Une phrase concrète, sans superlatif' },
                             url: { type: 'string' },
+                            price: { type: 'string', description: 'Ex. « 13,50 $/pers. », « Gratuit », « $$ » pour un resto' },
+                            free: { type: 'boolean', description: 'true si c’est gratuit' },
+                            duration: { type: 'string', description: 'Ex. « 1 h 52 », « environ 2 h »' },
+                            times: { type: 'string', description: 'Séances ou heures du soir, ex. « 19 h et 21 h 15 »' },
+                            address: { type: 'string', description: 'Adresse du lieu' },
+                            lat: { type: 'number', description: 'Latitude du lieu (pour le trajet depuis la maison)' },
+                            lon: { type: 'number', description: 'Longitude du lieu' },
+                            image: { type: 'string', description: 'Adresse https d’une affiche ou d’une photo du lieu' },
+                            bookingUrl: { type: 'string', description: 'Adresse https de la billetterie ou de la réservation' },
+                            indoor: { type: 'boolean', description: 'false si c’est en plein air (cachée par mauvais temps)' },
+                            trailer: { type: 'string', description: 'Id ou adresse YouTube de la bande-annonce officielle (film) ou d’un extrait (concert)' },
                             person: { type: 'string', description: 'id du profil si l’idée est une activité de jour pour cette personne seule (son jour de repos, voir outings.restDays) ; absent = sortie à deux' },
                         },
                         required: ['kind', 'title'],

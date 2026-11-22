@@ -4,6 +4,8 @@ import { Icon } from '../components/Icon';
 import { speak } from '../hooks/useVoice';
 import { Together } from './Together';
 import { readDayPick as readPick, saveDayPick as savePick } from './myDayPick';
+import { Link } from 'react-router-dom';
+import { KIND_LABEL, type Idea } from './outingTypes';
 import './Dashboard.css';
 import './MyDay.css';
 
@@ -12,7 +14,6 @@ import './MyDay.css';
 interface Person { id: string; name: string; initial: string; color: string; mails: boolean; calendar: boolean; calendarStatus: { at: number | null; error: string | null; count: number } | null }
 interface Thing { kind: string; title: string; detail: string }
 interface Mail { id: string; from: string; subject: string; summary: string; receivedAt: number | null; draft: string | null; draftUrl: string | null; threadUrl: string | null }
-interface Idea { id: string; kind: 'event' | 'museum' | 'resto' | 'activity'; title: string; when: string | null; where: string | null; why: string | null; url: string | null }
 interface DayView {
     person: Person;
     people: Person[];
@@ -26,7 +27,6 @@ interface DayView {
     touch: { who: string; line: string } | null;
 }
 
-const KIND_LABEL: Record<Idea['kind'], string> = { event: 'Événement', museum: 'Musée', resto: 'Resto', activity: 'Activité' };
 const deg = (n: number) => `${n < 0 ? '−' : ''}${Math.abs(n)}°`;
 const hm = (ts: number) => new Date(ts).toLocaleTimeString('fr-CA', { hour: 'numeric', minute: '2-digit' }).replace(':', ' h ');
 const today = () => new Date().toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -218,7 +218,7 @@ export function MyDay() {
                     <div className="md-head"><h2>Pour vous deux</h2>{outing && <span className="md-kind">{KIND_LABEL[outing.idea.kind]}</span>}</div>
                     {outing ? (
                         <>
-                            <strong className="md-idea">{outing.idea.title}</strong>
+                            <Link className="md-idea md-idea-link" to={`/sorties?id=${encodeURIComponent(outing.idea.id)}`}>{outing.idea.title}</Link>
                             {(outing.idea.when || outing.idea.where) && <span className="md-sub">{[outing.idea.when, outing.idea.where].filter(Boolean).join(' · ')}</span>}
                             {outing.idea.why && <p className="md-why">{outing.idea.why}</p>}
                             <div className="md-actions md-end">
@@ -227,9 +227,9 @@ export function MyDay() {
                                 ) : (
                                     <button className="md-btn primary" onClick={() => react(outing.idea.id, 'like')}>Ça nous tente</button>
                                 )}
-                                {outing.left > 0 && <button className="md-btn" onClick={() => react(outing.idea.id, 'next')}>Autre idée</button>}
+                                <Link className="md-btn" to={`/sorties?id=${encodeURIComponent(outing.idea.id)}`}>Détails{outing.left > 0 ? ` et ${outing.left} autre${outing.left > 1 ? 's' : ''}` : ''}</Link>
+                                {outing.left > 0 && <button className="md-btn quiet" onClick={() => react(outing.idea.id, 'next')}>Autre idée</button>}
                                 <button className="md-btn quiet" onClick={() => react(outing.idea.id, 'done')}>Déjà fait</button>
-                                {outing.idea.url && <a className="md-btn quiet" href={outing.idea.url} target="_blank" rel="noreferrer">Voir</a>}
                             </div>
                         </>
                     ) : (

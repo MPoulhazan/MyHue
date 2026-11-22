@@ -17,7 +17,9 @@ import * as collecte from './collecte.js';
 import * as cooper from './cooper.js';
 import * as mailbox from './mailbox.js';
 import * as city from './city.js';
-import { getWeatherDetails } from './weather.js';
+import { getWeatherDetails, getForecast, getLocation } from './weather.js';
+import * as bixi from './bixi.js';
+import { normalizeIdea, validIdeas, tripTo, weatherCheck, freeLine, FILTERS, matchesFilter } from './outingLogic.js';
 import { dayItems, headline, pickOuting, pickSolo, personalSpeech, isDayQuestion } from './myDayLogic.js';
 import * as briefing from './briefing.js';
 import * as calendar from './calendar.js';
@@ -53,7 +55,8 @@ const writeJson = (file, value) => {
 
 let people = readJson(PEOPLE_FILE, DEFAULT_PEOPLE);
 // mails[personId] = { at, items }, outings = { at, ideas }, done = titres déjà faits, liked = idée retenue
-let store = { mails: {}, outings: { at: null, ideas: [] }, done: [], liked: null, skipped: [], ...readJson(STORE_FILE, {}) };
+// disliked = « pas notre genre » (titre et genre), relu par la tâche Claude du mercredi
+let store = { mails: {}, outings: { at: null, ideas: [] }, done: [], liked: null, skipped: [], disliked: [], ...readJson(STORE_FILE, {}) };
 const saveStore = () => writeJson(STORE_FILE, store);
 
 const clean = (s, max = 400) => (typeof s === 'string' ? s.trim().slice(0, max) : '');
@@ -166,24 +169,15 @@ export const setMails = (personId, items) => {
 
 /**
  * Idées de sortie à deux (la tâche Claude les cherche sur le Web chaque semaine).
- * @param ideas [{ kind: event|museum|resto|activity, title, when?, where?, why?, url?, date? }]
+ * Champs : voir normalizeIdea (outingLogic.js) et le schéma de set_outing_ideas (mcpServer.js).
  */
 export const setOutings = (ideas) => {
     if (!Array.isArray(ideas)) throw new Error('ideas doit être une liste');
-    const kinds = ['event', 'museum', 'resto', 'activity'];
+    const now = Date.now();
+    const ids = people.map((p) => p.id);
     store.outings = {
-        at: Date.now(),
-        ideas: ideas.slice(0, 12).map((o, i) => ({
-            id: `o${Date.now()}-${i}`,
-            kind: kinds.includes(o.kind) ? o.kind : 'activity',
-            title: clean(o.title, 140),
-            when: clean(o.when, 80) || null,
-            where: clean(o.where, 120) || null,
-            why: clean(o.why, 300) || null,
-            url: /^https?:\/\//.test(o.url || '') ? o.url : null,
-            date: /^\d{4}-\d{2}-\d{2}$/.test(o.date || '') ? o.date : null,
-            person: people.some((p) => p.id === o.person) ? o.person : null,
-        })).filter((o) => o.title),
+        at: now,
+        ideas: ideas.slice(0, 12).map((o, i) => normalizeIdea(o || {}, i, ids, now)).filter((o) => o.title),
     };
     store.skipped = [];
     saveStore();
@@ -191,7 +185,7 @@ export const setOutings = (ideas) => {
     return store.outings;
 };
 
-/** Réaction sur une idée : like (ça nous tente), next (autre idée), done (déjà fait). */
+/** Réaction sur une idée : like (ça nous tente), next (autre idée), done (déjà fait), dislike (pas notre genre). */
 export const reactOuting = (id, action) => {
     const idea = store.outings.ideas.find((o) => o.id === id);
     if (!idea) throw new Error('Idée inconnue');
@@ -203,6 +197,10 @@ export const reactOuting = (id, action) => {
         store.skipped.push(id);
     } else if (action === 'next') {
         store.skipped.push(id);
+    } else if (action === 'dislike') {
+        store.disliked = [...(store.disliked || []).filter((d) => d.title !== idea.title), { title: idea.title, kind: idea.kind, why: idea.why }].slice(-50);
+        store.skipped.push(id);
+        journal.log({ kind: 'system', title: `Sortie écartée (pas notre genre) : ${idea.title}` });
     } else {
         throw new Error(`Action inconnue : ${action}`);
     }
@@ -224,8 +222,11 @@ export const getContextForClaude = () => ({
     evenings: freeEvenings(people.filter((p) => p.ical).map((p) => ({ id: p.id, name: p.name, events: calendar.eventsBetween(p.id, Date.now(), Date.now() + 8 * 86_400_000) }))),
     outings: {
         rules: 'Sorties à deux sur l’île de Montréal seulement (pas Laval ni Longueuil). Jamais dimanche, lundi ni mardi soir : proposer du mercredi au samedi.',
+        details: 'Pour chaque idée, remplir autant que possible : price (« 13,50 $/pers. », « Gratuit », « $$ » pour un resto), free, duration, times (séances ou heures du soir), address, lat et lon (coordonnées du lieu, pour le trajet), image (https, affiche ou photo du lieu), bookingUrl (billetterie ou réservation), indoor (false si en plein air), trailer (id YouTube de la bande-annonce officielle d’un film, ou d’un extrait pour un concert). Kinds : event, cinema, concert, museum, resto, activity. Ne rien inventer : laisser vide si introuvable.',
         alreadyDone: store.done.slice(-50),
         liked: store.liked?.title || null,
+        // « Pas notre genre » : éviter ce style d'idée les semaines suivantes
+        notOurThing: (store.disliked || []).slice(-20),
         current: store.outings.ideas.map((o) => o.title),
         // Jours de repos : 1 ou 2 idées d'activité de jour pour la personne seule (champ person, date du jour)
         restDays: restDays(),
@@ -233,6 +234,52 @@ export const getContextForClaude = () => ({
     },
     mails: 'Importants = tout sauf le spam, la pub, les infolettres et les promotions. 3 au plus par personne, avec un brouillon de réponse dans Gmail quand une réponse est attendue.',
 });
+
+// --- La fiche sortie ---
+
+/**
+ * Les idées à deux avec ce que la maison sait seule : trajet, vélos, météo du soir, agendas.
+ * Les sorties en plein air prévues sous la pluie ou le grand froid sont mises de côté (hidden).
+ * @param filter all | tonight | weekend | free | resto | culture (chaque idée porte match)
+ */
+export const getOutings = async (filter = 'all') => {
+    const now = Date.now();
+    const f = FILTERS.includes(filter) ? filter : 'all';
+    const [home, forecast] = await Promise.all([getLocation().catch(() => null), getForecast().catch(() => null)]);
+    const hours = forecast?.hours || [];
+    const withCal = people.filter((p) => p.ical);
+    const evenings = freeEvenings(withCal.map((p) => ({ id: p.id, name: p.name, events: calendar.eventsBetween(p.id, now, now + 8 * 86_400_000) })), now, TZ);
+    // Station de départ : la plus proche de la maison qui a un vélo classique
+    const near = home ? await bixi.stationsAround(home, 500).catch(() => []) : [];
+    const start = near.find((s) => s.bikes > 0) || null;
+
+    const ideas = [];
+    const hidden = [];
+    for (const idea of validIdeas(store, now, TZ)) {
+        const w = weatherCheck(idea, hours, now, TZ);
+        if (w?.hide) {
+            hidden.push({ id: idea.id, title: idea.title, reason: w.reason });
+            continue;
+        }
+        let trip = null;
+        if (home && idea.lat != null) {
+            const ends = await bixi.stationsAround({ lat: idea.lat, lon: idea.lon }, 400).catch(() => []);
+            const end = ends.find((s) => s.docks > 0) || null;
+            trip = tripTo(home, idea, start, end);
+            if (trip) trip.end = end && { lat: end.lat, lon: end.lon, name: end.name, docks: end.docks };
+        }
+        ideas.push({ ...idea, free: idea.free === true, trip, freeLine: freeLine(idea, evenings, withCal.length), match: matchesFilter(idea, f, now, TZ) });
+    }
+    return {
+        at: store.outings.at,
+        filter: f,
+        home: home && { lat: home.lat, lon: home.lon },
+        start: start && { lat: start.lat, lon: start.lon, name: start.name, bikes: start.bikes },
+        liked: store.liked?.id || null,
+        ideas,
+        hidden,
+    };
+};
 
 // --- La page ---
 
