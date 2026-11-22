@@ -54,6 +54,9 @@ export function TeaserView({ idea, screens, onClose, onLike, onDislike, liked }:
                         src={`https://www.youtube-nocookie.com/embed/${idea.trailer}?autoplay=1&playsinline=1&rel=0&modestbranding=1`}
                         title={`${label} : ${idea.title}`}
                         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                        // MyHue envoie « no-referrer » partout (jeton dans certaines URL) ; le lecteur YouTube
+                        // refuse de jouer sans referer (erreur 153) : seulement l'origine, jamais le chemin
+                        referrerPolicy="strict-origin"
                         allowFullScreen
                     />
                 )}
