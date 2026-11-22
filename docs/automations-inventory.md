@@ -131,6 +131,18 @@ Créés sur le Pi :
 À régler avant le lot 5 : **l'enceinte Salon est injoignable pour MyHue et pour HA** (adresse 192.168.0.117) alors que Google
 l'utilise ; sans elle, les trois musiques ne joueront pas.
 
+## Lot 4 — un seul écran (1.81.0)
+
+Réglages → Automatismes (`/rules`) : les automatismes MyHue en haut, puis une section **« Hors MyHue »**, en lecture seule,
+chaque ligne avec l'étiquette « Hors MyHue · Appli Hue » ou « Hors MyHue · Google Home » et la décision du lot 2
+(« À retirer », « Reprise par MyHue (…) », « Gardée »).
+
+- Appli Hue : lue en direct sur le pont (API v2) par `GET /api/automations/external`.
+- Google Home : liste figée dans `server/externalAutomationsLogic.js` (Google ne laisse pas lire ses routines). Les 7 qui
+  agissent seules (heure ou présence) sont visibles d'emblée, les 18 vocales ou désactivées sont repliées.
+  **À tenir à jour** quand une routine Google change (le lot 5 en désactive plusieurs).
+- Limite : Google et Hue ne disent pas quand une routine a tourné ; la page renvoie à Google Home → Activité.
+
 ## Doublons repérés au lot 1
 
 1. **Musique à heure fixe** (Mode chill, Classique ×2, Jazz) : les quatre sont chez Google, sans plafond de volume pour Mode chill.
