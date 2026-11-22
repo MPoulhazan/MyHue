@@ -51,3 +51,23 @@ export const getYtDlpVideoUrl = async (videoId) => {
     videoCache.set(videoId, { url, expiresAt: Date.now() + 4 * 60 * 60 * 1000 });
     return url;
 };
+
+const muxedCache = new Map(); // videoId -> { url, expiresAt }
+
+/**
+ * URL d'un MP4 avec l'image ET le son (une bande-annonce sur un écran Cast). YouTube ne garde
+ * ces fichiers d'un seul tenant qu'en 360p (format 18) pour la plupart des vidéos.
+ */
+export const getYtDlpMuxedUrl = async (videoId) => {
+    const cached = muxedCache.get(videoId);
+    if (cached && cached.expiresAt > Date.now()) return cached.url;
+    const { stdout } = await execFileAsync(
+        'yt-dlp',
+        ['-f', 'best[ext=mp4][vcodec!=none][acodec!=none][height<=1080]/18', '--get-url', '--no-warnings', '--no-playlist', `https://www.youtube.com/watch?v=${videoId}`],
+        { timeout: 20000 },
+    );
+    const url = stdout.trim().split('\n')[0];
+    if (!url) throw new Error('yt-dlp returned empty URL');
+    muxedCache.set(videoId, { url, expiresAt: Date.now() + 4 * 60 * 60 * 1000 });
+    return url;
+};

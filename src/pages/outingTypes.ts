@@ -31,7 +31,12 @@ export interface Idea {
     bookingUrl?: string | null;
     indoor?: boolean | null;
     trailer?: string | null;
+    artist?: string | null;
+    photos?: string[];
 }
+
+/** Un écran Cast où envoyer une bande-annonce : le projecteur (tv) ou le Hub de la cuisine. */
+export interface Screen { id: 'tv' | 'kitchen'; name: string; online: boolean }
 
 export interface Trip {
     distM: number;
@@ -68,6 +73,7 @@ export interface Plan {
 
 export interface OutingsView {
     plan: Plan | null;
+    screens?: Screen[];
     at: number | null;
     filter: string;
     home: { lat: number; lon: number } | null;

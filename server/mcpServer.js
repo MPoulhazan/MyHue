@@ -87,6 +87,8 @@ const DAY_TOOLS = [
                             bookingUrl: { type: 'string', description: 'Adresse https de la billetterie ou de la réservation' },
                             indoor: { type: 'boolean', description: 'false si c’est en plein air (cachée par mauvais temps)' },
                             trailer: { type: 'string', description: 'Id ou adresse YouTube de la bande-annonce officielle (film) ou d’un extrait (concert)' },
+                            artist: { type: 'string', description: 'Concert : nom de l’artiste ou du groupe (cherché dans l’écran Musique)' },
+                            photos: { type: 'array', items: { type: 'string' }, description: 'Expo, resto, activité : 2 à 5 adresses https directes de photos (œuvres, salle, plats), pour un diaporama' },
                             person: { type: 'string', description: 'id du profil si l’idée est une activité de jour pour cette personne seule (son jour de repos, voir outings.restDays) ; absent = sortie à deux' },
                         },
                         required: ['kind', 'title'],

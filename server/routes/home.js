@@ -48,6 +48,7 @@ import * as city from '../city.js';
 import * as collecte from '../collecte.js';
 import * as health from '../health.js';
 import * as myDay from '../myDay.js';
+import * as outingMedia from '../outingMedia.js';
 import * as together from '../together.js';
 import * as tabletDebug from '../communautoApp.js';
 import { hueV2Get } from '../hue.js';
@@ -625,9 +626,18 @@ router.put('/api/day/mails', (req, res) => {
 // La fiche sortie : idées à deux avec trajet, vélos, météo du soir et agendas
 router.get('/api/day/outings', async (req, res) => {
     try {
-        res.json(await myDay.getOutings(String(req.query.filter || 'all')));
+        res.json({ ...(await myDay.getOutings(String(req.query.filter || 'all'))), screens: outingMedia.screens() });
     } catch (err) {
         fail(res, err, 503);
+    }
+});
+
+// Bande-annonce sur le projecteur (tv) ou le Hub de la cuisine (kitchen)
+router.post('/api/day/outings/:id/trailer', async (req, res) => {
+    try {
+        res.json(await outingMedia.castTrailer(myDay.findIdea(req.params.id), req.body?.target));
+    } catch (err) {
+        fail(res, err, 502);
     }
 });
 

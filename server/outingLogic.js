@@ -60,6 +60,10 @@ export const normalizeIdea = (o, i, personIds = [], now = Date.now()) => {
         bookingUrl: https(o.bookingUrl),
         indoor: typeof o.indoor === 'boolean' ? o.indoor : null,
         trailer: youtubeId(o.trailer),
+        // Concert : le nom de l'artiste, cherché dans l'écran Musique
+        artist: clean(o.artist, 80) || null,
+        // Expo, resto : quelques photos pour le diaporama (https, sans doublon, l'image d'abord)
+        photos: [...new Set([o.image, ...(Array.isArray(o.photos) ? o.photos : [])].map(https).filter(Boolean))].slice(0, 6),
     };
 };
 

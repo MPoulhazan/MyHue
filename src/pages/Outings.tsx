@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Icon } from '../components/Icon';
 import { OutingMap } from '../components/outing/OutingMap';
 import { KIND_LABEL, distLabel, type OutingIdea, type OutingsView } from './outingTypes';
 import { InviteSheet } from '../components/outing/InviteSheet';
 import { PlanStatus } from '../components/outing/PlanStatus';
+import { TeaserView, Slideshow } from '../components/outing/TeaserView';
 import { readDayPick } from './myDayPick';
 import './Dashboard.css';
 import './Outings.css';
@@ -24,15 +25,33 @@ const FILTERS: { id: string; label: string }[] = [
 const weekday = (ts: number) => new Date(ts).toLocaleDateString('fr-CA', { weekday: 'long' });
 const shortDay = (ymd: string | null) => (ymd ? new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric' }) : null);
 
-function Poster({ idea }: { idea: OutingIdea }) {
+/** Les photos du diaporama : celles déposées, sinon l'affiche seule. */
+const photosOf = (idea: OutingIdea) => (idea.photos?.length ? idea.photos : idea.image ? [idea.image] : []);
+
+function Poster({ idea, onTeaser, onPhotos }: { idea: OutingIdea; onTeaser: () => void; onPhotos: () => void }) {
     // L'image qui n'a pas pu se charger (on retente si l'idée change d'image)
     const [broken, setBroken] = useState<string | null>(null);
+    const photos = photosOf(idea);
+    const artist = idea.kind === 'concert' ? idea.artist || idea.title : null;
     return (
         <div className={`ot-poster k-${idea.kind}`}>
             {idea.image && broken !== idea.image
                 ? <img src={idea.image} alt="" referrerPolicy="no-referrer" onError={() => setBroken(idea.image ?? null)} />
                 : <div className="ot-poster-empty" aria-hidden="true"><Icon name={idea.kind === 'resto' ? 'bowl' : idea.kind === 'concert' ? 'music' : idea.kind === 'museum' ? 'city' : 'screen'} size={52} strokeWidth={1.5} /></div>}
             <span className="ot-kind">{KIND_LABEL[idea.kind]}</span>
+            {(idea.trailer || artist || photos.length > 1) && (
+                <div className="ot-media">
+                    {idea.trailer && (
+                        <button className="ot-media-btn" onClick={onTeaser}><Icon name="play" size={18} strokeWidth={2} />{idea.kind === 'cinema' ? 'Bande-annonce' : 'Voir un extrait'}</button>
+                    )}
+                    {artist && (
+                        <Link className="ot-media-btn alt" to={`/music?q=${encodeURIComponent(artist)}`}><Icon name="music" size={18} strokeWidth={2} />Écouter l’artiste</Link>
+                    )}
+                    {!idea.trailer && !artist && photos.length > 1 && (
+                        <button className="ot-media-btn" onClick={onPhotos}><Icon name="grid" size={18} strokeWidth={2} />{photos.length} photos</button>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
@@ -71,6 +90,7 @@ export function Outings() {
     const [error, setError] = useState(false);
     const [busy, setBusy] = useState(false);
     const [invite, setInvite] = useState<{ ideaId?: string } | null>(null);
+    const [viewer, setViewer] = useState<'teaser' | 'photos' | null>(null);
 
     const load = useCallback(() => {
         axios.get<OutingsView>('/api/day/outings', { params: { filter } })
@@ -137,7 +157,7 @@ export function Outings() {
 
             {idea ? (
                 <div className="ot-main">
-                    <Poster idea={idea} />
+                    <Poster idea={idea} onTeaser={() => setViewer('teaser')} onPhotos={() => setViewer('photos')} />
 
                     <section className="ot-info">
                         <h1>{idea.title}</h1>
@@ -188,6 +208,12 @@ export function Outings() {
                     </div>
                 </section>
             )}
+
+            {idea && viewer === 'teaser' && idea.trailer && (
+                <TeaserView idea={idea} screens={view.screens || []} liked={view.plan?.ideaId === idea.id}
+                    onClose={() => setViewer(null)} onLike={() => setInvite({ ideaId: idea.id })} onDislike={() => react('dislike')} />
+            )}
+            {idea && viewer === 'photos' && <Slideshow title={idea.title} photos={photosOf(idea)} onClose={() => setViewer(null)} />}
 
             {invite && <InviteSheet ideaId={invite.ideaId} me={readDayPick()} onClose={() => { setInvite(null); load(); }} onDone={load} />}
 

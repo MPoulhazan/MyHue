@@ -225,7 +225,7 @@ export const getContextForClaude = () => ({
     evenings: freeEvenings(people.filter((p) => p.ical).map((p) => ({ id: p.id, name: p.name, events: calendar.eventsBetween(p.id, Date.now(), Date.now() + 8 * 86_400_000) }))),
     outings: {
         rules: 'Sorties à deux sur l’île de Montréal seulement (pas Laval ni Longueuil). Jamais dimanche, lundi ni mardi soir : proposer du mercredi au samedi.',
-        details: 'Pour chaque idée, remplir autant que possible : price (« 13,50 $/pers. », « Gratuit », « $$ » pour un resto), free, duration, times (séances ou heures du soir), address, lat et lon (coordonnées du lieu, pour le trajet), image (https, affiche ou photo du lieu), bookingUrl (billetterie ou réservation), indoor (false si en plein air), trailer (id YouTube de la bande-annonce officielle d’un film, ou d’un extrait pour un concert). Kinds : event, cinema, concert, museum, resto, activity. Ne rien inventer : laisser vide si introuvable.',
+        details: 'Pour chaque idée, remplir autant que possible : price (« 13,50 $/pers. », « Gratuit », « $$ » pour un resto), free, duration, times (séances ou heures du soir), address, lat et lon (coordonnées du lieu, pour le trajet), image (https, affiche ou photo du lieu), bookingUrl (billetterie ou réservation), indoor (false si en plein air), trailer (id YouTube de la bande-annonce officielle d’un film, ou d’un extrait pour un concert), artist (concert : nom de l’artiste), photos (expo, resto, activité : 2 à 5 adresses https directes de photos). Kinds : event, cinema, concert, museum, resto, activity. Ne rien inventer : laisser vide si introuvable.',
         alreadyDone: store.done.slice(-50),
         liked: store.liked?.title || null,
         // « Pas notre genre » : éviter ce style d'idée les semaines suivantes
@@ -237,6 +237,9 @@ export const getContextForClaude = () => ({
     },
     mails: 'Importants = tout sauf le spam, la pub, les infolettres et les promotions. 3 au plus par personne, avec un brouillon de réponse dans Gmail quand une réponse est attendue.',
 });
+
+/** Une idée de sortie déposée, par son id (ou null). */
+export const findIdea = (id) => store.outings.ideas.find((o) => o.id === id) || null;
 
 // --- L'invitation Google Agenda (une sortie prévue à la fois) ---
 

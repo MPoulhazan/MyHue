@@ -86,3 +86,6 @@
     .ot-btn { min-height: 48px; }
 }
 .ot-plan { padding: 14px 16px; border-radius: 18px; background: var(--h-surface); }
+.ot-media { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; }
+.ot-media-btn { min-height: 52px; border-radius: 999px; border: none; background: var(--h-light); color: #141513 !important; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; font-family: inherit; cursor: pointer; }
+.ot-media-btn.alt { background: rgba(20, 21, 19, 0.85); color: var(--h-text) !important; }

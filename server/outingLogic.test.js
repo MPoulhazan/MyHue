@@ -27,6 +27,10 @@ test('idée nettoyée : champs nouveaux, coordonnées hors de l’île refusées
     assert.equal(o.bookingUrl, 'https://billets.test/1');
     assert.equal(o.trailer, 'dQw4w9WgXcQ');
     assert.deepEqual([o.lat, o.lon], [45.51, -73.57]);
+    assert.deepEqual(o.photos, []);
+    const expo = normalizeIdea({ title: 'Expo', kind: 'museum', artist: ' Trio ', image: 'https://a.test/1.jpg', photos: ['https://a.test/1.jpg', 'https://a.test/2.jpg', 'http://a.test/3.jpg', 42] }, 3, []);
+    assert.deepEqual(expo.photos, ['https://a.test/1.jpg', 'https://a.test/2.jpg']);
+    assert.equal(expo.artist, 'Trio');
     const laval = normalizeIdea({ title: 'Laval', lat: 45.6, lon: -73.75, kind: 'zoo' }, 1, []);
     assert.equal(laval.kind, 'activity');
     assert.equal(normalizeIdea({ title: 'Longueuil', lat: 45.53, lon: -73.45 }, 2, []).lat, null);

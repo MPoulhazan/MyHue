@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
+import { useSearchParams } from 'react-router-dom';
 import { useHomeData } from '../hooks/useHome';
 import { youtubeApi, type DeviceLogin, type YouTubeAccount, type YouTubePlaylist, type YouTubeVideo } from '../services/youtubeApi';
 import { musicApi, type Mood, type MusicHome, type PlayRequest, type Room, type Suggestion } from '../services/musicApi';
@@ -63,10 +64,18 @@ export function Music() {
     const [notice, setNotice] = useState<string | null>(null);
     const [queueOpen, setQueueOpen] = useState(false);
     const [sheet, setSheet] = useState<YouTubePlaylist | null>(null);
-    const [query, setQuery] = useState('');
-    const [draft, setDraft] = useState('');
+    // /music?q=… (« Écouter l'artiste » depuis une idée de sortie) : la recherche est déjà lancée
+    const [params] = useSearchParams();
+    const linkedQuery = (params.get('q') || '').trim().slice(0, 120);
+    const [query, setQuery] = useState(linkedQuery);
+    const [draft, setDraft] = useState(linkedQuery);
     const [results, setResults] = useState<YouTubeVideo[] | null>(null);
     const [searchError, setSearchError] = useState(false);
+
+    useEffect(() => {
+        if (!linkedQuery) return;
+        musicApi.search(linkedQuery).then(setResults).catch(() => { setResults([]); setSearchError(true); });
+    }, [linkedQuery]);
 
     const search = (q: string) => {
         setQuery(q);
