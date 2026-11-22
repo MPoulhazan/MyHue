@@ -49,7 +49,25 @@ export interface OutingIdea extends Idea {
     match: boolean;
 }
 
+export interface PlanPerson { id: string; name: string; initial: string; color: string }
+
+/** La sortie prévue et où en est l'invitation Google Agenda. */
+export interface Plan {
+    ideaId: string;
+    title: string;
+    kind: OutingKind;
+    where: string | null;
+    start: number;
+    end: number;
+    by: PlanPerson | null;
+    to: PlanPerson | null;
+    status: 'sent' | 'pending' | 'confirmed' | 'declined';
+    tracked: boolean;
+    guestInvited: boolean;
+}
+
 export interface OutingsView {
+    plan: Plan | null;
     at: number | null;
     filter: string;
     home: { lat: number; lon: number } | null;

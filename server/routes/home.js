@@ -631,6 +631,47 @@ router.get('/api/day/outings', async (req, res) => {
     }
 });
 
+// Invitation Google Agenda : options, création (QR code), suivi, réponse donnée de vive voix
+router.get('/api/day/outings/:id/invite', (req, res) => {
+    try {
+        res.json(myDay.inviteOptions(req.params.id));
+    } catch (err) {
+        fail(res, err);
+    }
+});
+
+router.post('/api/day/outings/:id/invite', async (req, res) => {
+    try {
+        res.json(await myDay.createInvite(req.params.id, req.body || {}));
+    } catch (err) {
+        fail(res, err);
+    }
+});
+
+router.get('/api/day/plan', async (req, res) => {
+    try {
+        res.json(req.query.qr ? (await myDay.planQr()) || { plan: null } : { plan: myDay.planView() });
+    } catch (err) {
+        fail(res, err, 503);
+    }
+});
+
+router.post('/api/day/plan/:action', (req, res) => {
+    try {
+        res.json(myDay.updatePlan(req.params.action));
+    } catch (err) {
+        fail(res, err);
+    }
+});
+
+router.put('/api/day/people/:id/email', (req, res) => {
+    try {
+        res.json(myDay.setEmail(req.params.id, req.body?.email || null));
+    } catch (err) {
+        fail(res, err);
+    }
+});
+
 router.put('/api/day/outings', (req, res) => {
     try {
         res.json(myDay.setOutings(req.body?.ideas));

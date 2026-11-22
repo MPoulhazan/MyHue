@@ -65,11 +65,22 @@ export const calendarEvents = (parsed, from, to, expand) => {
             if (allDay && end <= start) end = start + DAY;
             if (!Number.isFinite(start) || start >= to || end <= from) continue;
             const text = (v) => (typeof v === 'string' ? v : v?.val ?? '').trim();
-            out.push({ title: text(o.summary) || 'Sans titre', start, end: Math.max(end, start), allDay, location: text(o.location) || null });
+            const item = { title: text(o.summary) || 'Sans titre', start, end: Math.max(end, start), allDay, location: text(o.location) || null };
+            // Invités et réponses (Oui / Non / pas encore) : sert à suivre une invitation de sortie
+            const attendees = attendeesOf(ev);
+            if (attendees.length) item.attendees = attendees;
+            out.push(item);
         }
     }
     return out.sort((a, b) => a.start - b.start);
 };
+
+/** Les invités d'un VEVENT node-ical : [{ email, partstat }] (ACCEPTED, DECLINED, TENTATIVE, NEEDS-ACTION). */
+export const attendeesOf = (ev) =>
+    [ev?.attendee].flat().filter(Boolean).map((a) => ({
+        email: String(typeof a === 'string' ? a : a.val || '').replace(/^mailto:/i, '').trim().toLowerCase(),
+        partstat: String(a?.params?.PARTSTAT || 'NEEDS-ACTION').toUpperCase(),
+    })).filter((a) => a.email.includes('@'));
 
 /**
  * Soirées (17 h – 23 h) du mercredi au samedi des 7 prochains jours, avec qui est pris.

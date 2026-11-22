@@ -85,3 +85,4 @@
     .ot-strip-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .ot-btn { min-height: 48px; }
 }
+.ot-plan { padding: 14px 16px; border-radius: 18px; background: var(--h-surface); }

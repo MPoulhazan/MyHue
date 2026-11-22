@@ -24,6 +24,8 @@ import { dayItems, headline, pickOuting, pickSolo, personalSpeech, isDayQuestion
 import * as briefing from './briefing.js';
 import * as calendar from './calendar.js';
 import { freeEvenings, localMidnight } from './calendarLogic.js';
+import QRCode from 'qrcode';
+import { timeChoices, durationMin, dayChoices, startOf, emailFromIcal, gcalUrl, eventDetails, findPlanEvent, planStatus } from './inviteLogic.js';
 
 const PEOPLE_FILE = dataFile('people.json');
 const STORE_FILE = dataFile('myday.json');
@@ -64,7 +66,7 @@ const clean = (s, max = 400) => (typeof s === 'string' ? s.trim().slice(0, max) 
 // --- Profils ---
 
 /** Profils sans l'adresse iCal (un secret) : on dit seulement s'il y a un agenda. */
-export const getPeople = () => people.map(({ ical, ...p }) => ({ ...p, calendar: Boolean(ical), calendarStatus: ical ? calendar.status(p.id) : null }));
+export const getPeople = () => people.map(({ ical, email, ...p }) => ({ ...p, calendar: Boolean(ical), calendarStatus: ical ? calendar.status(p.id) : null }));
 
 /** Branche (ou débranche avec null) l'agenda Google d'une personne par son adresse iCal secrète. */
 export const setCalendar = async (personId, url) => {
@@ -127,6 +129,7 @@ export const setPeople = (list) => {
         haPerson: clean(p.haPerson, 80) || null,
         mails: Boolean(p.mails),
         ical: people.find((old) => old.id === (clean(p.id, 24) || `p${i + 1}`))?.ical ?? null,
+        email: people.find((old) => old.id === (clean(p.id, 24) || `p${i + 1}`))?.email ?? null,
     }));
     writeJson(PEOPLE_FILE, people);
     return getPeople();
@@ -235,6 +238,117 @@ export const getContextForClaude = () => ({
     mails: 'Importants = tout sauf le spam, la pub, les infolettres et les promotions. 3 au plus par personne, avec un brouillon de réponse dans Gmail quand une réponse est attendue.',
 });
 
+// --- L'invitation Google Agenda (une sortie prévue à la fois) ---
+
+// Adresse Gmail d'un profil : réglée à la main, sinon tirée de son adresse iCal secrète. Jamais renvoyée par l'API.
+const emailOf = (p) => (p?.email || emailFromIcal(p?.ical) || null);
+const otherThan = (id) => people.find((p) => p.id !== id) || null;
+const short = (p) => p && { id: p.id, name: p.name, initial: p.initial, color: p.color };
+
+/** Ce qu'il faut pour remplir la feuille d'invitation : soirs, heures, qui invite qui. */
+export const inviteOptions = (ideaId) => {
+    const idea = store.outings.ideas.find((o) => o.id === ideaId);
+    if (!idea) throw new Error('Idée inconnue');
+    const now = Date.now();
+    const withCal = people.filter((p) => p.ical);
+    const evenings = freeEvenings(withCal.map((p) => ({ id: p.id, name: p.name, events: calendar.eventsBetween(p.id, now, now + 8 * 86_400_000) })), now, TZ);
+    return {
+        idea: { id: idea.id, title: idea.title, kind: idea.kind, where: idea.address || idea.where, date: idea.date },
+        days: dayChoices(idea, evenings, now, TZ),
+        times: timeChoices(idea),
+        people: people.map((p) => ({ ...short(p), guestEmail: Boolean(emailOf(otherThan(p.id))) })),
+    };
+};
+
+/** Règle l'adresse Gmail d'un profil (pour l'inviter). Gardée seulement dans data/people.json. */
+export const setEmail = (personId, email) => {
+    const person = people.find((p) => p.id === personId);
+    if (!person) throw new Error(`Profil inconnu : ${personId}`);
+    const e = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (e && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e)) throw new Error('Adresse courriel invalide');
+    person.email = e || null;
+    writeJson(PEOPLE_FILE, people);
+    return { ok: true };
+};
+
+const qrOf = (url) => QRCode.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#141513', light: '#ffffff' } });
+
+/**
+ * « Ça nous tente » : prévoit la sortie et fabrique le lien Google Agenda (et son QR code)
+ * que la personne qui invite scanne avec son téléphone.
+ * @param opts { date: 'AAAA-MM-JJ', time: 'HH:MM', by: id du profil qui invite }
+ */
+export const createInvite = async (ideaId, { date, time, by } = {}) => {
+    const idea = store.outings.ideas.find((o) => o.id === ideaId);
+    if (!idea) throw new Error('Idée inconnue');
+    const inviter = people.find((p) => p.id === by) || people[0];
+    const guest = otherThan(inviter.id);
+    const start = startOf(idea.date || date, time, TZ);
+    if (!start) throw new Error('Choisis un soir et une heure');
+    const end = start + durationMin(idea.duration, idea.kind) * 60_000;
+    const location = idea.address || idea.where || null;
+    const url = gcalUrl({ title: idea.title, start, end, location, details: eventDetails(idea), guest: emailOf(guest) }, TZ);
+    store.plan = { ideaId: idea.id, title: idea.title, kind: idea.kind, where: idea.where, start, end, url, by: inviter.id, to: guest?.id ?? null, inviterEmail: emailOf(inviter), guestEmail: emailOf(guest), manual: null, at: Date.now() };
+    store.liked = { ...idea, at: Date.now() };
+    saveStore();
+    journal.log({ kind: 'system', title: `Sortie prévue : ${idea.title}`, data: { start } });
+    // L'invité verra l'événement dans quelques minutes : on relit les agendas un peu plus tôt que prévu
+    setTimeout(() => calendar.refresh().catch(() => {}), 3 * 60_000).unref?.();
+    return { plan: planView(), qr: await qrOf(url) };
+};
+
+let lastPlanRefresh = 0;
+
+/** La sortie prévue et où en est l'invitation, ou null (rien de prévu, ou fini depuis plus de 12 h). */
+export function planView() {
+    const p = store.plan;
+    if (!p || p.end < Date.now() - 12 * 3600_000) return null;
+    const cals = people.filter((x) => x.ical && (x.id === p.by || x.id === p.to));
+    let found = null;
+    for (const x of cals) {
+        found = findPlanEvent(p, calendar.eventsBetween(x.id, p.start - 3600_000, p.start + 3600_000));
+        if (found) break;
+    }
+    const status = planStatus(p, found, cals.length > 0);
+    // En attente d'une réponse : on relit les agendas plus souvent (toutes les 3 min au plus)
+    if ((status === 'sent' || status === 'pending') && cals.length && p.start > Date.now() && Date.now() - lastPlanRefresh > 3 * 60_000) {
+        lastPlanRefresh = Date.now();
+        calendar.refresh().catch(() => {});
+    }
+    return {
+        ideaId: p.ideaId,
+        title: p.title,
+        kind: p.kind,
+        where: p.where,
+        start: p.start,
+        end: p.end,
+        by: short(people.find((x) => x.id === p.by)),
+        to: short(people.find((x) => x.id === p.to)),
+        status,
+        tracked: cals.length > 0,
+        guestInvited: Boolean(p.guestEmail),
+    };
+}
+
+/** Le QR code de l'invitation en cours, pour le revoir. */
+export const planQr = async () => (store.plan ? { plan: planView(), qr: await qrOf(store.plan.url) } : null);
+
+/** confirm / decline (réponse donnée de vive voix) ou cancel (on ne sort plus). */
+export const updatePlan = (action) => {
+    if (!store.plan) throw new Error('Aucune sortie prévue');
+    if (action === 'cancel') {
+        journal.log({ kind: 'system', title: `Sortie annulée : ${store.plan.title}` });
+        store.plan = null;
+        store.liked = null;
+    } else if (action === 'confirm' || action === 'decline') {
+        store.plan.manual = action === 'confirm' ? 'confirmed' : 'declined';
+    } else {
+        throw new Error(`Action inconnue : ${action}`);
+    }
+    saveStore();
+    return { plan: planView() };
+};
+
 // --- La fiche sortie ---
 
 /**
@@ -276,6 +390,7 @@ export const getOutings = async (filter = 'all') => {
         home: home && { lat: home.lat, lon: home.lon },
         start: start && { lat: start.lat, lon: start.lon, name: start.name, bikes: start.bikes },
         liked: store.liked?.id || null,
+        plan: planView(),
         ideas,
         hidden,
     };
@@ -316,6 +431,7 @@ export const getDay = async (personId) => {
         things: things.items,
         mails: person.mails ? (mails ? { at: mails.at, items: mails.items } : { at: null, items: [] }) : null,
         outing: pickSolo(store, person.id, Date.now(), TZ) || pickOuting(store, Date.now(), TZ),
+        plan: planView(),
         liked: store.liked,
         touch: cooperView?.line ? { who: 'Cooper', line: cooperView.line } : null,
     };

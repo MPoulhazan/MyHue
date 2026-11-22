@@ -5,7 +5,9 @@ import { speak } from '../hooks/useVoice';
 import { Together } from './Together';
 import { readDayPick as readPick, saveDayPick as savePick } from './myDayPick';
 import { Link } from 'react-router-dom';
-import { KIND_LABEL, type Idea } from './outingTypes';
+import { KIND_LABEL, type Idea, type Plan } from './outingTypes';
+import { InviteSheet } from '../components/outing/InviteSheet';
+import { PlanStatus } from '../components/outing/PlanStatus';
 import './Dashboard.css';
 import './MyDay.css';
 
@@ -24,6 +26,7 @@ interface DayView {
     mails: { at: number | null; items: Mail[] } | null;
     outing: { idea: Idea; left: number } | null;
     liked: (Idea & { at: number }) | null;
+    plan: Plan | null;
     touch: { who: string; line: string } | null;
 }
 
@@ -110,6 +113,8 @@ export function MyDay() {
     const [data, setData] = useState<DayView | null>(null);
     const [error, setError] = useState(false);
     const [calendarOpen, setCalendarOpen] = useState(false);
+    // Feuille d'invitation : { ideaId } pour proposer une idée, {} pour revoir le code de la sortie prévue
+    const [invite, setInvite] = useState<{ ideaId?: string } | null>(null);
     const [speaking, setSpeaking] = useState(false);
 
     const load = useCallback(() => {
@@ -215,8 +220,10 @@ export function MyDay() {
                 )}
 
                 <section className="md-card md-outing">
-                    <div className="md-head"><h2>Pour vous deux</h2>{outing && <span className="md-kind">{KIND_LABEL[outing.idea.kind]}</span>}</div>
-                    {outing ? (
+                    <div className="md-head"><h2>Pour vous deux</h2>{(data.plan || outing) && <span className="md-kind">{KIND_LABEL[data.plan?.kind || outing!.idea.kind]}</span>}</div>
+                    {data.plan ? (
+                        <PlanStatus plan={data.plan} onChange={load} onShowCode={() => setInvite({})} />
+                    ) : outing ? (
                         <>
                             <Link className="md-idea md-idea-link" to={`/sorties?id=${encodeURIComponent(outing.idea.id)}`}>{outing.idea.title}</Link>
                             {(outing.idea.when || outing.idea.where) && <span className="md-sub">{[outing.idea.when, outing.idea.where].filter(Boolean).join(' · ')}</span>}
@@ -225,7 +232,7 @@ export function MyDay() {
                                 {liked?.id === outing.idea.id ? (
                                     <span className="md-liked"><Icon name="check" size={18} strokeWidth={2.5} />Ça vous tente</span>
                                 ) : (
-                                    <button className="md-btn primary" onClick={() => react(outing.idea.id, 'like')}>Ça nous tente</button>
+                                    <button className="md-btn primary" onClick={() => setInvite({ ideaId: outing.idea.id })}>Ça nous tente</button>
                                 )}
                                 <Link className="md-btn" to={`/sorties?id=${encodeURIComponent(outing.idea.id)}`}>Détails{outing.left > 0 ? ` et ${outing.left} autre${outing.left > 1 ? 's' : ''}` : ''}</Link>
                                 {outing.left > 0 && <button className="md-btn quiet" onClick={() => react(outing.idea.id, 'next')}>Autre idée</button>}
@@ -239,6 +246,8 @@ export function MyDay() {
             </div>
 
             <Together me={person} people={people} />
+
+            {invite && <InviteSheet ideaId={invite.ideaId} me={person.id} onClose={() => { setInvite(null); load(); }} onDone={load} />}
 
             {calendarOpen &&<CalendarSheet person={person} onClose={() => setCalendarOpen(false)} onSaved={load} />}
 

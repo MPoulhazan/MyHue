@@ -4,6 +4,9 @@ import axios from 'axios';
 import { Icon } from '../components/Icon';
 import { OutingMap } from '../components/outing/OutingMap';
 import { KIND_LABEL, distLabel, type OutingIdea, type OutingsView } from './outingTypes';
+import { InviteSheet } from '../components/outing/InviteSheet';
+import { PlanStatus } from '../components/outing/PlanStatus';
+import { readDayPick } from './myDayPick';
 import './Dashboard.css';
 import './Outings.css';
 
@@ -67,6 +70,7 @@ export function Outings() {
     const [view, setView] = useState<OutingsView | null>(null);
     const [error, setError] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [invite, setInvite] = useState<{ ideaId?: string } | null>(null);
 
     const load = useCallback(() => {
         axios.get<OutingsView>('/api/day/outings', { params: { filter } })
@@ -145,10 +149,15 @@ export function Outings() {
                         )}
                         {idea.why && <p className="ot-why">{idea.why}</p>}
                         {idea.freeLine && <p className="ot-free">{idea.freeLine}</p>}
+                        {view.plan?.ideaId === idea.id && (
+                            <div className="ot-plan"><PlanStatus plan={view.plan} compact onChange={load} onShowCode={() => setInvite({})} /></div>
+                        )}
                         <div className="ot-actions">
-                            {view.liked === idea.id
-                                ? <span className="ot-liked"><Icon name="check" size={20} strokeWidth={2.5} />Ça vous tente</span>
-                                : <button className="ot-btn primary" disabled={busy} onClick={() => react('like')}>Ça nous tente</button>}
+                            {view.plan?.ideaId === idea.id
+                                ? null
+                                : view.liked === idea.id && !view.plan
+                                    ? <span className="ot-liked"><Icon name="check" size={20} strokeWidth={2.5} />Ça vous tente</span>
+                                    : <button className="ot-btn primary" disabled={busy} onClick={() => setInvite({ ideaId: idea.id })}>Ça nous tente</button>}
                             {link && <a className="ot-btn" href={link} target="_blank" rel="noreferrer">{linkLabel}</a>}
                             {shown.length > 1 && <button className="ot-btn" onClick={() => select((shown[index + 1] || shown[0]).id)}>Autre idée</button>}
                             <button className="ot-btn quiet" disabled={busy} onClick={() => react('dislike')}>Pas notre genre</button>
@@ -179,6 +188,8 @@ export function Outings() {
                     </div>
                 </section>
             )}
+
+            {invite && <InviteSheet ideaId={invite.ideaId} me={readDayPick()} onClose={() => { setInvite(null); load(); }} onDone={load} />}
 
             {view.hidden.length > 0 && (
                 <p className="ot-hidden">

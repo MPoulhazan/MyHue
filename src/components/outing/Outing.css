@@ -1,0 +1,69 @@
+/* Invitation Google Agenda (maquette 2) et état de la sortie prévue */
+
+.iv-sheet { max-width: 1000px; width: min(1000px, calc(100vw - 32px)); gap: 20px; }
+.iv-eyebrow { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--h-accent); }
+.iv-sheet .sheet-title { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.iv-sheet .sheet-head h2 { font-size: 28px; line-height: 1.2; }
+.iv-error { margin: 0; color: var(--h-warn); font-size: 15px; }
+.iv-note { margin: 0; font-size: 14px; line-height: 1.45; color: var(--h-muted); }
+
+.iv-form { display: flex; flex-direction: column; gap: 18px; }
+.iv-group { border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.iv-group legend { padding: 0 0 10px; font-size: 15px; color: #c9cac2; }
+.iv-choices { display: flex; flex-wrap: wrap; gap: 10px; }
+.iv-choice { min-height: 56px; padding: 0 20px; border-radius: 16px; border: 1px solid var(--h-line-2); background: transparent; color: var(--h-text); font-size: 16px; display: inline-flex; align-items: center; gap: 8px; }
+.iv-choice::first-letter { text-transform: uppercase; }
+.iv-choice.on { border: 2px solid var(--h-accent); background: #1f231a; font-weight: 700; }
+.iv-choice small { font-size: 12px; font-weight: 700; color: var(--h-warn-text); }
+.iv-choice small.ok { color: var(--h-accent); }
+.iv-fixed { margin: 0; font-size: 18px; font-weight: 700; }
+.iv-fixed::first-letter { text-transform: uppercase; }
+
+.iv-person { min-height: 56px; padding: 0 20px 0 8px; border-radius: 999px; border: 1px solid var(--h-line-2); background: transparent; color: var(--h-text); font-size: 16px; display: inline-flex; align-items: center; gap: 10px; }
+.iv-person.c-blue { --c: var(--h-cool); --c-dim: var(--h-cool-dim); --c-text: var(--h-cool-text); }
+.iv-person.c-amber { --c: var(--h-light); --c-dim: var(--h-light-dim); --c-text: var(--h-light-text); }
+.iv-person.c-green { --c: var(--h-accent); --c-dim: #2b3122; --c-text: #e2ff9e; }
+.iv-person.c-pink { --c: #ff8fc0; --c-dim: #3a2030; --c-text: #ffc4dd; }
+.iv-avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--c-dim); color: var(--c-text); }
+.iv-person.on { border: 2px solid var(--c); background: var(--c-dim); color: var(--c-text); font-weight: 700; }
+.iv-person.on .iv-avatar { background: var(--c); color: #141513; }
+
+.iv-field { display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: var(--h-muted); }
+.iv-field input { min-height: 52px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--h-line-2); background: var(--h-surface-2); color: var(--h-text); font-size: 16px; font-family: inherit; }
+.iv-field input:focus { outline: 2px solid var(--h-accent); outline-offset: 1px; }
+
+.iv-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.iv-btn { min-height: 56px; padding: 0 24px; border-radius: 999px; border: 1px solid var(--h-line-2); background: transparent; color: var(--h-text); font-size: 16px; font-family: inherit; cursor: pointer; }
+.iv-btn.primary { border: none; background: var(--h-accent); color: var(--h-on-accent); font-weight: 800; font-size: 17px; }
+.iv-btn.quiet { border-color: transparent; color: var(--h-muted); }
+.iv-btn:disabled { opacity: 0.5; cursor: default; }
+
+.iv-qr-step { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 32px; align-items: start; }
+.iv-qr { background: #fff; border-radius: 24px; padding: 20px; line-height: 0; }
+.iv-qr svg { width: 100%; height: auto; display: block; }
+.iv-side { display: flex; flex-direction: column; gap: 16px; }
+.iv-when { font-size: 18px; font-weight: 700; }
+.iv-when::first-letter { text-transform: uppercase; }
+.iv-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; font-size: 17px; line-height: 1.45; color: #c9cac2; }
+.iv-side .iv-btn { align-self: flex-start; }
+
+@media (max-width: 760px) {
+    .iv-qr-step { grid-template-columns: minmax(0, 1fr); }
+    .iv-qr { max-width: 300px; }
+}
+
+/* État de la sortie prévue (carte « Pour vous deux » et fiche) */
+.ps { display: flex; flex-direction: column; gap: 8px; }
+.ps-title { font-size: 20px; line-height: 1.25; }
+.ps-when { font-size: 14px; color: var(--h-muted); }
+.ps-when::first-letter { text-transform: uppercase; }
+.ps-line { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 800; color: var(--h-light-text); }
+.ps-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--h-light); }
+.ps-confirmed .ps-line { color: var(--h-accent); }
+.ps-declined .ps-line { color: var(--h-warn-text); }
+.ps-declined .ps-dot { background: var(--h-warn); }
+.ps-sub { font-size: 13px; color: var(--h-muted); }
+.ps-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.ps-btn { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--h-line-2); background: transparent; color: var(--h-text); font-size: 14px; font-family: inherit; cursor: pointer; }
+.ps-btn.quiet { border-color: transparent; color: var(--h-muted); }
+.ps.compact .ps-line { font-size: 16px; }
