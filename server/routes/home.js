@@ -49,6 +49,7 @@ import * as collecte from '../collecte.js';
 import * as health from '../health.js';
 import * as myDay from '../myDay.js';
 import * as outingMedia from '../outingMedia.js';
+import * as outingSearch from '../outingSearch.js';
 import * as together from '../together.js';
 import * as tabletDebug from '../communautoApp.js';
 import { hueV2Get } from '../hue.js';
@@ -626,7 +627,7 @@ router.put('/api/day/mails', (req, res) => {
 // La fiche sortie : idées à deux avec trajet, vélos, météo du soir et agendas
 router.get('/api/day/outings', async (req, res) => {
     try {
-        res.json({ ...(await myDay.getOutings(String(req.query.filter || 'all'))), screens: outingMedia.screens() });
+        res.json({ ...(await myDay.getOutings(String(req.query.filter || 'all'))), screens: outingMedia.screens(), search: { ...myDay.searchStatus(), available: outingSearch.via() } });
     } catch (err) {
         fail(res, err, 503);
     }
@@ -656,6 +657,27 @@ router.post('/api/day/outings/:id/invite', async (req, res) => {
     } catch (err) {
         fail(res, err);
     }
+});
+
+// « Trouve-moi autre chose » : nouvelle recherche (tâche Claude par son adresse /fire, sinon Groq)
+router.post('/api/day/outings/search', async (_req, res) => {
+    try {
+        res.json(await outingSearch.request());
+    } catch (err) {
+        fail(res, err);
+    }
+});
+
+// Nos sorties : historique, avis du lendemain, montant, photo souvenir
+router.get('/api/day/history', run(() => myDay.getHistory()));
+router.post('/api/day/history/:id/rate', run((req) => myDay.rateOuting(req.params.id, req.body?.rating)));
+router.put('/api/day/history/:id/spent', run((req) => myDay.setSpent(req.params.id, req.body?.amount ?? null)));
+router.post('/api/day/history/:id/photo', run((req) => myDay.savePhoto(req.params.id, req.body?.image)));
+router.get('/api/day/history/:id/photo', (req, res) => {
+    const file = myDay.photoPath(req.params.id);
+    if (!file) return res.status(404).end();
+    res.set('Cache-Control', 'private, max-age=31536000, immutable');
+    res.sendFile(file);
 });
 
 // Ce soir à deux : le programme du jour d'une sortie prévue (null sinon)

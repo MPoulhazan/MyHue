@@ -109,3 +109,52 @@
 .tn-at.cooper { color: var(--h-light); }
 .tn-at.sky { color: var(--h-cool); }
 .md-outing .tn-rows li { font-size: 15px; }
+
+/* Le lendemain : « C'était bien ? » */
+.rv { display: flex; flex-direction: column; gap: 12px; }
+.rv-when { font-size: 13px; font-weight: 700; color: var(--h-light); }
+.rv-q { font-size: 20px; line-height: 1.25; }
+.rv-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rv-choice { min-height: 56px; border-radius: 16px; border: 1px solid var(--h-line-2); background: transparent; color: var(--h-text); font-size: 16px; font-family: inherit; cursor: pointer; }
+.rv-choice.r-super { border: none; background: var(--h-accent); color: var(--h-on-accent); font-weight: 800; }
+.rv-choice:disabled { opacity: 0.5; }
+.rv-photo { width: 100%; max-height: 160px; object-fit: cover; border-radius: 14px; }
+.rv-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rv-sub { font-size: 13px; color: var(--h-muted); }
+
+/* Nos sorties */
+.hs-photo-btn { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px dashed var(--h-line-2); background: transparent; color: var(--h-text); font-size: 14px; font-family: inherit; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.hs-photo-btn:disabled { opacity: 0.5; }
+.hs-error { font-size: 13px; color: var(--h-warn-text); }
+.hs-link { min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; color: var(--h-muted); font-size: 14px; text-decoration: none; }
+.hs-month { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.hs-month strong { font-size: 22px; }
+.hs-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.hs-item { display: flex; gap: 16px; padding: 14px; border-radius: 22px; background: var(--h-surface); min-width: 0; }
+.hs-thumb { width: 120px; height: 120px; flex: none; border-radius: 16px; overflow: hidden; display: grid; place-items: center; background: var(--h-light-dim); color: var(--h-light-text); font-size: 13px; font-weight: 700; }
+.hs-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hs-thumb.k-museum { background: var(--h-cool-dim); color: var(--h-cool-text); }
+.hs-thumb.k-resto { background: #3a2030; color: #ffc4dd; }
+.hs-thumb.k-activity { background: #2b3122; color: #e2ff9e; }
+.hs-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.hs-body strong { font-size: 17px; }
+.hs-rate { display: flex; gap: 6px; flex-wrap: wrap; }
+.hs-chip { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--h-line-2); background: transparent; color: var(--h-muted); font-size: 14px; font-family: inherit; cursor: pointer; }
+.hs-chip.on { border-color: var(--h-accent); background: #1f231a; color: var(--h-accent); font-weight: 700; }
+.hs-chip.r-bof.on { border-color: var(--h-warn); background: var(--h-warn-bg); color: var(--h-warn-text); }
+.hs-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.hs-spent { min-height: 44px; padding: 0 14px; border-radius: 999px; border: none; background: var(--h-surface-2); color: var(--h-text); font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; }
+.hs-spent.unknown { color: var(--h-muted); font-weight: 400; }
+.hs-spent-form { display: inline-flex; align-items: center; gap: 6px; }
+.hs-spent-form input { width: 90px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--h-line-2); background: var(--h-surface-2); color: var(--h-text); font-size: 15px; font-family: inherit; }
+.hs-spent-form input.bad { border-color: var(--h-warn); }
+.hs-mini { min-height: 44px; padding: 0 14px; border-radius: 999px; border: none; background: var(--h-accent); color: var(--h-on-accent); font-weight: 800; font-family: inherit; cursor: pointer; }
+.hs .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 900px) {
+    .hs-list { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+    .hs-thumb { width: 88px; height: 88px; }
+    .hs-month { align-items: flex-start; }
+}

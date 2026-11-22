@@ -94,6 +94,7 @@ const DAY_TOOLS = [
                         required: ['kind', 'title'],
                     },
                 },
+                append: { type: 'boolean', description: 'true pour AJOUTER ces idées à celles de la semaine (recherche « Trouve-moi autre chose » demandée depuis la tablette) au lieu de les remplacer' },
             },
             required: ['ideas'],
         },
@@ -103,7 +104,7 @@ const DAY_TOOLS = [
 const callDayTool = (name, args) => {
     if (name === 'get_day_context') return myDay.getContextForClaude();
     if (name === 'set_mail_digest') return myDay.setMails(args.person, args.items);
-    if (name === 'set_outing_ideas') return myDay.setOutings(args.ideas);
+    if (name === 'set_outing_ideas') return myDay.setOutings(args.ideas, { append: args.append === true });
     return null;
 };
 

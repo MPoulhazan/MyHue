@@ -74,6 +74,7 @@ export interface Plan {
 export interface OutingsView {
     plan: Plan | null;
     screens?: Screen[];
+    search?: SearchState;
     at: number | null;
     filter: string;
     home: { lat: number; lon: number } | null;
@@ -107,3 +108,41 @@ export interface Tonight {
     cooper: { awayMin: number; before: number } | null;
     reminded: boolean;
 }
+
+/** Une sortie faite, dans « Nos sorties » (server/historyLogic.js). */
+export interface HistoryEntry {
+    id: string;
+    ideaId: string;
+    title: string;
+    kind: OutingKind;
+    where: string | null;
+    start: number;
+    end: number;
+    by: PlanPerson | null;
+    to: PlanPerson | null;
+    price: string | null;
+    spent: number | null;
+    rating: 'super' | 'correct' | 'bof' | null;
+    /** Adresse de la photo souvenir sur le serveur de la maison, ou null */
+    photo: string | null;
+}
+
+export interface HistoryView {
+    items: HistoryEntry[];
+    month: { count: number; total: number; unknown: number };
+}
+
+/** « Trouve-moi autre chose » : la recherche en cours (tâche Claude ou Groq). */
+export interface SearchState {
+    running: boolean;
+    via: 'claude' | 'groq' | null;
+    at: number | null;
+    error: string | null;
+    added: number | null;
+    available: 'claude' | 'groq' | null;
+}
+
+export const RATING_LABEL: Record<NonNullable<HistoryEntry['rating']>, string> = { super: 'Super', correct: 'Correct', bof: 'Bof' };
+
+/** « 27 $ », « 13,50 $ » */
+export const money = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(2).replace('.', ',')} $`;

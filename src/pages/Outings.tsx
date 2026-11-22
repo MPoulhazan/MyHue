@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Icon } from '../components/Icon';
 import { OutingMap } from '../components/outing/OutingMap';
-import { KIND_LABEL, distLabel, type OutingIdea, type OutingsView } from './outingTypes';
+import { KIND_LABEL, distLabel, type OutingIdea, type OutingsView, type SearchState } from './outingTypes';
 import { InviteSheet } from '../components/outing/InviteSheet';
 import { PlanStatus } from '../components/outing/PlanStatus';
 import { TeaserView, Slideshow } from '../components/outing/TeaserView';
@@ -24,6 +24,14 @@ const FILTERS: { id: string; label: string }[] = [
 
 const weekday = (ts: number) => new Date(ts).toLocaleDateString('fr-CA', { weekday: 'long' });
 const shortDay = (ymd: string | null) => (ymd ? new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric' }) : null);
+
+/** La ligne sous « Trouve-moi autre chose ». */
+const searchLine = (s: SearchState) => {
+    if (s.running) return s.via === 'claude' ? 'Claude cherche, 2 à 5 min' : 'Recherche sur le Web, environ 1 min';
+    if (s.error) return s.error;
+    if (s.added != null) return s.added ? `${s.added} idée${s.added > 1 ? 's' : ''} ajoutée${s.added > 1 ? 's' : ''}` : 'Rien de nouveau trouvé';
+    return s.available === 'claude' ? 'Nouvelle recherche par Claude' : 'Nouvelle recherche sur le Web';
+};
 
 /** Les photos du diaporama : celles déposées, sinon l'affiche seule. */
 const photosOf = (idea: OutingIdea) => (idea.photos?.length ? idea.photos : idea.image ? [idea.image] : []);
@@ -91,6 +99,7 @@ export function Outings() {
     const [busy, setBusy] = useState(false);
     const [invite, setInvite] = useState<{ ideaId?: string } | null>(null);
     const [viewer, setViewer] = useState<'teaser' | 'photos' | null>(null);
+    const [searching, setSearching] = useState(false);
 
     const load = useCallback(() => {
         axios.get<OutingsView>('/api/day/outings', { params: { filter } })
@@ -98,13 +107,25 @@ export function Outings() {
             .catch(() => setError(true));
     }, [filter]);
 
+    // Pendant une recherche « Trouve-moi autre chose », on relit toutes les 10 s pour voir les idées arriver
+    const running = Boolean(view?.search?.running);
     useEffect(() => {
         load();
-        const t = setInterval(load, 5 * 60_000);
+        const t = setInterval(load, running ? 10_000 : 5 * 60_000);
         return () => clearInterval(t);
-    }, [load]);
+    }, [load, running]);
 
     const select = (id: string) => setParams({ id }, { replace: true });
+    const search = view?.search;
+    const findMore = async () => {
+        setSearching(true);
+        try {
+            await axios.post('/api/day/outings/search');
+        } catch { /* l'erreur revient dans search.error */ } finally {
+            setSearching(false);
+            load();
+        }
+    };
 
     if (!view) {
         return <div className="home ot"><p className="muted">{error ? 'Impossible de charger les idées de sortie.' : 'Chargement…'}</p></div>;
@@ -152,6 +173,7 @@ export function Outings() {
                     {FILTERS.map((f) => (
                         <button key={f.id} className={`ot-chip ${filter === f.id ? 'on' : ''}`} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>{f.label}</button>
                     ))}
+                    <Link className="ot-chip ot-chip-link" to="/nos-sorties">Nos sorties</Link>
                 </div>
             </header>
 
@@ -191,20 +213,30 @@ export function Outings() {
                 <div className="ot-empty">
                     <p>{view.ideas.length ? 'Aucune idée pour ce filtre.' : 'Les idées de sortie arrivent chaque mercredi matin.'}</p>
                     {filter !== 'all' && view.ideas.length > 0 && <button className="ot-btn" onClick={() => setFilter('all')}>Voir toutes les idées</button>}
+                    {search?.available && (
+                        <button className="ot-btn" disabled={search.running || searching} onClick={findMore}>{search.running ? 'Recherche en cours…' : 'Trouve-moi autre chose'}</button>
+                    )}
+                    {search && (search.running || search.error) && <span className="ot-muted">{searchLine(search)}</span>}
                 </div>
             )}
 
-            {shown.length > 1 && (
+            {(shown.length > 1 || search?.available) && (
                 <section className="ot-strip" aria-label="Les autres idées de la semaine">
                     <span className="ot-label">Les idées de la semaine</span>
                     <div className="ot-strip-row">
-                        {shown.slice(0, 6).map((o) => (
+                        {shown.slice(0, search?.available ? 5 : 6).map((o) => (
                             <button key={o.id} className={`ot-mini k-${o.kind} ${o.id === idea?.id ? 'on' : ''}`} aria-pressed={o.id === idea?.id} onClick={() => select(o.id)}>
                                 <span className="ot-mini-kind">{KIND_LABEL[o.kind]}{o.date ? ` · ${shortDay(o.date)}` : ''}</span>
                                 <strong>{o.title}</strong>
                                 <span className="ot-muted">{[o.price, o.trip && distLabel(o.trip.distM)].filter(Boolean).join(' · ') || o.where || ''}</span>
                             </button>
                         ))}
+                        {search?.available && (
+                            <button className="ot-mini ot-search" disabled={search.running || searching} onClick={findMore}>
+                                <strong>{search.running ? 'Recherche en cours…' : 'Trouve-moi autre chose'}</strong>
+                                <span className="ot-muted">{searchLine(search)}</span>
+                            </button>
+                        )}
                     </div>
                 </section>
             )}

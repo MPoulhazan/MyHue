@@ -25,6 +25,10 @@ import * as briefing from './briefing.js';
 import * as calendar from './calendar.js';
 import { freeEvenings, localMidnight } from './calendarLogic.js';
 import QRCode from 'qrcode';
+import { join } from 'path';
+import { mkdirSync } from 'fs';
+import { DATA_DIR } from './dataDir.js';
+import { RATINGS, archiveEntry, pendingReview, monthSummary, ratingsForClaude, appendIdeas } from './historyLogic.js';
 import { isTonight, tonightPlan, briefingLine as tonightBriefing, speech as tonightSpeech } from './tonightLogic.js';
 import { timeChoices, durationMin, dayChoices, startOf, emailFromIcal, gcalUrl, eventDetails, findPlanEvent, planStatus } from './inviteLogic.js';
 
@@ -59,7 +63,8 @@ const writeJson = (file, value) => {
 let people = readJson(PEOPLE_FILE, DEFAULT_PEOPLE);
 // mails[personId] = { at, items }, outings = { at, ideas }, done = titres déjà faits, liked = idée retenue
 // disliked = « pas notre genre » (titre et genre), relu par la tâche Claude du mercredi
-let store = { mails: {}, outings: { at: null, ideas: [] }, done: [], liked: null, skipped: [], disliked: [], ...readJson(STORE_FILE, {}) };
+// history = les sorties faites (« Nos sorties »), avec l'avis du lendemain, la photo et le montant
+let store = { mails: {}, outings: { at: null, ideas: [] }, done: [], liked: null, skipped: [], disliked: [], history: [], ...readJson(STORE_FILE, {}) };
 const saveStore = () => writeJson(STORE_FILE, store);
 
 const clean = (s, max = 400) => (typeof s === 'string' ? s.trim().slice(0, max) : '');
@@ -181,14 +186,22 @@ export const setMails = (personId, items) => {
  * Idées de sortie à deux (la tâche Claude les cherche sur le Web chaque semaine).
  * Champs : voir normalizeIdea (outingLogic.js) et le schéma de set_outing_ideas (mcpServer.js).
  */
-export const setOutings = (ideas) => {
+export const setOutings = (ideas, { append = false } = {}) => {
     if (!Array.isArray(ideas)) throw new Error('ideas doit être une liste');
     const now = Date.now();
     const ids = people.map((p) => p.id);
-    store.outings = {
-        at: now,
-        ideas: ideas.slice(0, 12).map((o, i) => normalizeIdea(o || {}, i, ids, now)).filter((o) => o.title),
-    };
+    if (append && ideas.length > 6) ideas = ideas.slice(0, 6);
+    const fresh = ideas.slice(0, 12).map((o, i) => normalizeIdea(o || {}, i, ids, now)).filter((o) => o.title);
+    if (append) {
+        // « Trouve-moi autre chose » : les nouvelles idées s'ajoutent, rien n'est oublié
+        store.outings = { at: store.outings.at || now, ideas: appendIdeas(store.outings.ideas, fresh) };
+        saveStore();
+        searchDone(fresh.length);
+        journal.log({ kind: 'system', title: `Ma journée : ${fresh.length} idée(s) de sortie ajoutée(s)` });
+        return store.outings;
+    }
+    store.outings = { at: now, ideas: fresh };
+    searchDone(fresh.length);
     store.skipped = [];
     saveStore();
     journal.log({ kind: 'system', title: `Ma journée : ${store.outings.ideas.length} idées de sortie déposées` });
@@ -237,6 +250,8 @@ export const getContextForClaude = () => ({
         liked: store.liked?.title || null,
         // « Pas notre genre » : éviter ce style d'idée les semaines suivantes
         notOurThing: (store.disliked || []).slice(-20),
+        // Leur avis le lendemain (super, correct, bof) : plus de ce qui a plu, moins de ce qui était bof
+        ratings: ratingsForClaude(store.history),
         current: store.outings.ideas.map((o) => o.title),
         // Jours de repos : 1 ou 2 idées d'activité de jour pour la personne seule (champ person, date du jour)
         restDays: restDays(),
@@ -300,7 +315,7 @@ export const createInvite = async (ideaId, { date, time, by } = {}) => {
     const url = gcalUrl({ title: idea.title, start, end, location, details: eventDetails(idea), guest: emailOf(guest) }, TZ);
     // Le lieu est recopié : les idées du mercredi suivant remplacent celles-ci, la sortie prévue reste
     const place = idea.lat != null ? { lat: idea.lat, lon: idea.lon } : null;
-    store.plan = { ideaId: idea.id, title: idea.title, kind: idea.kind, where: idea.where, place, start, end, url, by: inviter.id, to: guest?.id ?? null, inviterEmail: emailOf(inviter), guestEmail: emailOf(guest), manual: null, at: Date.now() };
+    store.plan = { ideaId: idea.id, title: idea.title, kind: idea.kind, where: idea.where, place, price: idea.price || null, free: idea.free === true, start, end, url, by: inviter.id, to: guest?.id ?? null, inviterEmail: emailOf(inviter), guestEmail: emailOf(guest), manual: null, at: Date.now() };
     store.liked = { ...idea, at: Date.now() };
     saveStore();
     journal.log({ kind: 'system', title: `Sortie prévue : ${idea.title}`, data: { start } });
@@ -312,9 +327,22 @@ export const createInvite = async (ideaId, { date, time, by } = {}) => {
 let lastPlanRefresh = 0;
 
 /** La sortie prévue et où en est l'invitation, ou null (rien de prévu, ou fini depuis plus de 12 h). */
+/** Range la sortie finie dans l'historique et la note comme faite (plus reproposée). */
+function archivePlan(status) {
+    const p = store.plan;
+    store.plan = null;
+    if (status !== 'declined') {
+        const entry = archiveEntry({ ...p, by: short(people.find((x) => x.id === p.by)), to: short(people.find((x) => x.id === p.to)) }, findIdea(p.ideaId));
+        store.history = [...(store.history || []).filter((h) => h.id !== entry.id), entry].slice(-200);
+        store.done = [...store.done.filter((t) => t !== p.title), p.title].slice(-200);
+        journal.log({ kind: 'system', title: `Sortie faite : ${p.title}` });
+    }
+    saveStore();
+}
+
 export function planView() {
     const p = store.plan;
-    if (!p || p.end < Date.now() - 12 * 3600_000) return null;
+    if (!p) return null;
     const cals = people.filter((x) => x.ical && (x.id === p.by || x.id === p.to));
     let found = null;
     for (const x of cals) {
@@ -322,6 +350,11 @@ export function planView() {
         if (found) break;
     }
     const status = planStatus(p, found, cals.length > 0);
+    // Finie : elle passe dans « Nos sorties » (sauf si l'autre avait dit non) et sera notée demain matin
+    if (p.end < Date.now()) {
+        archivePlan(status);
+        return null;
+    }
     // En attente d'une réponse : on relit les agendas plus souvent (toutes les 3 min au plus)
     if ((status === 'sent' || status === 'pending') && cals.length && p.start > Date.now() && Date.now() - lastPlanRefresh > 3 * 60_000) {
         lastPlanRefresh = Date.now();
@@ -341,6 +374,104 @@ export function planView() {
         guestInvited: Boolean(p.guestEmail),
     };
 }
+
+// --- Nos sorties : historique, avis du lendemain, photo, montant ---
+
+const PHOTO_DIR = join(DATA_DIR, 'outing-photos');
+const entryOf = (id) => {
+    const h = (store.history || []).find((x) => x.id === id);
+    if (!h) throw new Error('Sortie inconnue');
+    return h;
+};
+const publicEntry = (h) => ({ ...h, photo: h.photo ? `/api/day/history/${h.id}/photo?v=${h.photo}` : null });
+
+/** La sortie à noter (« C'était bien ? »), ou null. */
+export const reviewView = () => {
+    planView(); // range la sortie qui vient de finir
+    const h = pendingReview(store.history, Date.now(), TZ);
+    return h ? publicEntry(h) : null;
+};
+
+/** « Nos sorties » : de la plus récente à la plus ancienne, et le mois en cours. */
+export const getHistory = () => {
+    planView();
+    return {
+        items: [...(store.history || [])].sort((a, b) => b.start - a.start).map(publicEntry),
+        month: monthSummary(store.history, Date.now(), TZ),
+    };
+};
+
+/** L'avis : super, correct ou bof. */
+export const rateOuting = (id, rating) => {
+    if (!RATINGS.includes(rating)) throw new Error('Avis inconnu');
+    const h = entryOf(id);
+    h.rating = rating;
+    h.ratedAt = Date.now();
+    saveStore();
+    journal.log({ kind: 'system', title: `Sortie notée ${rating} : ${h.title}` });
+    return publicEntry(h);
+};
+
+/** Le montant dépensé à deux (null = inconnu). */
+export const setSpent = (id, amount) => {
+    const h = entryOf(id);
+    const n = amount === null || amount === '' ? null : Number(String(amount).replace(',', '.'));
+    if (n !== null && (!Number.isFinite(n) || n < 0 || n > 5000)) throw new Error('Montant invalide');
+    h.spent = n === null ? null : Math.round(n * 100) / 100;
+    saveStore();
+    return publicEntry(h);
+};
+
+/**
+ * La photo souvenir, envoyée par le téléphone déjà réduite (JPEG en data URL).
+ * Elle reste sur le serveur de la maison, dans DATA_DIR/outing-photos.
+ */
+export const savePhoto = (id, dataUrl) => {
+    const h = entryOf(id);
+    const m = typeof dataUrl === 'string' ? dataUrl.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/) : null;
+    if (!m) throw new Error('Image invalide');
+    const buf = Buffer.from(m[2], 'base64');
+    if (buf.length > 700_000) throw new Error('Image trop lourde');
+    mkdirSync(PHOTO_DIR, { recursive: true });
+    const file = `${h.id}.${m[1] === 'jpeg' ? 'jpg' : m[1]}`;
+    writeFileSync(join(PHOTO_DIR, file), buf);
+    h.photo = `${file.split('.').pop()}-${Date.now()}`;
+    saveStore();
+    return publicEntry(h);
+};
+
+/** Le chemin de la photo d'une sortie (ou null). */
+export const photoPath = (id) => {
+    const h = (store.history || []).find((x) => x.id === id);
+    if (!h?.photo) return null;
+    const p = join(PHOTO_DIR, `${h.id}.${h.photo.split('-')[0]}`);
+    return existsSync(p) ? p : null;
+};
+
+// --- « Trouve-moi autre chose » : l'état de la recherche lancée depuis la tablette ---
+
+let search = { running: false, via: null, at: null, error: null, added: null };
+let searchTimer = null;
+
+/** Une recherche démarre (outingSearch.js) : elle s'arrête à l'arrivée des idées, ou après 15 min. */
+export const searchStarted = (via) => {
+    search = { running: true, via, at: Date.now(), error: null, added: null };
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        if (search.running) search = { ...search, running: false, error: 'La recherche n’a rien rapporté. Réessaie plus tard.' };
+    }, 15 * 60_000);
+    searchTimer.unref?.();
+};
+export const searchFailed = (message) => {
+    clearTimeout(searchTimer);
+    search = { ...search, running: false, error: message };
+};
+function searchDone(count) {
+    if (!search.running) return;
+    clearTimeout(searchTimer);
+    search = { ...search, running: false, added: count };
+}
+export const searchStatus = () => ({ ...search });
 
 // --- Ce soir à deux (jour J) ---
 
@@ -476,6 +607,7 @@ export const getDay = async (personId) => {
         outing: pickSolo(store, person.id, Date.now(), TZ) || pickOuting(store, Date.now(), TZ),
         plan: planView(),
         tonight: await tonightView().catch(() => null),
+        review: reviewView(),
         liked: store.liked,
         touch: cooperView?.line ? { who: 'Cooper', line: cooperView.line } : null,
     };

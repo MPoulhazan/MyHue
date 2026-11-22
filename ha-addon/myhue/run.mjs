@@ -25,6 +25,9 @@ const env = {
     YOUTUBE_CLIENT_ID: opts.youtube_client_id,
     YOUTUBE_CLIENT_SECRET: opts.youtube_client_secret,
     YOUTUBE_DEFAULT_PLAYLISTS: opts.youtube_default_playlists,
+    // « Trouve-moi autre chose » : adresse /fire et jeton du déclencheur API de la tâche Claude des sorties
+    OUTING_ROUTINE_URL: opts.outing_routine_url || '',
+    OUTING_ROUTINE_TOKEN: opts.outing_routine_token || '',
 };
 
 // Identifiants Mosquitto fournis par le Supervisor (add-on Mosquitto installé)

@@ -16,6 +16,7 @@ import { WakewordRecorder } from './pages/WakewordRecorder';
 import { MyDay } from './pages/MyDay';
 import { Advent } from './pages/Advent';
 import { Outings } from './pages/Outings';
+import { NosSorties } from './pages/NosSorties';
 
 function App() {
     return (
@@ -27,6 +28,7 @@ function App() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/journee" element={<MyDay />} />
                     <Route path="/sorties" element={<Outings />} />
+                    <Route path="/nos-sorties" element={<NosSorties />} />
                     <Route path="/avent" element={<Advent />} />
                     <Route path="/lights" element={<Lights />} />
                     <Route path="/climate" element={<Climate />} />

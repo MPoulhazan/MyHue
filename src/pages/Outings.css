@@ -89,3 +89,7 @@
 .ot-media { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; }
 .ot-media-btn { min-height: 52px; border-radius: 999px; border: none; background: var(--h-light); color: #141513 !important; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; font-family: inherit; cursor: pointer; }
 .ot-media-btn.alt { background: rgba(20, 21, 19, 0.85); color: var(--h-text) !important; }
+.ot-chip-link { display: inline-flex; align-items: center; text-decoration: none; color: var(--h-muted) !important; border-style: dashed; }
+.ot-mini.ot-search { border: 1px dashed var(--h-line-2); background: transparent; justify-content: center; }
+.ot-mini.ot-search:disabled { opacity: 0.7; cursor: default; }
+.ot-empty .ot-btn:disabled { opacity: 0.6; }

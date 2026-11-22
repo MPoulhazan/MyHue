@@ -5,7 +5,8 @@ import { speak } from '../hooks/useVoice';
 import { Together } from './Together';
 import { readDayPick as readPick, saveDayPick as savePick } from './myDayPick';
 import { Link } from 'react-router-dom';
-import { KIND_LABEL, type Idea, type Plan, type Tonight } from './outingTypes';
+import { KIND_LABEL, type Idea, type Plan, type Tonight, type HistoryEntry } from './outingTypes';
+import { ReviewBlock } from '../components/outing/ReviewCard';
 import { InviteSheet } from '../components/outing/InviteSheet';
 import { PlanStatus } from '../components/outing/PlanStatus';
 import { TonightRows } from '../components/outing/TonightCard';
@@ -29,6 +30,7 @@ interface DayView {
     liked: (Idea & { at: number }) | null;
     plan: Plan | null;
     tonight: Tonight | null;
+    review: HistoryEntry | null;
     touch: { who: string; line: string } | null;
 }
 
@@ -222,12 +224,14 @@ export function MyDay() {
                 )}
 
                 <section className="md-card md-outing">
-                    <div className="md-head"><h2>{data.tonight ? 'Ce soir à deux' : 'Pour vous deux'}</h2>{(data.plan || outing) && <span className="md-kind">{KIND_LABEL[data.plan?.kind || outing!.idea.kind]}</span>}</div>
+                    <div className="md-head"><h2>{data.tonight ? 'Ce soir à deux' : data.review && !data.plan ? 'Votre sortie' : 'Pour vous deux'}</h2>{(data.plan || outing) && <span className="md-kind">{KIND_LABEL[data.plan?.kind || outing!.idea.kind]}</span>}</div>
                     {data.tonight && data.plan ? (
                         <>
                             <PlanStatus plan={data.plan} onChange={load} onShowCode={() => setInvite({})} />
                             <TonightRows t={data.tonight} />
                         </>
+                    ) : data.review && !data.plan ? (
+                        <ReviewBlock key={data.review.id} entry={data.review} onChange={load} />
                     ) : data.plan ? (
                         <PlanStatus plan={data.plan} onChange={load} onShowCode={() => setInvite({})} />
                     ) : outing ? (
