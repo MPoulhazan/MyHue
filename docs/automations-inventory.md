@@ -77,7 +77,38 @@ Pas de minuterie, de réveil ni de coucher programmés dans l'appli Hue.
 - Thermopompe : aucune automatisation ne la met en froid. Le 22/11 à 07:01, c'est un appui sur « Froid » dans l'interface
   (corrigé en 1.79.1 : double appui quand il fait froid dehors).
 
-## Doublons à trancher au lot 2
+## Lot 2 — décisions (validées le 2026-11-22)
+
+Choix de l'utilisateur : musique « reprendre sauf Mode chill », présence « MyHue seul », voix « garder chez Google ».
+Rien n'est supprimé ni désactivé avant le lot 5, et une routine ne part qu'une fois son remplaçant MyHue en service.
+
+| Système | Routine | Décision | Remplaçant / remarque |
+|---|---|---|---|
+| Google | Mode chill (08:30 week-end) | **Supprimer** | rien ; la phrase « Mode chill » part avec |
+| Google | Classique lundi mardi jeudi matin | **Reprendre dans MyHue** | 10:00 lun, mar, jeu · Salon · 20 % · radio Classique · seulement si quelqu'un est là |
+| Google | Classique 17h Lundi Mardi | **Reprendre dans MyHue** | 17:00 lun, mar · Salon · 20 % · radio Classique · si quelqu'un est là |
+| Google | Jazz 17h Fin de semaine | **Reprendre dans MyHue** | 17:00 mer, jeu, ven, sam · Salon · 20 % · radio Jazz doux · si quelqu'un est là |
+| Google | La croquette du midi | **Supprimer** | doublon du rappel Cooper MyHue de 12:00 |
+| Google | La croquette du soir (désactivée) | **Supprimer** | Cooper MyHue 18:00 |
+| Google | Noël 17h20 (désactivée) | **Supprimer** | Noël MyHue |
+| Google | Bedtime (désactivée) | **Supprimer** | — |
+| Google | Away | **Supprimer** | modèle MyHue « Je pars » (présence HA Companion) |
+| Google | Home | **Supprimer** | modèle MyHue « Je rentre » |
+| Google | Leaving home (vocale, 0 action) | **Supprimer** | vide |
+| Google | J'ai chaud / J'ai froid | **Supprimer** | sans effet ; la thermopompe se pilote par Jean-Claude ou MyHue |
+| Google | Apéro, Au lit, Bonsoir, C'est pas Versailles ici, éteint tout, Lumos, On boit un coup…, salut c'est le weekend, Je suis rentré, I'm home, Good morning, Commuting home | **Garder chez Google** | commandes « Ok Google » sur les enceintes, que MyHue n'entend pas |
+| Hue | Leaving home (Pixel 7) | **Supprimer** | « Je pars » MyHue |
+| Hue | Coming home (Pixel 7, la nuit) | **Supprimer** | « Je rentre » MyHue (salon en blanc chaud la nuit) |
+| Hue | Interrupteurs salon et salle à manger | **Garder** | boutons physiques, pas des automatisations |
+| Hue | Règles v1 15-18, Geofence 5/7/8 | **Supprimer** (ménage) | mortes depuis 2019, sans effet |
+| HA | — | — | rien à faire |
+| MyHue | Règles capteurs et tâches du code | **Garder** | déjà au centre |
+
+À construire au lot 3 : déclencheur horaire (jours + heure) et action « musique sur une enceinte à un volume donné »,
+avec condition « quelqu'un est à la maison » ; activer « Je pars » et « Je rentre ».
+Ordre du lot 5 : d'abord Mode chill (aucun remplaçant nécessaire), puis chaque routine dès que son remplaçant a tourné une fois.
+
+## Doublons repérés au lot 1
 
 1. **Musique à heure fixe** (Mode chill, Classique ×2, Jazz) : les quatre sont chez Google, sans plafond de volume pour Mode chill.
 2. **Départ / arrivée** : trois systèmes pour le même événement : Google Away/Home, Hue Leaving/Coming home, modèles MyHue.
