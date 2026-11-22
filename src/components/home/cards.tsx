@@ -131,6 +131,23 @@ export function ClimateCard({ home, onSchedule, compact = false }: { home: Retur
                 : `${t.why} ${fmtTarget(t.target)}°`;
     // Un mode rare (sec, ventilation) n'a pas de bouton ici : la pastille le dit
     const extraMode = h?.power && !MODES.some((m) => m.id === h.mode);
+    // Froid par temps froid : un effleurement de la tablette ne suffit pas, il faut toucher deux fois
+    const [armedCool, setArmedCool] = useState(false);
+    useEffect(() => {
+        if (!armedCool) return;
+        const id = setTimeout(() => setArmedCool(false), 4000);
+        return () => clearTimeout(id);
+    }, [armedCool]);
+    const balcony = home.sensors.find((s) => s.role === 'outdoor')?.props.temperature;
+    const coldOutside = balcony != null ? balcony < 18 : [10, 11, 0, 1, 2, 3].includes(new Date().getMonth());
+    const pickMode = (id: string) => {
+        if (id === 'cool' && coldOutside && !(h?.power && h.mode === 'cool') && !armedCool) {
+            setArmedCool(true);
+            return;
+        }
+        setArmedCool(false);
+        home.controlHeating({ mode: id, power: true });
+    };
 
     return (
         <section className={`card climate ${compact ? 'compact' : ''}`} aria-label="Climat">
@@ -177,7 +194,7 @@ export function ClimateCard({ home, onSchedule, compact = false }: { home: Retur
                 {MODES.map((m) => (
                     <button key={m.id} type="button" className={h?.power && h.mode === m.id ? 'active' : ''}
                         aria-pressed={!!h?.power && h.mode === m.id}
-                        onClick={() => home.controlHeating({ mode: m.id, power: true })}>{m.label}</button>
+                        onClick={() => pickMode(m.id)}>{m.id === 'cool' && armedCool ? 'Froid ? Encore' : m.label}</button>
                 ))}
                 <button type="button" className={!h?.power ? 'active off' : ''} aria-pressed={!h?.power}
                     onClick={() => home.controlHeating({ power: false })}>Arrêt</button>
