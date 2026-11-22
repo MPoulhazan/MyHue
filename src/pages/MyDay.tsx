@@ -224,7 +224,7 @@ export function MyDay() {
                 )}
 
                 <section className="md-card md-outing">
-                    <div className="md-head"><h2>{data.tonight ? 'Ce soir à deux' : data.review && !data.plan ? 'Votre sortie' : 'Pour vous deux'}</h2>{(data.plan || outing) && <span className="md-kind">{KIND_LABEL[data.plan?.kind || outing!.idea.kind]}</span>}</div>
+                    <div className="md-head"><h2>{data.tonight ? 'Ce soir à deux' : data.review && !data.plan ? 'Votre sortie' : 'Pour vous deux'}</h2>{(data.plan || data.review || outing) && <span className="md-kind">{KIND_LABEL[data.plan?.kind || data.review?.kind || outing!.idea.kind]}</span>}</div>
                     {data.tonight && data.plan ? (
                         <>
                             <PlanStatus plan={data.plan} onChange={load} onShowCode={() => setInvite({})} />

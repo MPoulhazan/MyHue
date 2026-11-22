@@ -93,3 +93,4 @@
 .ot-mini.ot-search { border: 1px dashed var(--h-line-2); background: transparent; justify-content: center; }
 .ot-mini.ot-search:disabled { opacity: 0.7; cursor: default; }
 .ot-empty .ot-btn:disabled { opacity: 0.6; }
+.ot-mini.ot-search strong, .ot-mini.ot-search .ot-muted { white-space: normal; }
