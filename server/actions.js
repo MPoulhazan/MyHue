@@ -125,6 +125,8 @@ const runAction = async (action, source) => {
         case 'music_play': {
             const deviceId = action.deviceName ? findCastDevice(action.deviceName).id : musicPlayer.defaultDevice()?.id;
             if (!deviceId) throw new Error('Aucune enceinte joignable');
+            // Volume réglé avant le son : l'enceinte ne démarre pas au niveau de la veille
+            if (action.volume != null) await castService.setVolume(deviceId, Number(action.volume) / 100);
             const result = action.what === 'suggestion'
                 ? await musicPlayer.playSuggestion(deviceId)
                 : await musicPlayer.play({ deviceId, kind: action.what === 'radio' ? 'radio' : 'mood', id: action.id });

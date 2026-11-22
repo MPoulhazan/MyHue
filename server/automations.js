@@ -16,6 +16,10 @@ import * as broadlinkService from './broadlinkService.js';
 import * as sensorRegistry from './sensorRegistry.js';
 import * as alarm from './alarm.js';
 import { bus } from './events.js';
+import { timeTriggerDue, describeTimeTrigger, cleanTimeTrigger, startVolume } from './scheduleLogic.js';
+import * as presence from './presence.js';
+
+const presenceState = () => presence.anyoneHome();
 
 const FILE = dataFile('automations.json');
 const LEGACY_FILE = dataFile('rules.json');
@@ -58,22 +62,27 @@ const sensorLabel = (trigger) => {
     return trigger.sensorType === 'door' ? 'toute porte' : trigger.sensorType === 'water_leak' ? 'tout détecteur de fuite' : trigger.sensorType === 'smoke' ? 'tout détecteur de fumée' : 'tout capteur';
 };
 
+const RADIO_NAMES = { classical: 'Classique', jazz: 'Jazz doux', lofi: 'Lo-fi', piano: 'Piano', ambient: 'Ambient', chillout: 'Chill-out', rock: 'Rock', electronic: 'Électro' };
+const musicLabel = (m) =>
+    `${m.what === 'radio' ? `radio ${RADIO_NAMES[m.id] || m.id}` : `ambiance ${m.id}`} sur ${m.deviceName || 'l’enceinte par défaut'}${m.volume != null ? ` à ${m.volume} %` : ''}`;
+
 /** Résumé lisible d'un automatisme, pour l'interface, Telegram et l'agent. */
 export const summarize = (a) => {
     const t = a.trigger;
     let what;
     const who = t.type === 'sensor' ? sensorLabel(t) : '';
     if (t.type === 'presence') what = t.state === 'away' ? 'plus personne à la maison' : 'quelqu’un rentre';
+    else if (t.type === 'time') what = describeTimeTrigger(t);
     else if (t.prop === 'isOpen') what = t.operator === 'is_false' ? `${who} fermée` : `${who} ouverte`;
     else if (t.prop === 'leak') what = `${who} mouillé`;
     else if (t.prop === 'smoke') what = `${who} détecte de la fumée`;
     else what = `${who} : ${PROP_LABELS[t.prop] || t.prop} ${OP_LABELS[t.operator] || t.operator} ${t.value}`;
     if (t.forMinutes) what += ` depuis ${t.forMinutes} min`;
     const when = (a.conditions || [])
-        .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : c.type === 'cold_or_heating' ? `moins de ${c.below}° dehors ou clim allumée` : c.type === 'downpour' ? `grosse averse ou orage dans les ${c.withinMinutes} min` : c.type === 'draught' ? `la pièce perd ${c.drop}° ou ${c.orMinutes} min sous ${c.below}° dehors` : ''))
+        .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : c.type === 'cold_or_heating' ? `moins de ${c.below}° dehors ou clim allumée` : c.type === 'downpour' ? `grosse averse ou orage dans les ${c.withinMinutes} min` : c.type === 'draught' ? `la pièce perd ${c.drop}° ou ${c.orMinutes} min sous ${c.below}° dehors` : c.type === 'someone_home' ? 'quelqu’un à la maison' : ''))
         .filter(Boolean);
     const does = a.actions
-        .map((x) => ({ notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison', alarm: 'alarme lampes + enceintes', moment: `moment ${x.id}` })[x.type])
+        .map((x) => (x.type === 'home' && x.action?.type === 'music_play' ? musicLabel(x.action) : { notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison', alarm: 'alarme lampes + enceintes', moment: `moment ${x.id}` }[x.type]))
         .filter(Boolean);
     return `Si ${what}${when.length ? ` (${when.join(', ')})` : ''} → ${does.join(' + ')}`;
 };
@@ -169,6 +178,23 @@ export const TEMPLATES = {
             actions: [{ type: 'home', action: { type: 'set_group_state', id: groupId, state: { on: true, bri: 140, ct: 400 } } }],
             cooldownMinutes: 10,
         }),
+    },
+    scheduled_music: {
+        label: 'Musique programmée',
+        description: 'À l’heure dite, certains jours : une radio ou une ambiance sur une enceinte, à un volume donné, seulement si quelqu’un est à la maison. Avant 11 h et après 22 h, jamais plus de 30 %.',
+        build: ({ name, at, days, offsetMinutes, deviceName = 'Salon', what = 'radio', id, volume = 20, onlyIfHome = true } = {}) => {
+            if (what !== 'radio' && what !== 'mood') throw new Error('what : radio ou mood');
+            if (!id) throw new Error('Radio ou ambiance manquante (id)');
+            const trigger = cleanTimeTrigger({ at, days, offsetMinutes });
+            const action = { type: 'music_play', deviceName, what, id, volume: volume == null ? null : Number(volume) };
+            return {
+                name: name || `Musique ${describeTimeTrigger(trigger)}`,
+                trigger,
+                conditions: onlyIfHome ? [{ type: 'someone_home' }] : [],
+                actions: [{ type: 'home', action }],
+                cooldownMinutes: 0,
+            };
+        },
     },
     water_leak: {
         label: 'Fuite d’eau',
@@ -266,6 +292,7 @@ const normalize = (a) => ({
     snoozedUntil: a.snoozedUntil ?? null,
     createdAt: a.createdAt || new Date().toISOString(),
     lastTriggeredAt: a.lastTriggeredAt ?? null,
+    lastFiredDay: a.lastFiredDay ?? null, // déclencheur horaire : un seul passage par jour
     triggerCount: a.triggerCount ?? 0,
 });
 
@@ -566,6 +593,8 @@ const conditionsMet = async (a, ctx = {}) => {
             return from <= to ? now >= from && now < to : now >= from || now < to; // plage qui passe minuit
         }
         if (c.type === 'heating') return broadlinkService.getState().power === c.power;
+        // Présence inconnue (aucun téléphone ne remonte) : on fait comme si quelqu'un était là
+        if (c.type === 'someone_home') return presenceState() !== false;
         return true;
     });
 };
@@ -699,7 +728,11 @@ const runActions = async (a, actions, vars) => {
                 }
                 case 'home': {
                     const { executeActions } = await import('./actions.js');
-                    await executeActions([action.action], `automatisme « ${a.name} »`);
+                    let act = action.action;
+                    // Musique lancée par un automatisme : jamais à fond aux heures calmes
+                    if (act?.type === 'music_play') act = { ...act, volume: startVolume(act.volume, localMinutes()) };
+                    const [res] = await executeActions([act], `automatisme « ${a.name} »`);
+                    if (res?.error) throw new Error(res.error);
                     break;
                 }
             }
@@ -791,12 +824,74 @@ const onPresence = async ({ home, anyoneHome }) => {
     }
 };
 
+// --- Déclencheurs à l'heure ---
+
+const localNow = (d = new Date()) => {
+    const p = Object.fromEntries(
+        new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+            .formatToParts(d)
+            .map((x) => [x.type, x.value]),
+    );
+    return {
+        day: `${p.year}-${p.month}-${p.day}`,
+        weekday: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(p.weekday),
+        minutes: Number(p.hour) * 60 + Number(p.minute),
+    };
+};
+
+// Lever et coucher du soleil du jour (Open-Meteo), en minutes locales ; null si la météo est injoignable
+const sunToday = async (today) => {
+    try {
+        const { getForecast } = await import('./weather.js');
+        const { days } = await getForecast();
+        const d = days.find((x) => localNow(new Date(x.sunrise)).day === today);
+        return d ? { sunrise: localNow(new Date(d.sunrise)).minutes, sunset: localNow(new Date(d.sunset)).minutes } : null;
+    } catch {
+        return null;
+    }
+};
+
+let timeEvaluating = false;
+const evaluateTime = async () => {
+    const timed = automations.filter((a) => a.enabled && a.trigger.type === 'time');
+    if (!timed.length || timeEvaluating) return;
+    timeEvaluating = true;
+    try {
+        const now = localNow();
+        const needsSun = timed.some((a) => a.trigger.at === 'sunrise' || a.trigger.at === 'sunset');
+        const sun = needsSun ? await sunToday(now.day) : null;
+        for (const a of timed) {
+            if (!timeTriggerDue(a.trigger, now, sun, a.lastFiredDay)) continue;
+            // Passé une fois aujourd'hui, même si une condition le retient : pas de rattrapage à 10 h 09
+            a.lastFiredDay = now.day;
+            save();
+            if (a.snoozedUntil && Date.now() < a.snoozedUntil) continue;
+            if (!(await conditionsMet(a))) {
+                journal.log({ kind: 'automation', title: `« ${a.name} » non lancé : ${presenceState() === false ? 'personne à la maison' : 'condition non remplie'}`, data: { automationId: a.id } });
+                continue;
+            }
+            console.log(`⚙️  Automatisme déclenché: "${a.name}" (heure)`);
+            a.lastTriggeredAt = new Date().toISOString();
+            a.triggerCount++;
+            save();
+            journal.log({ kind: 'automation', title: `« ${a.name} » lancé (${describeTimeTrigger(a.trigger)})`, data: { automationId: a.id } });
+            await runActions(a, a.actions, {});
+        }
+    } catch (err) {
+        console.error('❌ Automatismes à l’heure:', err.message);
+    } finally {
+        timeEvaluating = false;
+    }
+};
+
 export const start = (getSensors) => {
     getSensorsFn = getSensors;
     load();
     bus.on('sensor', () => evaluate());
     bus.on('presence', onPresence);
     setInterval(evaluate, TICK_MS);
+    setInterval(evaluateTime, TICK_MS);
+    setTimeout(evaluateTime, 8000);
     setTimeout(evaluate, 5000);
     console.log(`⚙️  Automatismes: ${automations.filter((a) => a.enabled).length} actif(s) sur ${automations.length}`);
 };
