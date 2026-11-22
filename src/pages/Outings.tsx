@@ -182,7 +182,7 @@ export function Outings() {
 
             {view.hidden.length > 0 && (
                 <p className="ot-hidden">
-                    Mise{view.hidden.length > 1 ? 's' : ''} de côté pour la météo : {view.hidden.map((h) => `${h.title} (${h.reason})`).join(', ')}.
+                    Mis de côté pour la météo : {view.hidden.map((h) => `${h.title}, ${h.reason}`).join(' ; ')}.
                 </p>
             )}
         </div>
