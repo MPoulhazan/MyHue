@@ -122,9 +122,9 @@ Créés sur le Pi :
 
 | Automatisme | État | Pourquoi |
 |---|---|---|
-| Classique du matin (10:00 lun, mar, jeu, Salon 20 %) | désactivé | s'allume au lot 5, en même temps que la routine Google s'éteint |
-| Classique de 17 h (lun, mar) | désactivé | idem |
-| Jazz de 17 h (mer → sam) | désactivé | idem |
+| Classique du matin (10:00 lun, mar, jeu, Salon 20 %) | actif depuis le 22/11 (lot 5) | remplace la routine Google |
+| Classique de 17 h (lun, mar) | actif depuis le 22/11 | idem |
+| Jazz de 17 h (mer → sam) | actif depuis le 22/11 | idem |
 | Je pars (moment départ + Telegram) | actif | double pour l'instant les routines Hue/Google de départ, sans conflit |
 | Je rentre (salon blanc chaud la nuit) | actif | idem pour l'arrivée |
 
@@ -153,12 +153,12 @@ Désactivées (pas supprimées) dans l'appli Google Home, depuis la tablette, ch
 | La croquette du midi | Cooper MyHue tourne déjà tous les jours |
 | J'ai chaud / J'ai froid | sans effet, rien à remplacer |
 | Leaving home | vide |
+| Classique lundi mardi jeudi matin, Classique 17h Lundi Mardi, Jazz 17h Fin de semaine | Salon rebranché (192.168.0.11, retrouvé seul par MyHue) ; essai réel 13:25 radio Classique à 15 %, puis les 3 musiques MyHue activées le même jour |
 
 En attente (la règle : le remplaçant doit avoir tourné une fois) :
 
 | Routine | Remplaçant | Ce qui manque |
 |---|---|---|
-| Classique ×2, Jazz 17h | Classique du matin, Classique de 17 h, Jazz de 17 h (désactivés dans MyHue) | **l'enceinte Salon est absente du réseau** (ni Cast 8008/8443, ni HA) ; la rebrancher, puis activer les trois et couper les trois Google le même jour |
 | Away, Home (Google) ; Leaving home, Coming home (appli Hue) | Je pars, Je rentre (actifs) | un premier départ puis un retour de nuit réussis |
 
 Rien n'a été supprimé ; aucune alarme touchée.
