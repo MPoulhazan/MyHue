@@ -723,6 +723,21 @@ router.get('/api/automations', (_req, res) => {
     res.json({ automations: automations.getAll() });
 });
 
+// Ce qui tourne hors de MyHue : appli Hue lue en direct, Google tel que relevé sur la tablette
+router.get('/api/automations/external', async (_req, res) => {
+    const { GOOGLE_ROUTINES, GOOGLE_SEEN_AT, hueRows, planLabel } = await import('../externalAutomationsLogic.js');
+    let hue = [];
+    let hueError = null;
+    try {
+        const [inst, scripts] = await Promise.all([hueV2Get('behavior_instance'), hueV2Get('behavior_script')]);
+        hue = hueRows(inst.data, scripts.data);
+    } catch (err) {
+        hueError = err.message;
+    }
+    const withLabel = (r) => ({ ...r, planLabel: planLabel(r) });
+    res.json({ hue: hue.map(withLabel), hueError, google: GOOGLE_ROUTINES.map(withLabel), googleSeenAt: GOOGLE_SEEN_AT });
+});
+
 router.get('/api/automations/templates', (_req, res) => {
     res.json({
         templates: Object.entries(automations.TEMPLATES).map(([id, t]) => ({

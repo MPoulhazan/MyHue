@@ -20,6 +20,23 @@ interface Automation {
     triggerCount: number;
 }
 
+interface ExternalRow {
+    name: string;
+    on: boolean;
+    when: string;
+    does: string;
+    plan: 'keep' | 'remove' | 'replaced';
+    planLabel: string;
+    auto?: boolean;
+}
+
+interface External {
+    hue: ExternalRow[];
+    hueError: string | null;
+    google: ExternalRow[];
+    googleSeenAt: string;
+}
+
 interface Template {
     id: string;
     label: string;
@@ -29,6 +46,7 @@ interface Template {
 
 const iconOf = (a: Automation): IconName => {
     if (a.trigger.type === 'presence') return 'home';
+    if (a.trigger.type === 'time') return 'music';
     return ({ isOpen: 'door', temperature: 'thermo', humidity: 'drop', battery: 'battery', silentHours: 'wifi' } as Record<string, IconName>)[a.trigger.prop ?? ''] ?? 'rules';
 };
 
@@ -53,6 +71,13 @@ export function Rules() {
     const [error, setError] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
     const [armed, setArmed] = useState<string | null>(null); // suppression à confirmer
+    const [external, setExternal] = useState<External | null>(null);
+    const [showVoice, setShowVoice] = useState(false);
+
+    // Hors MyHue : chargé à part, la page ne l'attend pas
+    useEffect(() => {
+        axios.get('/api/automations/external').then(({ data }) => setExternal(data)).catch(() => {});
+    }, []);
 
     const load = useCallback(async () => {
         try {
@@ -134,6 +159,8 @@ export function Rules() {
                 ))}
             </div>
 
+            {external && <ExternalSection external={external} showVoice={showVoice} onToggleVoice={() => setShowVoice((v) => !v)} />}
+
             {loaded && (
                 <p className="muted settings-note">
                     Tu peux aussi le demander à l’agent : « Préviens-moi si la température du salon passe sous 18° ».
@@ -147,6 +174,67 @@ export function Rules() {
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+// ── Hors MyHue ───────────────────────────────────────────────────────────────
+
+const seenLabel = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long' });
+
+function ExternalRowItem({ r, source }: { r: ExternalRow; source: string }) {
+    return (
+        <div className={`item-row static rule external ${r.on ? '' : 'disabled'}`}>
+            <span className="item-icon off"><Icon name={source === 'Appli Hue' ? 'lights' : 'cast'} size={22} strokeWidth={2} /></span>
+            <span className="item-text">
+                <strong>{r.name}</strong>
+                <span className="muted">{r.when} → {r.does}</span>
+                <span className="ext-tags">
+                    <span className="ext-tag source">Hors MyHue · {source}</span>
+                    {!r.on && <span className="ext-tag">Désactivée</span>}
+                    <span className={`ext-tag plan-${r.plan}`}>{r.planLabel}</span>
+                </span>
+            </span>
+        </div>
+    );
+}
+
+/**
+ * Ce qui agit sans passer par MyHue, en lecture seule : on voit d'où vient une lampe qui
+ * s'éteint ou une radio qui démarre. Les routines vocales Google sont repliées.
+ */
+function ExternalSection({ external, showVoice, onToggleVoice }: { external: External; showVoice: boolean; onToggleVoice: () => void }) {
+    const googleAuto = external.google.filter((r) => r.auto && r.on);
+    const googleOther = external.google.filter((r) => !(r.auto && r.on));
+    return (
+        <section className="external-block" aria-labelledby="external-title">
+            <h2 id="external-title">Hors MyHue</h2>
+            <p className="muted settings-note">
+                Ces routines agissent sans passer par MyHue. Si une lampe ou une radio part toute seule, la réponse est
+                probablement ici. Lecture seule : elles se modifient dans leur appli.
+            </p>
+
+            <h3 className="external-sub">Appli Hue <span className="muted">· lue en direct</span></h3>
+            <div className="settings-items">
+                {external.hue.map((r) => <ExternalRowItem key={`hue-${r.name}`} r={r} source="Appli Hue" />)}
+                {!external.hue.length && <span className="muted">{external.hueError ? 'Pont Hue injoignable.' : 'Aucune routine.'}</span>}
+            </div>
+
+            <h3 className="external-sub">Google Home <span className="muted">· relevé le {seenLabel(external.googleSeenAt)}</span></h3>
+            <div className="settings-items">
+                {googleAuto.map((r) => <ExternalRowItem key={`g-${r.name}`} r={r} source="Google Home" />)}
+            </div>
+            <button type="button" className="ghost-btn external-more" aria-expanded={showVoice} onClick={onToggleVoice}>
+                {showVoice ? 'Masquer' : 'Voir'} les {googleOther.length} routines vocales ou désactivées
+            </button>
+            {showVoice && (
+                <div className="settings-items">
+                    {googleOther.map((r) => <ExternalRowItem key={`g-${r.name}`} r={r} source="Google Home" />)}
+                </div>
+            )}
+            <p className="muted settings-note">
+                Google ne laisse pas lire ses routines : pour savoir laquelle vient de tourner, appli Google Home → Activité.
+            </p>
+        </section>
     );
 }
 

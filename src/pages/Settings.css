@@ -114,3 +114,16 @@ button.item-row:hover { background: var(--h-surface-2); }
 .pause-badge { display: inline-flex; align-items: center; gap: 4px; color: var(--h-muted); }
 .pause-box { display: grid; gap: 10px; }
 .pause-box p { margin: 0; font-size: 14px; color: var(--h-muted); }
+
+/* Automatismes hors MyHue (lecture seule) */
+.external-block { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.external-block h2 { margin: 0; font-size: 22px; }
+.external-sub { margin: 8px 0 0; font-size: 17px; }
+.external-sub .muted { font-weight: 400; font-size: 14px; }
+.ext-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.ext-tag { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--h-surface-2); color: var(--h-muted); }
+.ext-tag.source { background: var(--h-info-bg); color: var(--h-info-text); }
+.ext-tag.plan-remove { background: var(--h-warn-bg); color: var(--h-warn-text); }
+.ext-tag.plan-replaced { background: var(--h-ok-bg); color: var(--h-ok-text); }
+.external-more { align-self: flex-start; min-height: 44px; }
+.item-row.rule.external.disabled .ext-tags { opacity: 0.6; }
