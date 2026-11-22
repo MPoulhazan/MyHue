@@ -108,6 +108,29 @@ Rien n'est supprimé ni désactivé avant le lot 5, et une routine ne part qu'un
 avec condition « quelqu'un est à la maison » ; activer « Je pars » et « Je rentre ».
 Ordre du lot 5 : d'abord Mode chill (aucun remplaçant nécessaire), puis chaque routine dès que son remplaçant a tourné une fois.
 
+## Lot 3 — ce que MyHue sait faire maintenant (1.80.0)
+
+- **Déclencheur horaire** `{ type: 'time', at: 'HH:MM' | 'sunrise' | 'sunset', offsetMinutes, days: [0..6] }` (0 = dimanche),
+  vérifié toutes les 30 s, une seule fois par jour, rattrapage de 10 min après un redémarrage (`server/scheduleLogic.js`).
+- **Condition** `someone_home` : quelqu'un est à la maison d'après HA Companion (présence inconnue = on joue).
+- **Action musique** `music_play` avec `volume` : réglé avant le son. Lancée par un automatisme, elle ne dépasse jamais 30 %
+  avant 11 h et après 22 h (20 % si aucun volume n'est donné).
+- **Modèle « Musique programmée »** (`scheduled_music`) : POST /api/automations `{ template, params: { name, at, days, deviceName, what, id, volume } }`.
+- Essai réel le 22/11 : déclenché à 12:56:13, une seule fois, puis supprimé.
+
+Créés sur le Pi :
+
+| Automatisme | État | Pourquoi |
+|---|---|---|
+| Classique du matin (10:00 lun, mar, jeu, Salon 20 %) | désactivé | s'allume au lot 5, en même temps que la routine Google s'éteint |
+| Classique de 17 h (lun, mar) | désactivé | idem |
+| Jazz de 17 h (mer → sam) | désactivé | idem |
+| Je pars (moment départ + Telegram) | actif | double pour l'instant les routines Hue/Google de départ, sans conflit |
+| Je rentre (salon blanc chaud la nuit) | actif | idem pour l'arrivée |
+
+À régler avant le lot 5 : **l'enceinte Salon est injoignable pour MyHue et pour HA** (adresse 192.168.0.117) alors que Google
+l'utilise ; sans elle, les trois musiques ne joueront pas.
+
 ## Doublons repérés au lot 1
 
 1. **Musique à heure fixe** (Mode chill, Classique ×2, Jazz) : les quatre sont chez Google, sans plafond de volume pour Mode chill.
