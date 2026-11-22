@@ -143,6 +143,26 @@ chaque ligne avec l'étiquette « Hors MyHue · Appli Hue » ou « Hors MyHue ·
   **À tenir à jour** quand une routine Google change (le lot 5 en désactive plusieurs).
 - Limite : Google et Hue ne disent pas quand une routine a tourné ; la page renvoie à Google Home → Activité.
 
+## Lot 5 — couper côté Google (22/11, en cours)
+
+Désactivées (pas supprimées) dans l'appli Google Home, depuis la tablette, chacune vérifiée « Deactivated » dans la liste :
+
+| Routine | Pourquoi maintenant |
+|---|---|
+| Mode chill | aucun remplaçant nécessaire (la radio de 08:30) |
+| La croquette du midi | Cooper MyHue tourne déjà tous les jours |
+| J'ai chaud / J'ai froid | sans effet, rien à remplacer |
+| Leaving home | vide |
+
+En attente (la règle : le remplaçant doit avoir tourné une fois) :
+
+| Routine | Remplaçant | Ce qui manque |
+|---|---|---|
+| Classique ×2, Jazz 17h | Classique du matin, Classique de 17 h, Jazz de 17 h (désactivés dans MyHue) | **l'enceinte Salon est absente du réseau** (ni Cast 8008/8443, ni HA) ; la rebrancher, puis activer les trois et couper les trois Google le même jour |
+| Away, Home (Google) ; Leaving home, Coming home (appli Hue) | Je pars, Je rentre (actifs) | un premier départ puis un retour de nuit réussis |
+
+Rien n'a été supprimé ; aucune alarme touchée.
+
 ## Doublons repérés au lot 1
 
 1. **Musique à heure fixe** (Mode chill, Classique ×2, Jazz) : les quatre sont chez Google, sans plafond de volume pour Mode chill.

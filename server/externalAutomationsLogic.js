@@ -5,19 +5,19 @@
  * sur la tablette murale (docs/automations-inventory.md). La mettre à jour quand on y touche.
  * `plan` : ce qui a été décidé au lot 2 (keep, remove, replaced = reprise par MyHue).
  */
-export const GOOGLE_SEEN_AT = '2026-11-22';
+export const GOOGLE_SEEN_AT = '2026-11-22'; // lot 5 : Mode chill, croquette du midi, J’ai chaud/froid, Leaving home désactivées
 
 export const GOOGLE_ROUTINES = [
-    { name: 'Mode chill', on: true, when: '08:30 la fin de semaine (et « Mode chill »)', does: 'Radio sur Salon, volume non réglé', plan: 'remove', auto: true },
+    { name: 'Mode chill', on: false, when: '08:30 la fin de semaine (et « Mode chill »)', does: 'Radio sur Salon, volume non réglé', plan: 'remove', auto: true },
     { name: 'Classique lundi mardi jeudi matin', on: true, when: '10:00 lun, mar, jeu', does: 'Salon à 20 %, puis radio', plan: 'replaced', auto: true, by: 'Classique du matin' },
     { name: 'Classique 17h Lundi Mardi', on: true, when: '17:00 lun, mar', does: 'Salon à 20 %, puis radio', plan: 'replaced', auto: true, by: 'Classique de 17 h' },
     { name: 'Jazz 17h Fin de semaine', on: true, when: '17:00 mer, jeu, ven, sam', does: 'Salon à 20 %, puis radio', plan: 'replaced', auto: true, by: 'Jazz de 17 h' },
-    { name: 'La croquette du midi', on: true, when: '12:00 tous les jours', does: 'Annonce « Donnez-moi la croquette »', plan: 'remove', auto: true },
+    { name: 'La croquette du midi', on: false, when: '12:00 tous les jours', does: 'Annonce « Donnez-moi la croquette »', plan: 'remove', auto: true },
     { name: 'Away', on: true, when: 'Tout le monde est parti', does: 'Éteint des lampes du salon', plan: 'replaced', auto: true, by: 'Je pars' },
     { name: 'Home', on: true, when: 'Quelqu’un arrive', does: 'Rien', plan: 'replaced', auto: true, by: 'Je rentre' },
-    { name: 'J’ai chaud', on: true, when: '« J’ai chaud »', does: '« Allume la climatisation » (sans effet)', plan: 'remove' },
-    { name: 'J’ai froid', on: true, when: '« J’ai froid »', does: '« Éteins la climatisation » (sans effet)', plan: 'remove' },
-    { name: 'Leaving home', on: true, when: '« I’m leaving »', does: 'Rien', plan: 'remove' },
+    { name: 'J’ai chaud', on: false, when: '« J’ai chaud »', does: '« Allume la climatisation » (sans effet)', plan: 'remove' },
+    { name: 'J’ai froid', on: false, when: '« J’ai froid »', does: '« Éteins la climatisation » (sans effet)', plan: 'remove' },
+    { name: 'Leaving home', on: false, when: '« I’m leaving »', does: 'Rien', plan: 'remove' },
     { name: 'Noël 17h20', on: false, when: '—', does: 'Musique de Noël', plan: 'remove' },
     { name: 'La croquette du soir', on: false, when: '—', does: 'Annonce croquette', plan: 'remove' },
     { name: 'Bedtime', on: false, when: '—', does: '—', plan: 'remove' },
