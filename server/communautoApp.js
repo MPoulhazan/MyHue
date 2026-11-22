@@ -265,7 +265,7 @@ export const debugAction = ({ type, x, y, dy, pkg }) => exclusive(async () => {
         // Paysage ou portrait : on glisse au milieu de l'écran tel qu'il est affiché
         const rot = await shell('dumpsys', 'input').then((o) => /SurfaceOrientation: (d)/.exec(o)?.[1]).catch(() => '0');
         const [w, h] = rot === '1' || rot === '3' ? [size.h, size.w] : [size.w, size.h];
-        const cx = n(x ?? w / 2), from = Math.round(h * 0.75);
+        const cx = n(x ?? w / 2), from = Number(y) || Math.round(h * 0.75);
         return shell('input', 'swipe', cx, n(from), cx, n(Math.max(50, from - Number(dy || h * 0.4))), '500');
     }
     if (type === 'launch' && /^[\w.]+$/.test(pkg || '')) return shell(`input keyevent KEYCODE_WAKEUP; monkey -p ${pkg} -c android.intent.category.LAUNCHER 1`);
