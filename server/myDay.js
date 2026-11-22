@@ -25,6 +25,7 @@ import * as briefing from './briefing.js';
 import * as calendar from './calendar.js';
 import { freeEvenings, localMidnight } from './calendarLogic.js';
 import QRCode from 'qrcode';
+import { isTonight, tonightPlan, briefingLine as tonightBriefing, speech as tonightSpeech } from './tonightLogic.js';
 import { timeChoices, durationMin, dayChoices, startOf, emailFromIcal, gcalUrl, eventDetails, findPlanEvent, planStatus } from './inviteLogic.js';
 
 const PEOPLE_FILE = dataFile('people.json');
@@ -85,6 +86,8 @@ export const start = () => {
     calendar.start(() => people);
     // Briefing du salon : l'agenda de la personne seule à la maison (ou du premier profil), sans les expéditeurs
     briefing.addExtra(() => personalLines(defaultPerson().id, { details: false }));
+    // Le jour d'une sortie : l'heure de départ et Cooper, dans le briefing de 8 h 30
+    briefing.addExtra(async () => tonightBriefing(await tonightView(), TZ));
 };
 
 const todayEvents = (person) => (person.ical ? calendar.eventsBetween(person.id, Date.now(), localMidnight(Date.now()) + 86_400_000) : []);
@@ -112,7 +115,11 @@ export const briefingFor = async (personId) => {
 export const voiceAnswer = async (text, personId = null) => {
     if (!isDayQuestion(text)) return null;
     const id = personId && people.some((p) => p.id === personId) ? personId : defaultPerson().id;
-    if (/sortie|ce soir|week.?end|samedi|vendredi|jeudi|mercredi/i.test(text) && !/journ[ée]e|briefing/i.test(text)) {
+    if (/sortie|ce soir|week.?end|samedi|vendredi|jeudi|mercredi|on part/i.test(text) && !/journ[ée]e|briefing/i.test(text)) {
+        // Une sortie prévue ce soir : son programme plutôt qu'une nouvelle idée
+        const tonight = /ce soir|on part|partir/i.test(text) || !/week.?end|samedi|vendredi|jeudi|mercredi/i.test(text) ? await tonightView().catch(() => null) : null;
+        if (tonight) return tonightSpeech(tonight, TZ);
+        if (/on part|partir/i.test(text)) return 'Aucune sortie n’est prévue ce soir.';
         const o = pickOuting(store, Date.now(), TZ);
         return o ? personalSpeech({ events: [], mails: null, outing: o, tz: TZ }).replace(/^.*?Une idée/, 'Une idée') : 'Je n’ai pas encore d’idée de sortie cette semaine. Elles arrivent le mercredi matin.';
     }
@@ -291,7 +298,9 @@ export const createInvite = async (ideaId, { date, time, by } = {}) => {
     const end = start + durationMin(idea.duration, idea.kind) * 60_000;
     const location = idea.address || idea.where || null;
     const url = gcalUrl({ title: idea.title, start, end, location, details: eventDetails(idea), guest: emailOf(guest) }, TZ);
-    store.plan = { ideaId: idea.id, title: idea.title, kind: idea.kind, where: idea.where, start, end, url, by: inviter.id, to: guest?.id ?? null, inviterEmail: emailOf(inviter), guestEmail: emailOf(guest), manual: null, at: Date.now() };
+    // Le lieu est recopié : les idées du mercredi suivant remplacent celles-ci, la sortie prévue reste
+    const place = idea.lat != null ? { lat: idea.lat, lon: idea.lon } : null;
+    store.plan = { ideaId: idea.id, title: idea.title, kind: idea.kind, where: idea.where, place, start, end, url, by: inviter.id, to: guest?.id ?? null, inviterEmail: emailOf(inviter), guestEmail: emailOf(guest), manual: null, at: Date.now() };
     store.liked = { ...idea, at: Date.now() };
     saveStore();
     journal.log({ kind: 'system', title: `Sortie prévue : ${idea.title}`, data: { start } });
@@ -332,6 +341,37 @@ export function planView() {
         guestInvited: Boolean(p.guestEmail),
     };
 }
+
+// --- Ce soir à deux (jour J) ---
+
+/**
+ * Le programme du soir quand une sortie est prévue aujourd'hui : départ, retour, Cooper, météo.
+ * @returns tonightPlan() ou null
+ */
+export const tonightView = async () => {
+    const plan = planView();
+    const now = Date.now();
+    if (!plan || !isTonight(plan, now, TZ)) return null;
+    const place = store.plan.place || (() => {
+        const idea = findIdea(store.plan.ideaId);
+        return idea?.lat != null ? { lat: idea.lat, lon: idea.lon } : null;
+    })();
+    const [home, forecast] = await Promise.all([getLocation().catch(() => null), getForecast().catch(() => null)]);
+    let trip = null;
+    if (home && place) {
+        const near = await bixi.stationsAround(home, 500).catch(() => []);
+        const ends = await bixi.stationsAround(place, 400).catch(() => []);
+        trip = tripTo(home, place, near.find((s) => s.bikes > 0) || null, ends.find((s) => s.docks > 0) || null);
+    }
+    return { ...tonightPlan({ plan, trip, hours: forecast?.hours || [], now, tz: TZ }), reminded: Boolean(store.plan.remindedAt) };
+};
+
+/** Le rappel de départ (Telegram et lampe) est parti : une fois par sortie. */
+export const markReminded = () => {
+    if (!store.plan) return;
+    store.plan.remindedAt = Date.now();
+    saveStore();
+};
 
 /** Le QR code de l'invitation en cours, pour le revoir. */
 export const planQr = async () => (store.plan ? { plan: planView(), qr: await qrOf(store.plan.url) } : null);
@@ -435,6 +475,7 @@ export const getDay = async (personId) => {
         mails: person.mails ? (mails ? { at: mails.at, items: mails.items } : { at: null, items: [] }) : null,
         outing: pickSolo(store, person.id, Date.now(), TZ) || pickOuting(store, Date.now(), TZ),
         plan: planView(),
+        tonight: await tonightView().catch(() => null),
         liked: store.liked,
         touch: cooperView?.line ? { who: 'Cooper', line: cooperView.line } : null,
     };

@@ -102,3 +102,10 @@ test('questions sur la journée', () => {
     for (const q of ['C’est quoi ma journée ?', 'Jean-Claude, mon briefing', 'qu’est-ce qu’on fait samedi', 'une idée de sortie']) assert.ok(isDayQuestion(q), q);
     for (const q of ['allume le salon', 'est-ce que Cooper a mangé']) assert.ok(!isDayQuestion(q), q);
 });
+
+test('questions du soir de sortie', () => {
+    assert.equal(isDayQuestion('On fait quoi ce soir ?'), true);
+    assert.equal(isDayQuestion('À quelle heure on part ?'), true);
+    assert.equal(isDayQuestion('C’est quoi ce soir ?'), true);
+    assert.equal(isDayQuestion('à quelle heure il pleut'), false);
+});

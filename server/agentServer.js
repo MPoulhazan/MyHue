@@ -32,6 +32,7 @@ import * as collecte from './collecte.js';
 import * as weeklyDigest from './weeklyDigest.js';
 import * as myDay from './myDay.js';
 import * as together from './together.js';
+import * as tonight from './tonight.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as health from './health.js';
@@ -119,6 +120,7 @@ app.listen(PORT, () => {
     weeklyDigest.start();
     myDay.start();
     together.start();
+    tonight.start();
     broadlinkService.discover().catch((err) => console.warn('⚠️  Broadlink:', err.message));
     zigbeeService.start().catch((err) => console.warn('⚠️  Zigbee:', err.message));
     health.start();

@@ -5,9 +5,10 @@ import { speak } from '../hooks/useVoice';
 import { Together } from './Together';
 import { readDayPick as readPick, saveDayPick as savePick } from './myDayPick';
 import { Link } from 'react-router-dom';
-import { KIND_LABEL, type Idea, type Plan } from './outingTypes';
+import { KIND_LABEL, type Idea, type Plan, type Tonight } from './outingTypes';
 import { InviteSheet } from '../components/outing/InviteSheet';
 import { PlanStatus } from '../components/outing/PlanStatus';
+import { TonightRows } from '../components/outing/TonightCard';
 import './Dashboard.css';
 import './MyDay.css';
 
@@ -27,6 +28,7 @@ interface DayView {
     outing: { idea: Idea; left: number } | null;
     liked: (Idea & { at: number }) | null;
     plan: Plan | null;
+    tonight: Tonight | null;
     touch: { who: string; line: string } | null;
 }
 
@@ -220,8 +222,13 @@ export function MyDay() {
                 )}
 
                 <section className="md-card md-outing">
-                    <div className="md-head"><h2>Pour vous deux</h2>{(data.plan || outing) && <span className="md-kind">{KIND_LABEL[data.plan?.kind || outing!.idea.kind]}</span>}</div>
-                    {data.plan ? (
+                    <div className="md-head"><h2>{data.tonight ? 'Ce soir à deux' : 'Pour vous deux'}</h2>{(data.plan || outing) && <span className="md-kind">{KIND_LABEL[data.plan?.kind || outing!.idea.kind]}</span>}</div>
+                    {data.tonight && data.plan ? (
+                        <>
+                            <PlanStatus plan={data.plan} onChange={load} onShowCode={() => setInvite({})} />
+                            <TonightRows t={data.tonight} />
+                        </>
+                    ) : data.plan ? (
                         <PlanStatus plan={data.plan} onChange={load} onShowCode={() => setInvite({})} />
                     ) : outing ? (
                         <>

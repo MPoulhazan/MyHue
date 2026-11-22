@@ -132,4 +132,6 @@ export const personalSpeech = (d) => {
 
 /** « C'est quoi ma journée ? », « Mon briefing », « Qu'est-ce qu'on fait samedi ? » */
 export const isDayQuestion = (text) =>
-    /\b(ma journ[ée]e|mon (briefing|programme|planning|agenda)|mon check.?up|qu.?est.?ce que j.?ai aujourd|on fait quoi (ce soir|ce week.?end|samedi|vendredi)|qu.?est.?ce qu.?on fait (ce soir|ce week.?end|samedi|vendredi|jeudi|mercredi)|une id[ée]e de sortie)\b/i.test(text);
+    /\b(ma journ[ée]e|mon (briefing|programme|planning|agenda)|mon check.?up|qu.?est.?ce que j.?ai aujourd|on fait quoi (ce soir|ce week.?end|samedi|vendredi)|qu.?est.?ce qu.?on fait (ce soir|ce week.?end|samedi|vendredi|jeudi|mercredi)|une id[ée]e de sortie)\b/i.test(text)
+    // Le soir d'une sortie (pas de \b avant « à » : ce n'est pas une lettre pour les regex)
+    || /(^|\s)(à|a) quelle heure (on part|faut.il partir|on doit partir)|\bc.?est quoi (le programme )?ce soir\b/i.test(text);

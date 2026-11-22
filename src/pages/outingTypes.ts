@@ -85,3 +85,25 @@ export interface OutingsView {
 
 /** « 850 m », « 2,4 km » */
 export const distLabel = (m: number) => (m < 1000 ? `${Math.round(m / 50) * 50} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`);
+
+/** « Ce soir à deux » : le programme du jour d'une sortie prévue (server/tonightLogic.js). */
+export interface Tonight {
+    ideaId: string;
+    title: string;
+    where: string | null;
+    start: number;
+    end: number;
+    status: Plan['status'];
+    to: PlanPerson | null;
+    mode: 'bike' | 'transit' | 'walk' | null;
+    modeLabel: string | null;
+    travelMin: number | null;
+    leaveAt: number | null;
+    homeAt: number;
+    bikes: number | null;
+    station: string | null;
+    bikeSkipped: boolean;
+    weather: { go: string | null; back: string | null };
+    cooper: { awayMin: number; before: number } | null;
+    reminded: boolean;
+}

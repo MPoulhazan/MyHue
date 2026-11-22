@@ -658,6 +658,15 @@ router.post('/api/day/outings/:id/invite', async (req, res) => {
     }
 });
 
+// Ce soir à deux : le programme du jour d'une sortie prévue (null sinon)
+router.get('/api/day/tonight', async (_req, res) => {
+    try {
+        res.json({ tonight: await myDay.tonightView() });
+    } catch (err) {
+        fail(res, err, 503);
+    }
+});
+
 router.get('/api/day/plan', async (req, res) => {
     try {
         res.json(req.query.qr ? (await myDay.planQr()) || { plan: null } : { plan: myDay.planView() });

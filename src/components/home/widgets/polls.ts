@@ -11,6 +11,7 @@ import type { AdventView } from '../../advent/types';
 import type { VeilleeStatus } from '../../veillee/VeilleeCard';
 import type { NoelView } from '../../noel/NoelMorning';
 import type { HomeFeed, Pin, WidgetId } from './meta';
+import type { Tonight } from '../../../pages/outingTypes';
 
 // Lectures partagées par les cartes et le registre des widgets : une requête par intervalle
 export const cooperPoll = createSharedPoll<CooperView>('/api/cooper', 30_000);
@@ -31,6 +32,8 @@ export const adventPoll = createSharedPoll<AdventView>(adventDemo ? `/api/advent
 export const veilleePoll = createSharedPoll<VeilleeStatus>('/api/veillee', 30_000);
 // Matin de Noël : l'écran « Il est passé ! » doit arriver vite
 export const noelPoll = createSharedPoll<NoelView>('/api/noel', 15_000);
+// Ce soir à deux : le jour d'une sortie prévue
+export const tonightPoll = createSharedPoll<{ tonight: Tonight | null }>('/api/day/tonight', 60_000);
 export const musicPoll = createSharedPoll<MusicHome>('/api/music/home', 60_000);
 
 /** Liste « Maintenant » calculée par le Pi ; relue aussi aux bascules d'heure et quand un capteur change */

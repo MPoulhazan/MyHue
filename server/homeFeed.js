@@ -10,6 +10,7 @@ import * as city from './city.js';
 import * as cooper from './cooper.js';
 import * as advent from './advent.js';
 import * as veillee from './veillee.js';
+import * as myDay from './myDay.js';
 import * as mailbox from './mailbox.js';
 import * as musicPlayer from './musicPlayer.js';
 import * as castService from './castService.js';
@@ -52,6 +53,8 @@ async function gather() {
         cooper: await safe(() => cooper.getView()),
         advent: await safe(() => advent.getView()),
         veillee: await safe(() => veillee.getStatus()),
+        // Une sortie prévue aujourd'hui : la carte « Ce soir à deux »
+        tonight: await safe(() => myDay.tonightView()),
         mail: await safe(() => mailbox.getView()),
         music: await safe(() => ({ suggestion: musicPlayer.suggestion() })),
         playing: Boolean(castService.getNowPlaying()),
