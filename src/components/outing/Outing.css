@@ -103,8 +103,8 @@
 .tn-title { margin: 0; font-size: 17px; line-height: 1.35; }
 .tn-title span { color: var(--h-muted); font-size: 14px; }
 .tn-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.tn-rows li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.4; align-items: baseline; }
-.tn-at { font-weight: 800; font-variant-numeric: tabular-nums; }
+.tn-rows li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.4; align-items: baseline; }
+.tn-at { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tn-at.go { color: var(--h-accent); }
 .tn-at.cooper { color: var(--h-light); }
 .tn-at.sky { color: var(--h-cool); }
