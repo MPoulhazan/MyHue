@@ -49,8 +49,29 @@ import * as collecte from '../collecte.js';
 import * as health from '../health.js';
 import * as myDay from '../myDay.js';
 import * as together from '../together.js';
+import * as tabletDebug from '../communautoApp.js';
+import { hueV2Get } from '../hue.js';
 
 export const router = express.Router();
+
+// --- Diagnostic (réseau local seulement) : tablette par ADB, routines de l'appli Hue ---
+const localOnly = (req, res, next) => {
+    const ip = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+    if (/^(127.|10.|192.168.|172.(1[6-9]|2d|3[01]).|::1$)/.test(ip)) return next();
+    res.status(403).json({ error: 'réservé au réseau local' });
+};
+router.get('/api/debug/tablet/screen', localOnly, async (_req, res) => {
+    try { res.json(await tabletDebug.debugScreen()); } catch (e) { res.status(503).json({ error: e.message }); }
+});
+router.get('/api/debug/tablet/screenshot', localOnly, async (_req, res) => {
+    try { res.type('png').send(await tabletDebug.debugScreenshot()); } catch (e) { res.status(503).json({ error: e.message }); }
+});
+router.post('/api/debug/tablet/action', localOnly, async (req, res) => {
+    try { await tabletDebug.debugAction(req.body || {}); res.json({ ok: true }); } catch (e) { res.status(503).json({ error: e.message }); }
+});
+router.get('/api/debug/hue-v2/:resource', localOnly, async (req, res) => {
+    try { res.json(await hueV2Get(req.params.resource)); } catch (e) { res.status(503).json({ error: e.message }); }
+});
 
 // Une consigne changée depuis l'interface : notée tout de suite pour le graphique Climat
 router.use(['/api/heating', '/api/thermostat'], (req, _res, next) => {

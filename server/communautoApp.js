@@ -238,3 +238,34 @@ export const status = async () => {
 };
 
 export const currentTarget = () => target && { ...target };
+
+// --- Diagnostic : lire et manipuler la tablette à la main (inventaire des automatisations) ---
+
+/** Texte de l'écran (libellés + centres) et appli au premier plan. */
+export const debugScreen = () => exclusive(async () => {
+    await ensureOnline();
+    const nodes = await readScreen();
+    const top = await shell('dumpsys', 'window').then((o) => /mCurrentFocus=.*\{[^ ]+ [^ ]+ ([^}\s]+)\}/.exec(o)?.[1] || null).catch(() => null);
+    return { focus: top, size, nodes: nodes.map((n) => ({ label: n.label, x: Math.round((n.x1 + n.x2) / 2), y: Math.round((n.y1 + n.y2) / 2), box: [n.x1, n.y1, n.x2, n.y2] })) };
+});
+
+/** Capture PNG de l'écran. */
+export const debugScreenshot = () => exclusive(async () => {
+    await ensureOnline();
+    return adb(['-s', serial(), 'exec-out', 'screencap', '-p'], { binary: true, timeout: 20_000 });
+});
+
+/** Une action : tap, back, scroll (swipe vertical), launch (paquet), myhue (retour à MyHue). */
+export const debugAction = ({ type, x, y, dy, pkg }) => exclusive(async () => {
+    await ensureOnline();
+    const n = (v) => String(Math.round(Number(v)));
+    if (type === 'tap') return shell('input', 'tap', n(x), n(y));
+    if (type === 'back') return shell('input', 'keyevent', 'KEYCODE_BACK');
+    if (type === 'scroll') {
+        const cx = n(size.w / 2), from = Math.round(size.h * 0.7);
+        return shell('input', 'swipe', cx, n(from), cx, n(from - Number(dy || size.h * 0.4)), '400');
+    }
+    if (type === 'launch' && /^[\w.]+$/.test(pkg || '')) return shell(`input keyevent KEYCODE_WAKEUP; monkey -p ${pkg} -c android.intent.category.LAUNCHER 1`);
+    if (type === 'myhue') return backToMyHue();
+    throw new Error('action inconnue');
+});

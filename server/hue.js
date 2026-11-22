@@ -125,3 +125,16 @@ export const hueProxy = async (req, res) => {
         res.status(err.response?.status || 502).json({ error: err.message });
     }
 };
+
+/** Lecture seule de l'API v2 du pont (routines de l'appli Hue : behavior_instance, etc.). */
+export const hueV2Get = async (resource) => {
+    if (!BRIDGE_IP || !USERNAME) throw new Error('Hue Bridge not configured');
+    if (!/^[a-z_]+$/.test(resource)) throw new Error('ressource invalide');
+    const https = await import('https');
+    const { data } = await axios.get(`https://${BRIDGE_IP}/clip/v2/resource/${resource}`, {
+        headers: { 'hue-application-key': USERNAME },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false }), // certificat auto-signé du pont, réseau local
+        timeout: 8000,
+    });
+    return data;
+};
