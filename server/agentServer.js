@@ -16,6 +16,7 @@ import * as skyAlerts from './skyAlerts.js';
 import * as lightSignals from './lightSignals.js';
 import * as entranceLight from './entranceLight.js';
 import * as guard from './guard.js';
+import * as away from './away.js';
 import * as noel from './noel.js';
 import * as kitchenDisplay from './kitchenDisplay.js';
 import * as circadian from './circadian.js';
@@ -104,6 +105,7 @@ app.listen(PORT, () => {
     lightSignals.start();
     entranceLight.start();
     guard.start();
+    away.start();
     noel.start();
     kitchenDisplay.start();
     circadian.start();

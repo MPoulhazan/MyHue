@@ -35,6 +35,7 @@ import { snowIntensity } from '../christmasMusic.js';
 import * as mailbox from '../mailbox.js';
 import * as entranceLight from '../entranceLight.js';
 import * as guard from '../guard.js';
+import * as away from '../away.js';
 import * as kitchenDisplay from '../kitchenDisplay.js';
 import * as alarm from '../alarm.js';
 import * as weeklyDigest from '../weeklyDigest.js';
@@ -196,6 +197,18 @@ router.put('/api/guard', async (req, res) => {
         const body = req.body || {};
         if (body.mode !== undefined) await guard.setMode(body.mode || null, body.by || 'écran');
         res.json(guard.update(body));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Maison vide : veilleuse et radio de Cooper, retour, absence longue ---
+
+router.get('/api/away', (_req, res) => res.json(away.getView()));
+
+router.put('/api/away', (req, res) => {
+    try {
+        res.json(away.update(req.body || {}));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

@@ -14,6 +14,10 @@ export interface GuardView {
     simulate: boolean;
     sim: { onFrom: string; onTo: string; offFrom: string; offTo: string };
     simToday: { onAt: number; offAt: number; lit: boolean } | null;
+    /** Mode armé tout seul après 24 h d'absence : il se coupe quand un téléphone revient */
+    auto?: boolean;
+    /** Simulation lancée par la maison vide (12 h de porte fermée), sans alarme */
+    autoSim?: boolean;
     /** Capteurs en pause : ils ne déclencheront pas d'alerte */
     pausedSensors?: { ieee: string; name: string }[];
 }
@@ -67,8 +71,14 @@ export function GuardCard() {
         return (
             <WidgetCard className="guard-card" label="Alarme" title="Alarme"
                 pills={<StatusPill level="off">Désactivée</StatusPill>}
-                detail={{ title: 'Alarme', body: <p className="lead">Porte ou mouvement quand la maison est vide : un Telegram tout de suite. En mode vacances, le salon s’allume aussi le soir pour faire croire qu’on est là.</p> }}>
+                detail={{ title: 'Alarme', body: <p className="lead">Porte ou mouvement quand la maison est vide : un Telegram tout de suite. En mode vacances, les lumières s’allument aussi le soir pour faire croire qu’on est là. Personne et porte d’entrée fermée depuis 12 h : la simulation part toute seule ; 24 h : l’alarme s’arme.</p> }}>
                 {pausedWarning}
+                {view.autoSim && (
+                    <p className="wcard-line">
+                        Personne depuis 12 h : simulation de présence le soir
+                        {view.simToday ? ` (${hmMin(view.simToday.onAt)} → ${hmMin(view.simToday.offAt)})` : ''}. L’alarme s’arme après 24 h.
+                    </p>
+                )}
                 <div className="guard-actions">
                     <button type="button" className="guard-btn" disabled={busy} onClick={() => put({ mode: 'alarm' })}>Mode alarme</button>
                     <button type="button" className="guard-btn" disabled={busy} onClick={() => put({ mode: 'vacation' })}>Mode vacances</button>
@@ -91,8 +101,8 @@ export function GuardCard() {
                 <label className="guard-sim">
                     <input type="checkbox" checked={view.simulate} disabled={busy} onChange={(e) => put({ simulate: e.target.checked })} />
                     <span>
-                        Salon allumé le soir
-                        {view.simulate && sim ? ` · ce soir ${hmMin(sim.onAt)} → ${hmMin(sim.offAt)}` : view.simulate ? ` · ${view.sim.onFrom}–${view.sim.offTo}` : ''}
+                        Lumières le soir (salon, cuisine, salle à manger)
+                        {view.simulate && sim ? ` · ce soir ${hmMin(sim.onAt)} → ${hmMin(sim.offAt)}` : view.simulate ? ' · dès la nuit tombée' : ''}
                     </span>
                 </label>
     );
@@ -101,6 +111,7 @@ export function GuardCard() {
             pills={<StatusPill level="bad">Actif{view.since ? ` depuis ${day(view.since)}` : ''}</StatusPill>}
             detail={{ title: LABEL[view.mode], body: <>{events(12)}{simulation}</> }}>
             {pausedWarning}
+            {view.auto && <p className="wcard-line">Armé tout seul après 24 h d’absence : il se coupe quand un téléphone revient sur le Wi-Fi.</p>}
             {events(1)}
             <div className="guard-actions">
                 <button type="button" className="guard-btn stop" disabled={busy} onClick={() => put({ mode: null })}>On est rentrés</button>

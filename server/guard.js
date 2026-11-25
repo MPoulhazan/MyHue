@@ -4,8 +4,10 @@
  *
  * Actif : une porte qui s'ouvre ou un mouvement → Telegram tout de suite, avec
  * « C'est nous » (coupe le mode) et « Tout allumer ». La lampe de l'entrée clignote en rouge.
- * Vacances en plus : le salon s'allume le soir et s'éteint vers 23 h, à des heures
- * qui changent un peu chaque jour, pour que la maison ait l'air habitée.
+ * Vacances en plus : simulation de présence le soir (salon dès la nuit tombée, cuisine au souper,
+ * salle à manger un moment, tout éteint vers 23 h), à des heures qui changent chaque soir.
+ * La maison vide (away.js) lance la simulation seule après 12 h de porte fermée, et arme
+ * le mode vacances après 24 h ; ce mode-là se coupe tout seul quand un téléphone revient sur le Wi-Fi.
  */
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dataFile } from './dataDir.js';
@@ -17,6 +19,7 @@ import * as journal from './journal.js';
 import * as notifier from './notifier.js';
 import * as entranceLight from './entranceLight.js';
 import { hueClient, hueBaseUrl } from './hue.js';
+import { planSimDay, roomsOnAt, fallbackSunset } from './awayLogic.js';
 
 const FILE = dataFile('guard.json');
 const TZ = process.env.TZ || 'America/Toronto';
@@ -30,9 +33,11 @@ const DEFAULTS = {
     since: null,
     by: null,
     events: [], // [{ at, sensor, what }] pendant le mode en cours
-    simulate: true, // vacances : simulation de présence au salon
-    sim: { onFrom: '18:30', onTo: '19:30', offFrom: '22:45', offTo: '23:30' },
-    simDay: null, // { date, onAt, offAt, lit, offDone }
+    simulate: true, // vacances : simulation de présence le soir
+    sim: { onFrom: '18:30', onTo: '19:30', offFrom: '22:45', offTo: '23:30' }, // ancien réglage, plus utilisé
+    simDay: null, // { date, plan: { onAt, offAt, rooms }, applied: ['salon', …] }
+    autoSim: false, // simulation lancée par la maison vide (12 h), sans alarme
+    auto: false, // mode armé par la maison vide (24 h) : se coupe au retour d'un téléphone
 };
 
 let config = { ...DEFAULTS };
@@ -64,6 +69,8 @@ const norm = (t) =>
 export const parseGuardCommand = (text) => {
     const t = norm(text);
     if (/\b(on est|je suis|nous sommes) (rentre|rentres|rentree|rentrees|de retour)\b/.test(t)) return { action: 'off' };
+    // « On part en week-end », « on part au chalet » : le mode vacances tout de suite, sans attendre 12 h
+    if (/\b(on part|on s.en va|nous partons|partons)\b.*\b(week-?end|chalet)\b/.test(t)) return { action: 'on', mode: 'vacation' };
     const vacation = /\b(mode|en) vacances?\b/.test(t);
     const alarm = /\b(alarme|surveillance)\b/.test(t);
     if (!vacation && !alarm) return null;
@@ -112,27 +119,54 @@ export const getView = () => ({
     events: config.events.slice(-8).reverse(),
     simulate: config.simulate,
     sim: config.sim,
+    auto: config.auto,
+    autoSim: config.autoSim,
     pausedSensors: sensorPause.list(), // capteurs qui ne déclencheront pas d'alerte
-    simToday: config.mode === 'vacation' && config.simulate && config.simDay ? { onAt: config.simDay.onAt, offAt: config.simDay.offAt, lit: config.simDay.lit } : null,
+    simToday: simActive() && config.simDay?.plan
+        ? { onAt: config.simDay.plan.onAt, offAt: config.simDay.plan.offAt, lit: config.simDay.applied.length > 0, rooms: config.simDay.plan.rooms }
+        : null,
 });
 
-export const setMode = async (mode, by = 'écran') => {
+function simActive() {
+    return (config.mode === 'vacation' && config.simulate) || config.autoSim;
+}
+
+export const setMode = async (mode, by = 'écran', { auto = false, silent = true } = {}) => {
     if (mode !== null && !MODES.includes(mode)) throw new Error('Mode inconnu (alarm, vacation ou null)');
     const before = config.mode;
     if (before === mode) return getView();
     config.mode = mode;
     config.since = mode ? Date.now() : null;
     config.by = mode ? by : null;
+    config.auto = Boolean(mode && auto);
     config.events = mode ? (before ? config.events : []) : [];
-    config.simDay = null;
+    // Le plan du soir reste le même : pas de lampes qui sautent quand la simulation change de main.
+    // Simulation finie : on oublie ce qu'elle avait allumé, sans rien éteindre devant nous.
+    if (config.simDay && !simActive()) config.simDay.applied = [];
     save();
     const paused = mode ? sensorPause.list() : [];
     const warn = paused.length ? ` ⚠️ En pause, non surveillé : ${paused.map((p) => p.name).join(', ')}.` : '';
     const text = mode ? `🛡️ ${LABEL[mode]} activé (${by}).${warn}` : `🏠 ${LABEL[before]} désactivé (${by}).`;
     journal.log({ kind: 'system', title: text, data: { mode, by } });
-    notifier.notify({ text, silent: true }).catch(() => {});
+    notifier.notify({ text, silent }).catch(() => {});
     if (mode === 'vacation') tick();
     return getView();
+};
+
+/** Maison vide depuis 12 h : simulation sans alarme (away.js). Coupée au retour, sans rien éteindre. */
+export const setAutoSim = (on) => {
+    if (config.autoSim === Boolean(on)) return;
+    config.autoSim = Boolean(on);
+    if (config.simDay && !simActive()) config.simDay.applied = [];
+    save();
+    if (on) tick();
+};
+
+/** Un téléphone est revenu : on coupe le mode s'il a été armé par l'absence (jamais un mode mis à la main). */
+export const disarmAuto = async (by) => {
+    if (!config.mode || !config.auto) return false;
+    await setMode(null, by, { silent: false });
+    return true;
 };
 
 export const update = (patch = {}) => {
@@ -182,41 +216,55 @@ const alert = async (entry, what) => {
 
 // --- Simulation de présence (vacances) ---
 
-const salonGroup = async () => {
-    const { data: groups } = await hueClient.get('/groups');
-    const found = Object.entries(groups).find(([, g]) => g.type === 'Room' && /salon/i.test(g.name));
-    return found?.[0] || null;
+// Une Room Hue par pièce simulée ; blanc chaud, intensité moyenne (≈ 15-25 W en tout)
+const ROOMS = {
+    salon: { pattern: /salon/i, label: 'salon', state: { bri: 120, ct: 420 } },
+    cuisine: { pattern: /cuisine/i, label: 'cuisine', state: { bri: 160, ct: 400 } },
+    salle: { pattern: /salle/i, label: 'salle à manger', state: { bri: 110, ct: 430 } },
 };
 
-const setSalon = async (on) => {
+const setRoom = async (room, on) => {
     if (!hueBaseUrl) return;
-    const id = await salonGroup();
+    const { data: groups } = await hueClient.get('/groups');
+    const id = Object.entries(groups).find(([, g]) => g.type === 'Room' && ROOMS[room].pattern.test(g.name))?.[0];
     if (!id) return;
-    await hueClient.put(`/groups/${id}/action`, on ? { on: true, bri: 150, ct: 400, transitiontime: 50 } : { on: false, transitiontime: 50 });
+    await hueClient.put(`/groups/${id}/action`, on ? { on: true, ...ROOMS[room].state, transitiontime: 50 } : { on: false, transitiontime: 50 });
+};
+
+// Coucher du soleil du jour (Open-Meteo), en minutes locales ; à défaut, une moyenne du mois
+const sunsetOf = async (date) => {
+    try {
+        const { getForecast } = await import('./weather.js');
+        const { days } = await getForecast();
+        const d = days.find((x) => localParts(x.sunset).date === date);
+        if (d) return localParts(d.sunset).min;
+    } catch { /* météo injoignable */ }
+    return fallbackSunset(Number(date.slice(5, 7)) - 1);
 };
 
 let ticking = false;
 async function tick() {
-    if (ticking || config.mode !== 'vacation' || !config.simulate) return;
+    if (ticking || !simActive()) return;
     ticking = true;
     try {
         const { date, min } = localParts(Date.now());
-        if (config.simDay?.date !== date) {
-            config.simDay = { date, onAt: pickMinute(config.sim.onFrom, config.sim.onTo), offAt: pickMinute(config.sim.offFrom, config.sim.offTo), lit: false, offDone: false };
+        if (config.simDay?.date !== date || !config.simDay.plan) {
+            config.simDay = { date, plan: planSimDay(await sunsetOf(date)), applied: [] };
             save();
         }
         const d = config.simDay;
-        if (!d.lit && !d.offDone && min >= d.onAt && min < d.offAt) {
-            await setSalon(true);
-            d.lit = true;
+        const want = roomsOnAt(d.plan, min);
+        for (const room of want.filter((r) => !d.applied.includes(r))) {
+            await setRoom(room, true);
+            d.applied.push(room);
             save();
-            journal.log({ kind: 'system', title: 'Vacances : salon allumé pour la soirée', data: {} });
-        } else if (d.lit && min >= d.offAt) {
-            await setSalon(false);
-            d.lit = false;
-            d.offDone = true;
+            journal.log({ kind: 'system', title: `Simulation de présence : ${ROOMS[room].label} allumé`, data: {} });
+        }
+        for (const room of d.applied.filter((r) => !want.includes(r))) {
+            await setRoom(room, false);
+            d.applied = d.applied.filter((r) => r !== room);
             save();
-            journal.log({ kind: 'system', title: 'Vacances : salon éteint pour la nuit', data: {} });
+            journal.log({ kind: 'system', title: `Simulation de présence : ${ROOMS[room].label} éteint`, data: {} });
         }
     } catch (err) {
         console.warn('⚠️  Simulation de présence:', err.message);

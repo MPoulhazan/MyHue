@@ -13,6 +13,8 @@ test('parseGuardCommand : activer, couper, demander', () => {
     assert.deepEqual(parseGuardCommand('coupe le mode vacances'), { action: 'off' });
     assert.deepEqual(parseGuardCommand('On est rentrés'), { action: 'off' });
     assert.deepEqual(parseGuardCommand('Le mode alarme est activé ?'), { action: 'status' });
+    assert.deepEqual(parseGuardCommand('On part en week-end'), { action: 'on', mode: 'vacation' });
+    assert.deepEqual(parseGuardCommand('on s’en va au chalet'), { action: 'on', mode: 'vacation' });
 });
 
 test('parseGuardCommand : ne vole pas les autres phrases', () => {

@@ -231,8 +231,9 @@ export async function play(req) {
         throw new Error('Unknown kind');
     }
 
-    // Noël n'est pas une habitude : en janvier, il ne faudrait pas le resuggérer
-    if (kind !== 'resume' && source?.id && source.id !== 'noel') habits.record({ ...source, deviceId });
+    // Noël n'est pas une habitude : en janvier, il ne faudrait pas le resuggérer.
+    // La radio de Cooper quand on n'est pas là non plus (req.habit === false).
+    if (kind !== 'resume' && req.habit !== false && source?.id && source.id !== 'noel') habits.record({ ...source, deviceId });
     return { source, state: state() };
 }
 

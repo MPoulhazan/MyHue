@@ -82,7 +82,7 @@ export const summarize = (a) => {
         .map((c) => (c.type === 'time' ? `entre ${c.from} et ${c.to}` : c.type === 'heating' ? 'clim allumée' : c.type === 'dark' ? 'à la nuit tombée' : c.type === 'cold_or_heating' ? `moins de ${c.below}° dehors ou clim allumée` : c.type === 'downpour' ? `grosse averse ou orage dans les ${c.withinMinutes} min` : c.type === 'draught' ? `la pièce perd ${c.drop}° ou ${c.orMinutes} min sous ${c.below}° dehors` : c.type === 'someone_home' ? 'quelqu’un à la maison' : ''))
         .filter(Boolean);
     const does = a.actions
-        .map((x) => (x.type === 'home' && x.action?.type === 'music_play' ? musicLabel(x.action) : { notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison', alarm: 'alarme lampes + enceintes', moment: `moment ${x.id}` }[x.type]))
+        .map((x) => (x.type === 'home' && x.action?.type === 'music_play' ? musicLabel(x.action) : { notify: 'notifier', heating_pause: 'pause clim', heating_resume: 'relancer clim', home: 'action maison', alarm: 'alarme lampes + enceintes', arrival: 'tout allumer s’il fait nuit', moment: `moment ${x.id}` }[x.type]))
         .filter(Boolean);
     return `Si ${what}${when.length ? ` (${when.join(', ')})` : ''} → ${does.join(' + ')}`;
 };
@@ -170,12 +170,12 @@ export const TEMPLATES = {
     },
     arrive_home: {
         label: 'Je rentre',
-        description: 'À ton retour, s’il fait nuit : le salon s’allume doucement en blanc chaud.',
-        build: ({ groupId = '1' } = {}) => ({
+        description: 'À ton retour (porte d’entrée ou téléphone sur le Wi-Fi), s’il fait nuit : toute la maison s’allume au blanc du moment.',
+        build: () => ({
             name: 'Je rentre',
             trigger: { type: 'presence', state: 'home' },
-            conditions: [{ type: 'dark' }],
-            actions: [{ type: 'home', action: { type: 'set_group_state', id: groupId, state: { on: true, bri: 140, ct: 400 } } }],
+            conditions: [],
+            actions: [{ type: 'arrival' }],
             cooldownMinutes: 10,
         }),
     },
@@ -402,6 +402,13 @@ const ensureSafety = () => {
     for (const a of automations.filter((x) => x.template === 'door_left_open' && x.trigger.did !== '*' && !isEntranceDoor(x.trigger.did))) {
         if (automations.some((x) => x.template === 'door_downpour' && x.trigger.did === a.trigger.did)) continue;
         automations.push(normalize({ ...TEMPLATES.door_downpour.build({ did: a.trigger.did }), template: 'door_downpour' }));
+        upgraded = true;
+    }
+    // L'ancien « Je rentre » n'allumait que le salon : toute la maison maintenant (away.js)
+    for (const a of automations) {
+        if (a.template !== 'arrive_home' || a.actions.some((x) => x.type === 'arrival')) continue;
+        const fresh = TEMPLATES.arrive_home.build();
+        Object.assign(a, { conditions: fresh.conditions, actions: fresh.actions });
         upgraded = true;
     }
     for (const id of ['water_leak', 'leak_sensor_silent', 'smoke_alarm', 'smoke_sensor_silent']) {
@@ -721,6 +728,12 @@ const runActions = async (a, actions, vars) => {
                 case 'alarm_clear':
                     await alarm.clear(vars.did);
                     break;
+                case 'arrival': {
+                    // Toute la maison s'allume s'il fait nuit (away.js, une seule fois si la porte l'a déjà fait)
+                    const away = await import('./away.js');
+                    await away.arrive('Wi-Fi');
+                    break;
+                }
                 case 'moment': {
                     const moments = await import('./moments.js');
                     await moments.run(action.id);
