@@ -40,6 +40,8 @@ import * as communauto from '../communauto.js';
 import { communautoSpeech, parseCommunautoCommand } from '../communautoLogic.js';
 import * as collecte from '../collecte.js';
 import { citySpeech, isCityQuestion } from '../cityLogic.js';
+import * as builtins from '../builtins.js';
+import { voiceCommand } from '../builtinsLogic.js';
 import { getHomeState, recentEvents } from '../homeState.js';
 import { executeActions } from '../actions.js';
 import { groqClient, GROQ_API_KEY, GROQ_MODEL } from '../llm.js';
@@ -245,6 +247,26 @@ router.post('/api/agent', async (req, res) => {
         }
 
         // Niveau 0 : « Il se passe quoi ce week-end ? », d'après les alertes de la ville
+        // Niveau 0 : « C'était quoi ? » / « Coupe-le » sur la dernière annonce d'un automatisme
+        const lastCmd = voiceCommand(message);
+        if (lastCmd) {
+            const last = builtins.lastSpoken();
+            const ago = last ? Math.max(1, Math.round((Date.now() - last.at) / 60_000)) : 0;
+            let speech;
+            if (!last) speech = 'Aucun automatisme n’a parlé depuis une demi-heure.';
+            else if (lastCmd === 'what') speech = `C’était « ${last.name} », il y a ${ago} minute${ago > 1 ? 's' : ''}.${last.locked ? '' : ' Dis « coupe-le » pour ne plus l’entendre.'}`;
+            else if (last.locked) speech = `« ${last.name} » est une alerte de sécurité, je la garde.`;
+            else {
+                try {
+                    builtins.update(last.id, { channel: 'voice', on: false });
+                    speech = `C’est fait, « ${last.name} » ne parlera plus. Tu peux le rallumer dans Automatismes.`;
+                } catch (err) {
+                    speech = err.message;
+                }
+            }
+            return res.json({ message: speech, actions: [], actionResults: [], tier: 'local', intent: 'builtin' });
+        }
+
         if (isCityQuestion(message)) {
             return res.json({ message: citySpeech(city.getEvents()), actions: [], actionResults: [], tier: 'local', intent: 'city' });
         }

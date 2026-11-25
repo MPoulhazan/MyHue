@@ -62,9 +62,12 @@ export const allows = (state, id, channel) => {
     return !(s.off || []).includes(channel);
 };
 
+/** Option « se taire si de la musique joue » (voix seulement). */
+export const quietWithMusic = (state, id) => Boolean(state[id]?.quiet) && Boolean(byId.get(id)?.channels.voice);
+
 /**
  * Applique un changement venu de l'appli.
- * { channel, on } | { deleted: true|false } | { all: false|true }
+ * { channel, on } | { deleted: true|false } | { all: false|true } | { quietWithMusic }
  * Renvoie le nouvel état (sans muter l'ancien) ou lance une erreur lisible.
  */
 export const patch = (state, id, change = {}) => {
@@ -73,7 +76,10 @@ export const patch = (state, id, change = {}) => {
     if (def.locked) throw new Error('Automatisme de sécurité : il reste toujours actif');
     const cur = { off: [], ...(state[id] || {}) };
     const own = Object.keys(def.channels);
-    if (typeof change.deleted === 'boolean') {
+    if (typeof change.quietWithMusic === 'boolean') {
+        if (!own.includes('voice')) throw new Error('Cet automatisme ne parle pas');
+        cur.quiet = change.quietWithMusic;
+    } else if (typeof change.deleted === 'boolean') {
         cur.deleted = change.deleted;
         if (!change.deleted) cur.off = [];
     } else if (typeof change.all === 'boolean') {
@@ -88,8 +94,8 @@ export const patch = (state, id, change = {}) => {
         throw new Error('Rien à changer');
     }
     const next = { ...state };
-    if (!cur.deleted && cur.off.length === 0) delete next[id];
-    else next[id] = { off: cur.off, ...(cur.deleted ? { deleted: true } : {}) };
+    if (!cur.deleted && !cur.quiet && cur.off.length === 0) delete next[id];
+    else next[id] = { off: cur.off, ...(cur.deleted ? { deleted: true } : {}), ...(cur.quiet ? { quiet: true } : {}) };
     return next;
 };
 
@@ -115,11 +121,29 @@ export const view = (state, entries, now = Date.now()) => {
             desc: d.desc,
             locked: Boolean(d.locked),
             deleted: Boolean(s.deleted),
+            quietWithMusic: quietWithMusic(state, d.id),
             channels: Object.entries(d.channels).map(([channel, where]) => ({ channel, where, on: allows(state, d.id, channel) })),
             monthCount: st ? st.runs.size : 0,
             lastAt: st?.lastAt || null,
         };
     });
+};
+
+const norm = (text) => String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * Commande vocale sur la dernière annonce : « C'était quoi ? » → 'what',
+ * « Coupe-le », « Ne dis plus ça » → 'cut'. Phrases courtes et exactes seulement,
+ * pour ne pas avaler « coupe la lumière ».
+ */
+export const voiceCommand = (text) => {
+    const t = norm(text).replace(/^(jean claude|jarvis|ok) /, '');
+    if (/^(c etait|c est|ca etait) quoi( (ca|ce bruit|ce son|cette annonce|ce message))?( la)?$/.test(t)) return 'what';
+    if (/^(qui|qu est ce qui) (vient de parler|a parle|a sonne)$/.test(t) || /^pourquoi (tu as|t as|tu viens de) parle$/.test(t)) return 'what';
+    if (/^(coupe|desactive|arrete|tais)( (le|la|ca|toi))?( (pour de bon|aussi))?$/.test(t)) return 'cut';
+    if (/^(ne|n) (le |la )?(dis|annonce) plus (ca|jamais ca|ce message|cette annonce)$/.test(t)) return 'cut';
+    if (/^(coupe|desactive) (cette annonce|cet automatisme|cette alerte|ce message)$/.test(t)) return 'cut';
+    return null;
 };
 
 /** Voix + lampe + Telegram d'un même automatisme à moins de 2 min d'écart = un seul passage. */

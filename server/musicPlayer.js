@@ -292,6 +292,23 @@ export async function transfer(deviceId) {
     return state();
 }
 
+const sameName = (a, b) => String(a || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '') === String(b || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/**
+ * La musique de MyHue joue en ce moment sur une de ces enceintes (noms Home Assistant) ?
+ * Note le titre en cours pour pouvoir la relancer après une annonce.
+ */
+export function liveOn(names) {
+    const now = cast.getNowPlaying();
+    if (!now || now.paused || !state().source || !names.some((n) => sameName(n, now.device))) return null;
+    const i = currentIndex();
+    if (i >= 0 && session) {
+        session.lastIndex = i;
+        saveSession();
+    }
+    return { deviceId: now.deviceId, name: now.device };
+}
+
 /** État pour l'écran : source, file, position, minuterie, et de quoi reprendre. */
 export function state() {
     const now = cast.getNowPlaying();

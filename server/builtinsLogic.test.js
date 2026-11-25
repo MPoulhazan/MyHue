@@ -51,3 +51,18 @@ test('ids uniques et canaux connus', () => {
     assert.equal(new Set(REGISTRY.map((d) => d.id)).size, REGISTRY.length);
     for (const d of REGISTRY) for (const c of Object.keys(d.channels)) assert.ok(['voice', 'lamp', 'telegram'].includes(c), d.id);
 });
+
+test('se taire si musique : gardé tant que coché, refusé sans voix', () => {
+    const s = patch({}, 'stove.boil', { quietWithMusic: true });
+    assert.deepEqual(s, { 'stove.boil': { off: [], quiet: true } });
+    assert.equal(view(s, []).find((b) => b.id === 'stove.boil').quietWithMusic, true);
+    assert.deepEqual(patch(s, 'stove.boil', { quietWithMusic: false }), {});
+    assert.throws(() => patch({}, 'flexd.peak', { quietWithMusic: true }), /parle pas/);
+});
+
+test('commande vocale sur la dernière annonce', async () => {
+    const { voiceCommand } = await import('./builtinsLogic.js');
+    for (const q of ['C’était quoi ?', 'Jean-Claude, c’était quoi ça ?', 'Qui vient de parler ?', 'c est quoi ce bruit']) assert.equal(voiceCommand(q), 'what', q);
+    for (const q of ['Coupe-le', 'Coupe ça', 'Ne dis plus ça', 'Désactive cette annonce', 'tais-toi']) assert.equal(voiceCommand(q), 'cut', q);
+    for (const q of ['Coupe la lumière', 'coupe la musique', 'c’était quoi le score hier', 'arrête la radio']) assert.equal(voiceCommand(q), null, q);
+});

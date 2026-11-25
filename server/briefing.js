@@ -12,6 +12,8 @@ import * as haService from './haService.js';
 import { ttsEngine, ttsLanguage } from './tts.js';
 import * as journal from './journal.js';
 import * as builtins from './builtins.js';
+// Chargé à la demande : le lecteur démarre la découverte Cast, inutile dans les tests
+const music = () => import('./musicPlayer.js');
 import * as presence from './presence.js';
 import * as flexd from './flexd.js';
 import { getWeatherDetails } from './weather.js';
@@ -154,12 +156,20 @@ const speak = async (message) => {
 
 /**
  * Annonce sur plusieurs enceintes (alarme) : volume monté le temps du message, puis remis.
+ * Si la musique de MyHue jouait sur l'enceinte, elle repart après la phrase.
  * @param {string[]} speakers entités media_player
  */
 export const announce = async (speakers, message, { volume = 0.7, holdMs = 20_000, builtin = null, detail = '' } = {}) => {
     if (builtin && !builtins.allows(builtin, 'voice')) return false;
     const engine = await ttsEngine();
     const players = (await haService.getStates('media_player')).filter((p) => speakers.includes(p.entity_id));
+    const names = players.flatMap((p) => [p.attributes.friendly_name, p.entity_id.replace('media_player.', '')]).filter(Boolean);
+    const ours = (await music()).liveOn(names); // musique lancée par MyHue : on saura la relancer
+    const busy = Boolean(ours) || players.some((p) => p.state === 'playing');
+    if (busy && builtin && builtins.quietWithMusic(builtin)) {
+        journal.log({ kind: 'system', title: `« ${builtins.nameOf(builtin)} » pas dit : de la musique jouait`, data: { builtin } });
+        return false;
+    }
     for (const p of players) {
         await haService.callService('media_player', 'volume_set', { entity_id: p.entity_id, volume_level: volume }).catch(() => {});
     }
@@ -170,13 +180,35 @@ export const announce = async (speakers, message, { volume = 0.7, holdMs = 20_00
         language: ttsLanguage(engine),
         cache: false,
     });
-    if (builtin) builtins.ran(builtin, 'voice', detail || message);
-    setTimeout(() => {
+    if (builtin) builtins.ran(builtin, 'voice', detail || message, busy ? { music: ours ? 'resumed' : 'cut' } : {});
+    const restoreVolume = () => {
         for (const p of players) {
             if (p.attributes.volume_level == null) continue;
             haService.callService('media_player', 'volume_set', { entity_id: p.entity_id, volume_level: p.attributes.volume_level }).catch(() => {});
         }
-    }, holdMs);
+    };
+    if (!ours) {
+        setTimeout(restoreVolume, holdMs);
+        return true;
+    }
+    resumeAfter(ours, message, speakers, restoreVolume).catch((err) => console.warn('⚠️  Annonce, reprise de la musique:', err.message));
+    return true;
+};
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Attend la fin de la phrase, remet le volume, puis relance la musique au même titre (ou la même radio). */
+const resumeAfter = async (ours, message, speakers, restoreVolume) => {
+    await sleep(Math.max(4000, 2500 + message.length * 75));
+    for (let i = 0; i < 20; i++) {
+        const states = await haService.getStates('media_player').catch(() => []);
+        if (!states.some((p) => speakers.includes(p.entity_id) && p.state === 'playing')) break;
+        await sleep(1000);
+    }
+    restoreVolume();
+    await sleep(800);
+    await (await music()).play({ deviceId: ours.deviceId, kind: 'resume' });
+    journal.log({ kind: 'system', title: `Musique relancée sur ${ours.name} après une annonce`, data: { deviceId: ours.deviceId } });
 };
 
 // Phrases ajoutées par d'autres modules (« Ma journée » : l'agenda du matin)

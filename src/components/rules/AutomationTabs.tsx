@@ -13,6 +13,7 @@ export interface Builtin {
     desc: string;
     locked: boolean;
     deleted: boolean;
+    quietWithMusic: boolean;
     channels: { channel: Channel; where: string; on: boolean }[];
     monthCount: number;
     lastAt: number | null;
@@ -25,6 +26,7 @@ export interface Run {
     at: number;
     channels: Channel[];
     detail: string | null;
+    music?: 'cut' | 'resumed' | null;
 }
 
 /** Une automatisation créée dans l'appli, telle que la page la connaît déjà. */
@@ -154,6 +156,7 @@ export function AutomationTabs({ tab, mine, onToggleMine, onRemoveMine, onCounts
         <BuiltinPanel key={selBuiltin.id} b={selBuiltin}
             onChannel={(c, on) => change(selBuiltin, { channel: c, on }, `${CH_LABEL[c]} ${on ? 'rallumée' : 'coupée'} pour « ${selBuiltin.name} »`)}
             onAll={(on) => change(selBuiltin, { all: on }, `« ${selBuiltin.name} » ${on ? 'réactivé' : 'désactivé'}`)}
+            onQuiet={(q) => change(selBuiltin, { quietWithMusic: q }, q ? `« ${selBuiltin.name} » se taira pendant la musique` : `« ${selBuiltin.name} » parlera même avec la musique`)}
             onDelete={() => change(selBuiltin, { deleted: true }, `« ${selBuiltin.name} » supprimé`)}
             onRestore={() => change(selBuiltin, { deleted: false }, `« ${selBuiltin.name} » restauré`)} />
     ) : selMine ? (
@@ -231,7 +234,7 @@ function RecentList({ runs, filter, byId, sel, onSelect }: {
                                     onClick={() => onSelect({ type: r.type, id: r.id })}>
                                     <span className="au-time">{hm(r.at)}</span>
                                     <span className="au-ico"><Icon name={r.type === 'mine' ? 'rules' : iconFor(b)} size={20} strokeWidth={2} /></span>
-                                    <span className="au-what"><b>{b?.name ?? r.name}</b>{r.detail && <span>{r.detail}</span>}</span>
+                                    <span className="au-what"><b>{b?.name ?? r.name}{r.music && <span className={`au-music ${r.music}`}>{r.music === 'resumed' ? 'musique relancée' : 'a coupé la musique'}</span>}</b>{r.detail && <span>{r.detail}</span>}</span>
                                     {r.type === 'mine' ? <span className="au-chans"><span className="au-ch mine">Mes automatisations</span></span> : <Chans channels={r.channels} b={b} />}
                                 </button>
                             );
@@ -278,9 +281,10 @@ function BuiltinList({ builtins, sel, onSelect }: {
     );
 }
 
-function BuiltinPanel({ b, onChannel, onAll, onDelete, onRestore }: {
-    b: Builtin; onChannel: (c: Channel, on: boolean) => void; onAll: (on: boolean) => void; onDelete: () => void; onRestore: () => void;
+function BuiltinPanel({ b, onChannel, onAll, onQuiet, onDelete, onRestore }: {
+    b: Builtin; onChannel: (c: Channel, on: boolean) => void; onAll: (on: boolean) => void; onQuiet: (q: boolean) => void; onDelete: () => void; onRestore: () => void;
 }) {
+    const voice = b.channels.find((c) => c.channel === 'voice');
     const [armed, setArmed] = useState(false);
     const anyOn = b.channels.some((c) => c.on);
     return (
@@ -315,6 +319,12 @@ function BuiltinPanel({ b, onChannel, onAll, onDelete, onRestore }: {
                             </div>
                         ))}
                     </div>
+                    {voice?.on && (
+                        <label className="au-option">
+                            <input type="checkbox" id={`quiet-${b.id}`} checked={b.quietWithMusic} onChange={(e) => onQuiet(e.target.checked)} />
+                            <span>Se taire si de la musique joue{b.channels.length > 1 ? ' (les autres canaux restent)' : ''}</span>
+                        </label>
+                    )}
                     <div className="au-actions">
                         {b.channels.length > 1 && (
                             <button type="button" className="au-btn main" onClick={() => onAll(!anyOn)}>{anyOn ? 'Tout couper' : 'Tout rallumer'}</button>
