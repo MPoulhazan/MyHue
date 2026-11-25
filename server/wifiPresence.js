@@ -38,7 +38,7 @@ const load = () => {
         if (!existsSync(FILE)) return;
         const data = JSON.parse(readFileSync(FILE, 'utf8'));
         choices = data.choices || {};
-        devices = new Map((data.devices || []).map((d) => [d.mac, d]));
+        devices = new Map((data.devices || []).filter((d) => !/^172./.test(d.ip)).map((d) => [d.mac, d]));
     } catch {
         // fichier abîmé : on repart de zéro
     }
@@ -85,7 +85,7 @@ const discover = async () => {
     }
     const now = Date.now();
     for (const { ip, mac } of parseArp(arp)) {
-        if (ip === iface.address) continue;
+        if (ip === iface.address || !ip.startsWith(`${iface.subnet}.`)) continue; // réseaux internes de HA écartés
         const known = devices.get(mac);
         const name = known?.ip === ip && known.name ? known.name : await nameOf(ip);
         devices.set(mac, { mac, ip, name: name || known?.name || null, firstSeen: known?.firstSeen || now, lastSeen: known?.lastSeen || now });
