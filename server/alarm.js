@@ -59,7 +59,7 @@ export const raise = async (did, speech) => {
     if (haService.isConfigured() && speech) {
         try {
             const speakers = await speakersAvailable();
-            if (speakers.length) await announce(speakers, speech);
+            if (speakers.length) await announce(speakers, speech, { builtin: 'alarm' });
         } catch (err) {
             console.warn('⚠️  Alarme, enceintes:', err.message);
         }

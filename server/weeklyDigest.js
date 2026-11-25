@@ -7,6 +7,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dataFile } from './dataDir.js';
 import * as journal from './journal.js';
+import * as builtins from './builtins.js';
 import * as notifier from './notifier.js';
 import { groqClient, GROQ_API_KEY, GROQ_MODEL } from './llm.js';
 import { getSensors, getSensorHistory } from './sensors.js';
@@ -306,7 +307,10 @@ const tick = async () => {
     config.lastSentDay = local.day;
     save();
     try {
-        await send('planifié');
+        if (builtins.allows('digest.weekly', 'telegram')) {
+            await send('planifié');
+            builtins.ran('digest.weekly', 'telegram');
+        }
     } catch (err) {
         console.error('❌ Résumé de la semaine:', err.message);
     }

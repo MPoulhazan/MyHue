@@ -77,13 +77,13 @@ const tick = async () => {
     if (action.notify) {
         config.notifiedNight = night;
         save();
-        await notifier.notify({ text: alertText(sky.aurora, sky.offsetSec) });
+        await notifier.notify({ text: alertText(sky.aurora, sky.offsetSec), builtin: 'sky.aurora', detail: `Kp ${sky.aurora.maxTonight}` });
         journal.log({ kind: 'system', title: `Aurores possibles cette nuit (Kp ${sky.aurora.maxTonight})`, data: { kp: sky.aurora.maxTonight } });
     }
     if (action.pulse) {
         config.pulsedNight = night;
         save();
-        await lightSignals.pulse(['aurora'], 'aurores');
+        await lightSignals.pulse(['aurora'], 'aurores', 'sky.aurora');
     }
 };
 

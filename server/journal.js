@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 import { dataFile } from './dataDir.js';
 
 const FILE = dataFile('journal.json');
-const MAX_ENTRIES = 2000;
+const MAX_ENTRIES = 5000;
 
 export const emitter = new EventEmitter();
 

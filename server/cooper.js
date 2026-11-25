@@ -18,6 +18,7 @@ import * as sensorRegistry from './sensorRegistry.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as notifier from './notifier.js';
 import * as journal from './journal.js';
+import * as builtins from './builtins.js';
 import * as presence from './presence.js';
 import * as alarm from './alarm.js';
 import { announce, getSpeakers } from './briefing.js';
@@ -279,11 +280,11 @@ const kitchenSpeaker = async () => {
     return speakers.find((s) => s.available && (/cuisine|kitchen/i.test(s.name) || /cuisine|kitchen/i.test(s.id)))?.id || null;
 };
 
-const say = async (message) => {
+const say = async (message, builtin) => {
     if (!config.voice || !haService.isConfigured()) return;
     try {
         const speaker = await kitchenSpeaker();
-        if (speaker) await announce([speaker], message, { volume: 0.6 });
+        if (speaker) await announce([speaker], message, { volume: 0.6, builtin });
     } catch (err) {
         console.warn('⚠️  Cooper, enceinte:', err.message);
     }
@@ -415,7 +416,7 @@ const recordMeal = async (mealId, { at = Date.now(), source, late = false }) => 
     save();
     journal.log({ kind: 'system', title: `Cooper a eu son repas de ${mealLabel(mealId)} (${hm(at)})`, data: { meal: mealId, source } });
     if (config.alerted[date]?.[mealId]) {
-        notifier.notify({ text: `✅ Cooper a eu son repas de ${mealLabel(mealId)} à ${hm(at)}.`, silent: true }).catch(() => {});
+        notifier.notify({ text: `✅ Cooper a eu son repas de ${mealLabel(mealId)} à ${hm(at)}.`, silent: true, builtin: 'cooper.fed' }).catch(() => {});
     }
 };
 
@@ -444,15 +445,20 @@ const onOpen = async (ts) => {
             save();
             const text = `Attention, Cooper a déjà eu son repas de ${mealLabel(hit.meal)} à ${hm(first.at)}.`;
             journal.log({ kind: 'system', title: `Boîte de Cooper rouverte : déjà nourri à ${hm(first.at)}`, data: { meal: hit.meal } });
-            notifier.notify({ text: `⚠️ ${text}` }).catch(() => {});
-            say(text);
+            notifier.notify({ text: `⚠️ ${text}`, builtin: 'cooper.double' }).catch(() => {});
+            say(text, 'cooper.double');
         }
     } else if (hit) {
         await recordMeal(hit.meal, { at: ts, source: 'boîte', late: Boolean(hit.late) });
     }
 
     try {
-        if (!config.lightOnlyWhenDark || (await isDark())) await showBowl();
+        if (!builtins.allows('cooper.bowl', 'lamp')) {
+            if (config.lamp) await endLamp();
+        } else if (!config.lightOnlyWhenDark || (await isDark())) {
+            await showBowl();
+            builtins.ran('cooper.bowl', 'lamp');
+        }
         else if (config.lamp) await endLamp();
     } catch (err) {
         console.warn('⚠️  Cooper, lampe:', err.message);
@@ -472,12 +478,15 @@ const alertLate = async (meal, date) => {
         .notify({
             text,
             buttons: [{ label: "✅ C'est fait", run: async () => (await markFed(meal.id, 'Telegram'), `Noté, Cooper a eu son repas de ${meal.label}.`) }],
+            builtin: 'cooper.late',
         })
         .catch(() => {});
     if (!someoneHome()) return;
-    say(`Cooper n'a pas encore eu son repas de ${meal.label}.`);
+    say(`Cooper n'a pas encore eu son repas de ${meal.label}.`, 'cooper.late');
+    if (!builtins.allows('cooper.late', 'lamp')) return;
     try {
         await startBlink();
+        builtins.ran('cooper.late', 'lamp', 'Bar rouge et blanc');
     } catch (err) {
         console.warn('⚠️  Cooper, lampe:', err.message);
     }

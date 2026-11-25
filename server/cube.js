@@ -173,7 +173,7 @@ const handle = async ({ gesture, face: side, angle }) => {
             if (isNight(localParts(Date.now(), TZ).minutes)) return;
             lastFallAt = Date.now();
             const speaker = await pickSpeaker();
-            if (speaker) await announce([speaker], fallLine(), { volume: 0.5, holdMs: 8000 });
+            if (speaker) await announce([speaker], fallLine(), { volume: 0.5, holdMs: 8000, builtin: 'cube.fall' });
             return;
         }
         default:

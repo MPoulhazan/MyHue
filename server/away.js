@@ -209,7 +209,7 @@ const onPhase = async (prev, next, now) => {
     if (next === 'long' && prev !== 'guard') {
         guard.setAutoSim(true);
         if (prev === 'out' && !guard.getView().mode) {
-            notifier.notify({ text: '🏡 Porte d’entrée fermée depuis 12 h et personne à la maison : simulation de présence le soir. Veilleuse et radio de Cooper coupées. L’alarme s’armera après 24 h.' }).catch(() => {});
+            notifier.notify({ text: '🏡 Porte d’entrée fermée depuis 12 h et personne à la maison : simulation de présence le soir. Veilleuse et radio de Cooper coupées. L’alarme s’armera après 24 h.', builtin: 'away.simulation' }).catch(() => {});
         }
     }
     if (next === 'guard') {

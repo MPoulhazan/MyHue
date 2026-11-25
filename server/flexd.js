@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import axios from 'axios';
 import { dataFile } from './dataDir.js';
 import * as journal from './journal.js';
+import * as builtins from './builtins.js';
 import * as notifier from './notifier.js';
 import * as broadlinkService from './broadlinkService.js';
 import * as thermostat from './thermostat.js';
@@ -98,6 +99,7 @@ export const describe = (e, preheatMinutes = config.preheatMinutes) =>
     `${fmtDay(e.start)} de ${fmtHour(e.start)} à ${fmtHour(e.end)} (préchauffage dès ${fmtHour(e.start - preheatMinutes * 60_000)})`;
 
 const announce = async (e) => {
+    if (!builtins.allows('flexd.peak', 'telegram')) return true;
     const text =
         `⚡ Pointe critique Flex D ${fmtDay(e.start)} de ${fmtHour(e.start)} à ${fmtHour(e.end)}.\n` +
         `Je monte la consigne de ${config.boost} °C dès ${fmtHour(e.start - config.preheatMinutes * 60_000)}, ` +
@@ -105,6 +107,8 @@ const announce = async (e) => {
         'Évite sécheuse, lave-vaisselle et four pendant ces heures.';
     const sent = await notifier.notify({
         text,
+        builtin: 'flexd.peak',
+        detail: describe(e),
         buttons: [
             {
                 label: 'Ignorer cette pointe',

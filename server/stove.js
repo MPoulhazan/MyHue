@@ -13,6 +13,7 @@ import { hueClient, hueBaseUrl, restoreLight } from './hue.js';
 import * as haService from './haService.js';
 import * as notifier from './notifier.js';
 import * as journal from './journal.js';
+import * as builtins from './builtins.js';
 import * as presence from './presence.js';
 import * as guard from './guard.js';
 import * as circadian from './circadian.js';
@@ -99,6 +100,7 @@ const COOK = { bri: 254, ct: 250 }; // blanc neutre 4000 K, à fond
 
 const lightsUp = async () => {
     if (!config.lights || !hueBaseUrl || config.lamp) return;
+    if (!builtins.allows('stove.cooking', 'lamp')) return;
     if (!(await isDark()) || isAway()) return;
     try {
         const ids = await kitchenLights();
@@ -119,6 +121,7 @@ const lightsUp = async () => {
         config.lamp = { ids: used, before };
         save();
         journal.log({ kind: 'stove', title: 'Cuisson : lumière de la cuisine en blanc vif', data: { lights: used } });
+        builtins.ran('stove.cooking', 'lamp', 'Cuisine en blanc vif');
     } catch (err) {
         console.warn('⚠️  Cuisinière, lumière:', err.message);
     }
@@ -161,7 +164,7 @@ const sayBoil = async () => {
     if (!config.boilVoice || isAway() || isQuiet() || !haService.isConfigured()) return;
     try {
         const speaker = await kitchenSpeaker();
-        if (speaker) await announce([speaker], 'L’eau bout !', { volume: 0.55, holdMs: 6000 });
+        if (speaker) await announce([speaker], 'L’eau bout !', { volume: 0.55, holdMs: 6000, builtin: 'stove.boil', detail: 'Enceinte de la cuisine' });
     } catch (err) {
         console.warn('⚠️  Cuisinière, enceinte:', err.message);
     }
@@ -209,7 +212,7 @@ const analyse = async () => {
         else config.alerts.lastLongAlertAt = now;
         const text = alertText(kind, { since: state.since, stove: last.stove, now, tz: TZ });
         journal.log({ kind: 'stove', title: text, data: { alert: kind } });
-        await notifier.notify({ text, buttons: buttons(), silent: false }).catch(() => {});
+        await notifier.notify({ text, buttons: buttons(), silent: false, builtin: 'stove.alert' }).catch(() => {});
     }
     // Plus personne et la lumière de cuisson encore là : on la rend
     if (away && config.lamp && !state.on) await lightsBack();

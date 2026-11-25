@@ -11,6 +11,7 @@ import * as sensorRegistry from '../sensorRegistry.js';
 import * as sensorPause from '../sensorPause.js';
 import * as haService from '../haService.js';
 import * as journal from '../journal.js';
+import * as builtins from '../builtins.js';
 import { getSensors, getSensorHistory, getOutdoorWeather } from '../sensors.js';
 import { indoorClimate } from '../sensorRoles.js';
 import * as stove from '../stove.js';
@@ -840,6 +841,18 @@ router.get('/api/automations/external', async (_req, res) => {
     }
     const withLabel = (r) => ({ ...r, planLabel: planLabel(r) });
     res.json({ hue: hue.map(withLabel), hueError, google: GOOGLE_ROUTINES.map(withLabel), googleSeenAt: GOOGLE_SEEN_AT });
+});
+
+// Automatismes intégrés : la liste avec un interrupteur par canal, et ce qui a tourné
+router.get('/api/automations/builtin', (_req, res) => res.json({ builtins: builtins.list() }));
+router.get('/api/automations/recent', (req, res) => res.json({ runs: builtins.recent({ days: Math.min(Number(req.query.days) || 7, 30) }) }));
+// { channel, on } | { all } | { deleted }
+router.patch('/api/automations/builtin/:id', (req, res) => {
+    try {
+        res.json(builtins.update(req.params.id, req.body || {}));
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 });
 
 router.get('/api/automations/templates', (_req, res) => {

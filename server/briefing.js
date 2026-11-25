@@ -11,6 +11,7 @@ import { dataFile } from './dataDir.js';
 import * as haService from './haService.js';
 import { ttsEngine, ttsLanguage } from './tts.js';
 import * as journal from './journal.js';
+import * as builtins from './builtins.js';
 import * as presence from './presence.js';
 import * as flexd from './flexd.js';
 import { getWeatherDetails } from './weather.js';
@@ -155,7 +156,8 @@ const speak = async (message) => {
  * Annonce sur plusieurs enceintes (alarme) : volume monté le temps du message, puis remis.
  * @param {string[]} speakers entités media_player
  */
-export const announce = async (speakers, message, { volume = 0.7, holdMs = 20_000 } = {}) => {
+export const announce = async (speakers, message, { volume = 0.7, holdMs = 20_000, builtin = null, detail = '' } = {}) => {
+    if (builtin && !builtins.allows(builtin, 'voice')) return false;
     const engine = await ttsEngine();
     const players = (await haService.getStates('media_player')).filter((p) => speakers.includes(p.entity_id));
     for (const p of players) {
@@ -168,6 +170,7 @@ export const announce = async (speakers, message, { volume = 0.7, holdMs = 20_00
         language: ttsLanguage(engine),
         cache: false,
     });
+    if (builtin) builtins.ran(builtin, 'voice', detail || message);
     setTimeout(() => {
         for (const p of players) {
             if (p.attributes.volume_level == null) continue;
@@ -220,10 +223,12 @@ const tick = async () => {
     const at = await plannedMinutes(now);
     if (at == null || local.minutes < at || local.minutes > at + LATE_LIMIT_MIN) return;
     if (presence.anyoneHome() === false) return;
+    if (!builtins.allows('briefing.morning', 'voice')) return;
     config.lastPlayedDay = local.day;
     save();
     try {
         await play('planifié');
+        builtins.ran('briefing.morning', 'voice');
     } catch (err) {
         console.error('❌ Briefing du matin:', err.message);
         journal.log({ kind: 'system', title: `Briefing du matin impossible : ${err.message}`, data: {} });

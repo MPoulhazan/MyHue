@@ -9,6 +9,7 @@
 import { hueClient, hueBaseUrl, restoreLight } from './hue.js';
 import * as notifier from './notifier.js';
 import * as journal from './journal.js';
+import * as builtins from './builtins.js';
 import * as presence from './presence.js';
 import * as alarm from './alarm.js';
 import * as cooper from './cooper.js';
@@ -27,6 +28,7 @@ let lamp = null; // { id, before, until }
 const isOurs = (s) => s.on && Math.abs(s.bri - BRI) <= 5 && s.colormode === 'xy' && Math.abs(s.xy[0] - PINK[0]) < 0.03 && Math.abs(s.xy[1] - PINK[1]) < 0.03;
 
 const takeLamp = async (until) => {
+    if (!builtins.allows('tonight.reminder', 'lamp')) return false;
     if (!hueBaseUrl || presence.anyoneHome() === false || alarm.anyActive() || cooper.lampBusy() || mailbox.lampHeld()) return false;
     const id = await cooper.pickBarLight();
     if (!id) return false;
@@ -37,6 +39,7 @@ const takeLamp = async (until) => {
     await hueClient.put(`/lights/${id}/state`, { on: true, bri: BRI, xy: PINK, transitiontime: 20 });
     await new Promise((r) => setTimeout(r, 2500));
     await hueClient.put(`/lights/${id}/state`, { alert: 'lselect' }).catch(() => {});
+    builtins.ran('tonight.reminder', 'lamp', 'Bar en rose');
     return true;
 };
 
@@ -62,7 +65,7 @@ const tick = async () => {
     }
     if (!shouldRemind(t, t.reminded)) return;
     myDay.markReminded();
-    await notifier.notify({ text: reminderText(t, TZ) }).catch((err) => console.warn('⚠️  Sortie, Telegram:', err.message));
+    await notifier.notify({ text: reminderText(t, TZ), builtin: 'tonight.reminder', detail: t.title }).catch((err) => console.warn('⚠️  Sortie, Telegram:', err.message));
     const lit = await takeLamp(t.leaveAt + HOLD_AFTER_MS).catch((err) => {
         console.warn('⚠️  Sortie, lampe:', err.message);
         return false;

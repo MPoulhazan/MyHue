@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { dataFile } from './dataDir.js';
 import { hueClient, ensureHueConfigured, restoreLight } from './hue.js';
 import * as journal from './journal.js';
+import * as builtins from './builtins.js';
 import { bus } from './events.js';
 import { getWeatherDetails } from './weather.js';
 
@@ -84,7 +85,8 @@ const pickLight = async () => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Fait respirer une lampe dans chaque couleur, puis remet son état d'avant. */
-export const pulse = async (kinds, source = 'départ') => {
+export const pulse = async (kinds, source = 'départ', builtin = null) => {
+    if (builtin && !builtins.allows(builtin, 'lamp')) return null;
     ensureHueConfigured();
     const id = await pickLight();
     if (!id) throw new Error('Aucune lampe couleur joignable');
@@ -105,6 +107,7 @@ export const pulse = async (kinds, source = 'départ') => {
     const LABELS = { rain: 'pluie dans 30 min', storm: 'tempête en approche', aurora: 'aurores possibles', bixi: 'plus de BIXI autour', ice: 'verglas, neige ou grand froid', alert: 'alerte en ville', communauto: 'Communauto trouvée' };
     const what = kinds.map((k) => LABELS[k]).join(' et ');
     journal.log({ kind: 'system', title: `${light.name} a prévenu : ${what} (${source})`, data: { light: id, kinds } });
+    if (builtin) builtins.ran(builtin, 'lamp', light.name);
     return { light: { id, name: light.name }, kinds };
 };
 

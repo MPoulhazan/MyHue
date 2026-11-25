@@ -335,13 +335,13 @@ const flush = async () => {
         const f = batch[0];
         const text = await rewrite(f.facts, f.text);
         journal.log({ kind: 'companion', title: text, data: { detector: f.detector, level: f.level } });
-        await notifier.notify({ text, buttons: buttonsFor(f), silent: !alert });
+        await notifier.notify({ text, buttons: buttonsFor(f), silent: !alert, builtin: 'companion.findings', detail: text.slice(0, 120) });
         return;
     }
     // Plusieurs constats en même temps : un seul message, sans reformulation
     const text = batch.map((f) => f.text).join('\n\n');
     for (const f of batch) journal.log({ kind: 'companion', title: f.text, data: { detector: f.detector, level: f.level } });
-    await notifier.notify({ text, silent: !alert });
+    await notifier.notify({ text, silent: !alert, builtin: 'companion.findings', detail: `${batch.length} remarques` });
 };
 
 const dispatch = (finding) => {
@@ -368,7 +368,7 @@ const flushNight = async () => {
     nightQueue = [];
     const text = `☀️ Pendant la nuit :\n\n${batch.map((f) => f.text).join('\n\n')}`;
     for (const f of batch) journal.log({ kind: 'companion', title: f.text, data: { detector: f.detector, level: f.level } });
-    await notifier.notify({ text, silent: true });
+    await notifier.notify({ text, silent: true, builtin: 'companion.findings', detail: 'Pendant la nuit' });
 };
 
 // --- Boucle ---

@@ -157,7 +157,7 @@ const commuting = (now = Date.now()) => {
 const send = async (key, text, { silent }) => {
     config.sent[key] = Date.now();
     save();
-    if (config.telegram) await notifier.notify({ text, silent }).catch((err) => console.warn('[Ville] Telegram :', err.message));
+    if (config.telegram) await notifier.notify({ text, silent, builtin: 'city.alerts', detail: text.replace(/^\S+\s/, '').slice(0, 120) }).catch((err) => console.warn('[Ville] Telegram :', err.message));
     journal.log({ kind: 'system', title: `Ville : ${text.replace(/^\S+\s/, '').slice(0, 140)}`, data: { key } });
 };
 
@@ -174,7 +174,7 @@ const dispatch = async () => {
             // La nuit : message silencieux, la lampe et l'écran attendent le matin
             await send(e.id, telegramText(e, now, TZ), { silent: !day });
             if (day && config.lamp && presence.anyoneHome() !== false) {
-                await lightSignals.pulse([lampKind(e)], 'alerte de la ville').catch((err) => console.warn('[Ville] lampe :', err.message));
+                await lightSignals.pulse([lampKind(e)], 'alerte de la ville', 'city.alerts').catch((err) => console.warn('[Ville] lampe :', err.message));
             }
         } else if (day && dueForHeadsUp(e, now)) {
             await send(e.id, telegramText(e, now, TZ), { silent: true });

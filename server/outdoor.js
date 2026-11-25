@@ -134,7 +134,7 @@ briefing.addExtra(briefingLines);
 const announce = async (news) => {
     for (const n of news) {
         journal.log({ kind: 'weather', title: n.text, data: { kind: n.kind } });
-        await notifier.notify({ text: n.text, silent: true }).catch(() => {});
+        await notifier.notify({ text: n.text, silent: true, builtin: 'outdoor.records', detail: n.text }).catch(() => {});
     }
 };
 
@@ -185,7 +185,7 @@ const checkCooling = async () => {
     save();
     const text = coolingText(advice, { indoor: round1(indoor.props.temperature), outdoor: local.temperature, door: door.name.toLowerCase() });
     journal.log({ kind: 'weather', title: text, data: { advice } });
-    await notifier.notify({ text, silent: true }).catch(() => {});
+    await notifier.notify({ text, silent: true, builtin: 'outdoor.cooling', detail: text }).catch(() => {});
 };
 
 // --- Vue ---

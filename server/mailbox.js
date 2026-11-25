@@ -19,6 +19,7 @@ import * as sensorRegistry from './sensorRegistry.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as notifier from './notifier.js';
 import * as journal from './journal.js';
+import * as builtins from './builtins.js';
 import * as presence from './presence.js';
 import * as alarm from './alarm.js';
 import * as cooper from './cooper.js';
@@ -227,7 +228,7 @@ const say = async (message) => {
     if (!config.voice || !haService.isConfigured()) return;
     try {
         const speaker = await kitchenSpeaker();
-        if (speaker) await announce([speaker], message, { volume: 0.6 });
+        if (speaker) await announce([speaker], message, { volume: 0.6, builtin: 'mailbox.waiting' });
     } catch (err) {
         console.warn('⚠️  Boîte aux lettres, enceinte:', err.message);
     }
@@ -252,6 +253,7 @@ const wantLamp = (now = Date.now()) => {
 
 let lampBusy = false;
 const lightLamp = async () => {
+    if (!builtins.allows('mailbox.waiting', 'lamp')) return;
     const id = await cooper.pickBarLight();
     if (!id) return;
     const { data } = await hueClient.get(`/lights/${id}`);
@@ -259,6 +261,7 @@ const lightLamp = async () => {
     config.lampState = { id, before: data.state, color, for: config.waiting.since };
     save();
     await putLight(id, { ...(color ? YELLOW : YELLOW_CT), transitiontime: 20 });
+    builtins.ran('mailbox.waiting', 'lamp', 'Bar en jaune');
 };
 
 /** Le bar est en jaune pour le courrier en ce moment. */
@@ -419,7 +422,7 @@ const onEntranceOpen = async (ts) => {
         save();
         if (p.nightAlerted) {
             dismissNight();
-            notifier.notify({ text: '✅ Fausse alerte : la porte d’entrée s’est ouverte juste après, c’était sûrement toi.', silent: true }).catch(() => {});
+            notifier.notify({ text: '✅ Fausse alerte : la porte d’entrée s’est ouverte juste après, c’était sûrement toi.', silent: true, builtin: 'mailbox.falseAlarm' }).catch(() => {});
         }
         return markCollected(p.at, 'boîte');
     }

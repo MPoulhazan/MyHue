@@ -13,6 +13,7 @@ import { dataFile } from './dataDir.js';
 import { hueClient, hueBaseUrl, restoreLight } from './hue.js';
 import * as notifier from './notifier.js';
 import * as journal from './journal.js';
+import * as builtins from './builtins.js';
 import * as presence from './presence.js';
 import * as alarm from './alarm.js';
 import * as cooper from './cooper.js';
@@ -85,6 +86,7 @@ const wantLamp = (t) => pending(t) && config.lamp && !t.night.dismissed && Boole
     && presence.anyoneHome() !== false && !alarm.anyActive() && !cooper.lampBusy() && !mailbox.lampHeld();
 
 const lightLamp = async (t) => {
+    if (!builtins.allows('collecte.bins', 'lamp')) return;
     const id = await cooper.pickBarLight();
     if (!id) return;
     const { data } = await hueClient.get(`/lights/${id}`);
@@ -93,6 +95,7 @@ const lightLamp = async (t) => {
     config.lampState = { id, before: data.state, color, xy, for: t.key };
     save();
     await hueClient.put(`/lights/${id}/state`, color ? { on: true, bri: BRI, xy, transitiontime: 30 } : { on: true, bri: BRI, ct: 250, transitiontime: 30 });
+    builtins.ran('collecte.bins', 'lamp', t.bin.label);
 };
 
 /** Remet le bar comme avant, sauf si quelqu'un l'a changé (ou si tout a été éteint : on laisse éteint). */
@@ -146,11 +149,11 @@ const tick = async () => {
         if (!t.night.sent) {
             t.night.sent = Date.now();
             save();
-            await notifier.notify({ text: reminderText(t.bin), silent: true, buttons: [doneButton(t)] }).catch(() => {});
+            await notifier.notify({ text: reminderText(t.bin), silent: true, buttons: [doneButton(t)], builtin: 'collecte.bins', detail: t.bin.label }).catch(() => {});
         } else if (!t.night.late && t.minutes >= toMin(config.lateAt)) {
             t.night.late = Date.now();
             save();
-            await notifier.notify({ text: lateText(t.bin), buttons: [doneButton(t)] }).catch(() => {});
+            await notifier.notify({ text: lateText(t.bin), buttons: [doneButton(t)], builtin: 'collecte.bins', detail: `${t.bin.label}, pas encore sorti` }).catch(() => {});
         }
     }
     await syncLamp(t);
@@ -184,6 +187,8 @@ const onDoor = async () => {
     await notifier.notify({
         text: doorText(t.bin),
         silent: true,
+        builtin: 'collecte.bins',
+        detail: `${t.bin.label}, en sortant`,
         buttons: [doneButton(t), { label: 'Pas encore', run: async () => 'D’accord, je garde le rappel.' }],
     }).catch(() => {});
 };

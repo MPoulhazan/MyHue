@@ -62,13 +62,13 @@ const onBridge = () => {
             zigbeeAlerted = true;
             const text = 'Zigbee hors ligne : les capteurs (portes, température, fuite d’eau) ne remontent plus rien. Vérifie la clé USB Zigbee, puis redémarre zigbee2mqtt dans Home Assistant.';
             journal.log({ kind: 'system', title: 'Zigbee hors ligne : capteurs muets', data: { level: 'alert' } });
-            notifier.notify({ text: `⚠️ ${text}` });
+            notifier.notify({ text: `⚠️ ${text}`, builtin: 'health.zigbee', detail: 'Hors ligne' });
         }, ZIGBEE_GRACE_MS);
     }
     if (ok && zigbeeAlerted) {
         zigbeeAlerted = false;
         journal.log({ kind: 'system', title: 'Zigbee de retour : les capteurs remontent à nouveau', data: {} });
-        notifier.notify({ text: '✅ Zigbee de retour : les capteurs remontent à nouveau.', silent: true });
+        notifier.notify({ text: '✅ Zigbee de retour : les capteurs remontent à nouveau.', silent: true, builtin: 'health.zigbee', detail: 'De retour' });
     }
 };
 

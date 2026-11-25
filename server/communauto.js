@@ -117,12 +117,12 @@ const kitchenSpeaker = async () => {
     return speakers.find((s) => s.available && (/cuisine|kitchen/i.test(s.name) || /cuisine|kitchen/i.test(s.id)))?.id || null;
 };
 
-const speak = async (text, quiet = false) => {
+const speak = async (text, quiet = false, builtin = 'communauto.found') => {
     if (quiet) return;
     const minutes = localParts(Date.now(), TZ).minutes;
     if (!config.voice || presence.anyoneHome() === false || minutes < 7 * 60 || minutes >= 23 * 60) return;
     const speaker = await kitchenSpeaker();
-    if (speaker) await announce([speaker], text, { volume: 0.6 }).catch((err) => console.warn('[Communauto] voix :', err.message));
+    if (speaker) await announce([speaker], text, { volume: 0.6, builtin }).catch((err) => console.warn('[Communauto] voix :', err.message));
 };
 
 /** Prévient : Telegram (avec « J'ai réservé ») ; à la maison, aussi l'enceinte de la cuisine et la lampe. */
@@ -135,10 +135,12 @@ const tell = async (cars, note = '', quiet = false) => {
             { label: '✅ J’ai réservé', run: async () => (stop('Telegram', 'réservée'), 'Super, recherche arrêtée.') },
             { label: '🔎 Continuer', run: async () => 'Je continue de chercher.' },
         ],
+        builtin: 'communauto.found',
+        detail: `${carLabel(first)}, ${whereLabel(first)}`,
     }).catch((err) => console.warn('[Communauto] Telegram :', err.message));
     journal.log({ kind: 'system', title: `Communauto trouvée : ${carLabel(first)}, ${whereLabel(first)}`, data: { cars: cars.map((c) => c.id) } });
     await speak(text, quiet);
-    if (config.lamp && !quiet) await lightSignals.pulse(['communauto'], 'Communauto').catch((err) => console.warn('[Communauto] lampe :', err.message));
+    if (config.lamp && !quiet) await lightSignals.pulse(['communauto'], 'Communauto', 'communauto.found').catch((err) => console.warn('[Communauto] lampe :', err.message));
 };
 
 // --- Réservation automatique (appli pilotée sur la tablette) ---
@@ -172,9 +174,11 @@ const tryBook = async (cars, quiet = false) => {
                 await notifier.notify({
                     text: `${bookedText(car, count)}\nItinéraire : ${walkLink(car)}`,
                     buttons: [{ label: '❌ Annuler le blocage', run: async () => (await cancelBooking('Telegram'), 'Blocage annulé.') }],
+                    builtin: 'communauto.blocked',
+                    detail: `${carLabel(car)}, ${whereLabel(car)}`,
                 }).catch((err) => console.warn('[Communauto] Telegram :', err.message));
-                await speak(`J’ai bloqué une Communauto : ${carLabel(car)}, ${whereLabel(car)}. Tu as 30 minutes.`, quiet);
-                if (config.lamp && !quiet) await lightSignals.pulse(['communauto'], 'Communauto bloquée').catch(() => {});
+                await speak(`J’ai bloqué une Communauto : ${carLabel(car)}, ${whereLabel(car)}. Tu as 30 minutes.`, quiet, 'communauto.blocked');
+                if (config.lamp && !quiet) await lightSignals.pulse(['communauto'], 'Communauto bloquée', 'communauto.blocked').catch(() => {});
                 return;
             }
             failure = res;
@@ -213,7 +217,7 @@ const doCheck = async () => {
         config.search = null;
         save();
         journal.log({ kind: 'system', title: `Recherche Communauto terminée${found ? '' : ', aucune auto trouvée'}` });
-        if (!found) await notifier.notify({ text: `🚗 Recherche Communauto terminée : aucune auto à moins de ${s.radiusM} m.`, silent: true }).catch(() => {});
+        if (!found) await notifier.notify({ text: `🚗 Recherche Communauto terminée : aucune auto à moins de ${s.radiusM} m.`, silent: true, builtin: 'communauto.searchEnd' }).catch(() => {});
         return;
     }
     await ensureFresh(SEARCH_EVERY_MS - 1_000);

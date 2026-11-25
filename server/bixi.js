@@ -194,10 +194,10 @@ const checkAlerts = async () => {
     config.sent.keys.push(...fresh.map((a) => a.key));
     save();
     for (const a of fresh) {
-        await notifier.notify({ text: a.text, silent: a.key.startsWith('docks') });
+        await notifier.notify({ text: a.text, silent: a.key.startsWith('docks'), builtin: 'bixi.alerts', detail: a.text });
         journal.log({ kind: 'system', title: a.text.replace(/^S+s/, 'BIXI : '), data: { key: a.key } });
     }
-    if (config.lamp && fresh.some((a) => a.lamp)) await lightSignals.pulse(['bixi'], 'BIXI').catch((err) => console.warn('[BIXI] lampe :', err.message));
+    if (config.lamp && fresh.some((a) => a.lamp)) await lightSignals.pulse(['bixi'], 'BIXI', 'bixi.alerts').catch((err) => console.warn('[BIXI] lampe :', err.message));
 };
 
 export const start = () => {

@@ -205,7 +205,7 @@ const checkMorning = async () => {
         save();
         if (!worth) continue;
         const icon = { bike: '🚲', ebike: '⚡', bus: '🚌', walk: '🚶' }[v.best.mode];
-        await notifier.notify({ text: `${icon} ${v.text}${v.best.mode === 'ebike' ? ' 🪖' : ''}` });
+        await notifier.notify({ text: `${icon} ${v.text}${v.best.mode === 'ebike' ? ' 🪖' : ''}`, builtin: 'commute.advice', detail: v.best.title });
         journal.log({ kind: 'system', title: `Trajet : ${v.best.title}`, data: { person: p.id, mode: v.best.mode } });
     }
 };

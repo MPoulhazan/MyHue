@@ -174,7 +174,7 @@ const onEntrance = async () => {
     try {
         // On laisse le temps d'entrer avant de parler
         await new Promise((r) => setTimeout(r, 8000));
-        await briefing.announce([briefing.getStatus().speaker], text, { volume: 0.5, holdMs: 15_000 });
+        await briefing.announce([briefing.getStatus().speaker], text, { volume: 0.5, holdMs: 15_000, builtin: 'together.note', detail: `Pour ${personName(note.to)}` });
         journal.log({ kind: 'system', title: `Petit mot lu pour ${personName(note.to)}` });
     } catch (err) {
         console.warn('[À deux] lecture du mot impossible:', err.message);

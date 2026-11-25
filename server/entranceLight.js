@@ -19,6 +19,7 @@ import * as sensorPause from './sensorPause.js';
 import * as zigbeeService from './zigbeeService.js';
 import * as sensorRegistry from './sensorRegistry.js';
 import * as journal from './journal.js';
+import * as builtins from './builtins.js';
 import * as circadian from './circadian.js';
 import * as lightSignals from './lightSignals.js';
 
@@ -222,6 +223,7 @@ const turnOn = async (source) => {
     lastTrigger.source = source;
     if (manualHold()) return; // réglée à la main : un passage ne change ni la couleur ni l'intensité
     if (owned) return scheduleOff(); // déjà allumée par nous : on repousse l'extinction
+    if (!builtins.allows('entrance.light', 'lamp')) return;
     try {
         await withBulb(async (b) => {
             circadian.markManual([b.id]); // le circadien ne touche pas à son blanc
@@ -237,6 +239,7 @@ const turnOn = async (source) => {
             }
             const scene = sceneFor(Date.now());
             await put(whiteState(scene, b.ct));
+            builtins.ran('entrance.light', 'lamp', source);
             circadian.markManual([b.id]);
             owned = { scene };
             scheduleOff();

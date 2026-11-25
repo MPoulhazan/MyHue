@@ -7,6 +7,8 @@ import 'dotenv/config';
 import axios from 'axios';
 import { randomBytes } from 'crypto';
 
+import * as builtins from './builtins.js';
+
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const USER_IDS = (process.env.TELEGRAM_ALLOWED_USER_IDS || '')
     .split(',')
@@ -30,7 +32,9 @@ export const isConfigured = () => Boolean(TOKEN && USER_IDS.length);
  * @param {{ label: string, run: () => Promise<string> }[]} [n.buttons]
  * @param {boolean} [n.silent]  sans son ni vibration (information, pas une alerte)
  */
-export const notify = async ({ text, buttons = [], silent = false }) => {
+export const notify = async ({ text, buttons = [], silent = false, builtin = null, detail = '' }) => {
+    // Automatisme intégré : son canal Telegram peut être coupé depuis l'appli
+    if (builtin && !builtins.allows(builtin, 'telegram')) return false;
     if (!isConfigured()) {
         console.warn('⚠️  Notification non envoyée (Telegram non configuré):', text);
         return false;
@@ -58,6 +62,7 @@ export const notify = async ({ text, buttons = [], silent = false }) => {
             console.error(`❌ Telegram vers ${chat_id}:`, err.response?.data?.description || err.message);
         }
     }
+    if (sent && builtin) builtins.ran(builtin, 'telegram', detail);
     return sent;
 };
 

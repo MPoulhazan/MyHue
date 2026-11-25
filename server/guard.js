@@ -207,6 +207,8 @@ const alert = async (entry, what) => {
     journal.log({ kind: 'automation', title: text, data: { did: entry.ieee, level: 'alert' } });
     await notifier.notify({
         text,
+        builtin: 'guard',
+        detail: text.replace(/^\S+\s/, ''),
         buttons: [
             { label: '🏠 C’est nous', run: async () => (await setMode(null, 'Telegram'), 'OK, mode coupé. Bon retour !') },
             { label: '💡 Tout allumer', run: allLightsOn },
