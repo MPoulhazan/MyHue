@@ -6,6 +6,7 @@ import type { Sensor } from '../hooks/useHome';
 import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { fmt } from '../components/home/cards';
+import { AutomationTabs } from '../components/rules/AutomationTabs';
 import './Dashboard.css';
 import './Settings.css';
 
@@ -78,7 +79,10 @@ const ago = (iso: string) => {
 // Modèles qui acceptent « toutes les portes » (did '*')
 const ANY_DOOR = new Set(['door_left_open', 'door_night']);
 
-/** Automatismes : ce qui tourne, un interrupteur chacun, et un bouton pour en créer. */
+type Tab = 'recent' | 'builtin' | 'mine' | 'external';
+const TABS: [Tab, string][] = [['recent', 'Récemment'], ['builtin', 'Intégrés'], ['mine', 'Mes automatisations'], ['external', 'Hors MyHue']];
+
+/** Automatismes : ce qui a tourné, les intégrés, les miens et ceux hors MyHue, chacun avec son interrupteur. */
 export function Rules() {
     const home = useHomeData();
     const [automations, setAutomations] = useState<Automation[]>([]);
@@ -89,6 +93,9 @@ export function Rules() {
     const [armed, setArmed] = useState<string | null>(null); // suppression à confirmer
     const [external, setExternal] = useState<External | null>(null);
     const [showVoice, setShowVoice] = useState(false);
+    const [tab, setTab] = useState<Tab>('recent');
+    const [builtinCount, setBuiltinCount] = useState<number | null>(null);
+    const onCounts = useCallback((c: { builtin: number }) => setBuiltinCount(c.builtin), []);
 
     // Hors MyHue : chargé à part, la page ne l'attend pas
     useEffect(() => {
@@ -128,8 +135,8 @@ export function Rules() {
         }
     };
 
-    const remove = async (id: string) => {
-        if (armed !== id) return setArmed(id);
+    const remove = async (id: string, confirmed = false) => {
+        if (!confirmed && armed !== id) return setArmed(id);
         setArmed(null);
         try {
             await axios.delete(`/api/automations/${id}`);
@@ -153,9 +160,25 @@ export function Rules() {
 
             {error && <div className="warn-line">{error}</div>}
 
+            <div className="au-tabs" role="tablist" aria-label="Automatismes">
+                {TABS.map(([id, label]) => (
+                    <button key={id} type="button" role="tab" className="au-tab" aria-selected={tab === id} onClick={() => setTab(id)}>
+                        {label}
+                        {id === 'builtin' && builtinCount != null && <span className="n">{builtinCount}</span>}
+                        {id === 'mine' && loaded && <span className="n">{automations.length}</span>}
+                        {id === 'external' && external && <span className="n">{external.hue.length + external.google.length}</span>}
+                    </button>
+                ))}
+            </div>
+
+            {(tab === 'recent' || tab === 'builtin') && (
+                <AutomationTabs tab={tab} mine={automations} onToggleMine={toggle} onRemoveMine={(id) => remove(id, true)} onCounts={onCounts} />
+            )}
+
+            {tab === 'mine' && <>
             <PresenceSection />
 
-            <h2 className="rules-sub">Automatismes MyHue</h2>
+            <h2 className="rules-sub">Mes automatisations</h2>
             <div className="settings-items">
                 {automations.map((a) => (
                     <div key={a.id} className={`item-row static rule ${a.enabled ? '' : 'disabled'}`}>
@@ -178,13 +201,15 @@ export function Rules() {
                 ))}
             </div>
 
-            {external && <ExternalSection external={external} showVoice={showVoice} onToggleVoice={() => setShowVoice((v) => !v)} />}
-
             {loaded && (
                 <p className="muted settings-note">
                     Tu peux aussi le demander à l’agent : « Préviens-moi si la température du salon passe sous 18° ».
                 </p>
             )}
+            </>}
+
+            {tab === 'external' && external && <ExternalSection external={external} showVoice={showVoice} onToggleVoice={() => setShowVoice((v) => !v)} />}
+            {tab === 'external' && !external && <p className="muted settings-note">Chargement…</p>}
 
             <AnimatePresence>
                 {creating && (
