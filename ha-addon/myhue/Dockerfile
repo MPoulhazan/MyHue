@@ -24,7 +24,7 @@ ENV NODE_ENV=production
 
 # yt-dlp (flux audio YouTube vers les enceintes Cast) : dernière version, YouTube casse souvent les anciennes
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 ca-certificates curl \
+    && apt-get install -y --no-install-recommends python3 ca-certificates curl iputils-arping \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
     && chmod +x /usr/local/bin/yt-dlp

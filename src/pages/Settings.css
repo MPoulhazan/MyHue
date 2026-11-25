@@ -127,3 +127,4 @@ button.item-row:hover { background: var(--h-surface-2); }
 .ext-tag.plan-replaced { background: var(--h-ok-bg); color: var(--h-ok-text); }
 .external-more { align-self: flex-start; min-height: 44px; }
 .item-row.rule.external.disabled .ext-tags { opacity: 0.6; }
+.rules-sub { margin: 12px 0 0; font-size: 22px; }

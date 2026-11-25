@@ -37,6 +37,22 @@ interface External {
     googleSeenAt: string;
 }
 
+interface WifiDevice {
+    mac: string;
+    ip: string;
+    name: string | null;
+    phone: boolean;
+    privateMac: boolean;
+    lastSeen: number;
+    here: boolean;
+}
+
+interface WifiPresence {
+    available: boolean;
+    anyoneHome: boolean | null;
+    devices: WifiDevice[];
+}
+
 interface Template {
     id: string;
     label: string;
@@ -137,6 +153,9 @@ export function Rules() {
 
             {error && <div className="warn-line">{error}</div>}
 
+            <PresenceSection />
+
+            <h2 className="rules-sub">Automatismes MyHue</h2>
             <div className="settings-items">
                 {automations.map((a) => (
                     <div key={a.id} className={`item-row static rule ${a.enabled ? '' : 'disabled'}`}>
@@ -174,6 +193,80 @@ export function Rules() {
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+// ── Présence par le Wi-Fi ────────────────────────────────────────────────────
+
+const seenAgo = (ts: number) => ago(new Date(ts).toISOString());
+
+/**
+ * Qui est à la maison : au moins un téléphone vu sur le Wi-Fi depuis 15 min = quelqu'un.
+ * On coche les téléphones (devinés d'après le nom donné par la box) ; rien à installer dessus.
+ */
+function PresenceSection() {
+    const [data, setData] = useState<WifiPresence | null>(null);
+    const [showAll, setShowAll] = useState(false);
+
+    useEffect(() => {
+        const load = () => axios.get('/api/presence/wifi').then(({ data: d }) => setData(d)).catch(() => {});
+        load();
+        const id = setInterval(load, 60_000);
+        return () => clearInterval(id);
+    }, []);
+
+    if (!data) return null;
+    if (!data.available) {
+        return <p className="muted settings-note">Présence Wi-Fi indisponible ici : elle tourne sur le Pi.</p>;
+    }
+
+    const setPhone = async (d: WifiDevice, phone: boolean) => {
+        setData((x) => x && { ...x, devices: x.devices.map((y) => (y.mac === d.mac ? { ...y, phone } : y)) });
+        try {
+            const { data: next } = await axios.put(`/api/presence/wifi/${encodeURIComponent(d.mac)}`, { phone });
+            setData(next);
+        } catch {
+            /* on garde l'affichage, la prochaine actualisation corrigera */
+        }
+    };
+
+    const phones = data.devices.filter((d) => d.phone);
+    const others = data.devices.filter((d) => !d.phone);
+    const row = (d: WifiDevice) => (
+        <div key={d.mac} className="item-row static rule">
+            <span className={`item-icon ${d.here ? '' : 'off'}`}><Icon name={d.phone ? 'agent' : 'wifi'} size={22} strokeWidth={2} /></span>
+            <span className="item-text">
+                <strong>{d.name ?? (d.privateMac ? 'Appareil sans nom (adresse privée)' : 'Appareil sans nom')}</strong>
+                <span className="muted small">{d.here ? 'Sur le Wi-Fi' : `Vu ${seenAgo(d.lastSeen)}`} · {d.ip}</span>
+            </span>
+            <button type="button" className={`switch ${d.phone ? 'on' : ''}`} aria-pressed={d.phone}
+                aria-label={`${d.name ?? d.ip} : ${d.phone ? 'ne plus compter comme téléphone' : 'compter comme téléphone'}`}
+                onClick={() => setPhone(d, !d.phone)}>
+                <span />
+            </button>
+        </div>
+    );
+
+    return (
+        <section className="external-block" aria-labelledby="presence-title">
+            <h2 id="presence-title">Présence</h2>
+            <p className="muted settings-note">
+                {data.anyoneHome === null
+                    ? 'Coche au moins un téléphone : MyHue saura si quelqu’un est à la maison.'
+                    : data.anyoneHome
+                        ? 'Quelqu’un est à la maison : au moins un téléphone est sur le Wi-Fi.'
+                        : 'Personne : aucun téléphone sur le Wi-Fi depuis 15 min.'}
+                {' '}Un téléphone suffit, peu importe à qui. « Je pars » attend que tous aient quitté le Wi-Fi depuis 15 min.
+            </p>
+            <div className="settings-items">
+                {phones.map(row)}
+                {!phones.length && <span className="muted">Aucun téléphone repéré pour l’instant.</span>}
+            </div>
+            <button type="button" className="ghost-btn external-more" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
+                {showAll ? 'Masquer' : 'Voir'} les {others.length} autres appareils du réseau
+            </button>
+            {showAll && <div className="settings-items">{others.map(row)}</div>}
+        </section>
     );
 }
 

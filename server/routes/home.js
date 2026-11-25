@@ -1113,6 +1113,29 @@ router.get('/api/presence', (_req, res) => {
     res.json({ anyoneHome: presence.anyoneHome(), people: presence.getPeople() });
 });
 
+// Présence Wi-Fi : appareils vus sur le réseau, sans les enceintes, la tablette ni le pont Hue
+const wifiExclusions = async () => {
+    const { getDevices } = await import('../castService.js');
+    const { BRIDGE_IP } = await import('../hue.js');
+    const { currentTarget } = await import('../communautoApp.js');
+    return new Set([...getDevices().map((d) => d.host), BRIDGE_IP, currentTarget()?.host].filter(Boolean));
+};
+
+router.get('/api/presence/wifi', async (_req, res) => {
+    const wifi = await import('../wifiPresence.js');
+    res.json({ ...wifi.status(), anyoneHome: presence.anyoneHome(), devices: wifi.list(await wifiExclusions()) });
+});
+
+router.put('/api/presence/wifi/:mac', async (req, res) => {
+    try {
+        const wifi = await import('../wifiPresence.js');
+        wifi.setPhone(req.params.mac, req.body?.phone === true);
+        res.json({ ...wifi.status(), anyoneHome: presence.anyoneHome(), devices: wifi.list(await wifiExclusions()) });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 // --- Moments (boutons de teinte ; Cinéma, Dodo, Je pars restent pour la voix et les automatismes) ---
 
 router.get('/api/moments', (_req, res) => res.json({ moments: moments.list({ visible: true }) }));
