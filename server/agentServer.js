@@ -64,7 +64,7 @@ app.use(homeRoutes);
 app.use('/api/hue', (req, res) => {
     if (req.method === 'PUT') {
         circadian.noteHueCommand(req.url, req.body);
-        entranceLight.noteHueCommand(req.url, req.body); // allumée à la main : elle reste 15 min
+        entranceLight.noteHueCommand(req.url, req.body); // allumée à la main : elle reste jusqu'à ce qu'on l'éteigne
     }
     hueProxy(req, res);
 });

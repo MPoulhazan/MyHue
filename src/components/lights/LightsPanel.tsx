@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent, PointerEvent as RPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent, PointerEvent as RPointerEvent } from 'react';
 import { motion } from 'framer-motion';
 import { SWATCHES } from '../../hooks/useHome';
 import type { useHome, Ambiance, DashLight } from '../../hooks/useHome';
@@ -59,11 +59,54 @@ function useRoomLights(home: ReturnType<typeof useHome>) {
     }, [home.rooms, home.lights]);
 }
 
+// ── Lampe de l'entrée : minuterie du détecteur, en anneau autour de l'ampoule ─
+
+type EntranceTimer = { lightId: string; endsAt: number; total: number };
+
+/** Interroge /api/entrance-light tant qu'une lampe de la pièce est allumée. */
+function useEntranceTimer(active: boolean): EntranceTimer | null {
+    const [timer, setTimer] = useState<EntranceTimer | null>(null);
+    useEffect(() => {
+        if (!active) return setTimer(null);
+        let alive = true;
+        const load = () => fetch('/api/entrance-light').then((r) => (r.ok ? r.json() : null)).then((d) => {
+            if (!alive || !d) return;
+            // compté sur l'horloge de la tablette à partir du temps restant vu par le Pi
+            setTimer(d.offAt && d.lightId ? { lightId: String(d.lightId), endsAt: Date.now() + (d.offAt - d.now), total: d.offAfterSec * 1000 } : null);
+        }).catch(() => {});
+        load();
+        const t = setInterval(load, 3000);
+        return () => {
+            alive = false;
+            clearInterval(t);
+        };
+    }, [active]);
+    return timer;
+}
+
+function useSecondTick(on: boolean) {
+    const [now, setNow] = useState(Date.now);
+    useEffect(() => {
+        if (!on) return;
+        const t = setInterval(() => setNow(Date.now()), 250);
+        return () => clearInterval(t);
+    }, [on]);
+    return now;
+}
+
+const mmss = (ms: number) => {
+    const s = Math.ceil(ms / 1000);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
 // ── Lampe : toucher = marche/arrêt, glisser = intensité ─────────────────────
 
-function LampTile({ light, onLevel }: { light: DashLight; onLevel: (v: number) => void }) {
+function LampTile({ light, onLevel, timer }: { light: DashLight; onLevel: (v: number) => void; timer?: EntranceTimer | null }) {
     const lastLevel = useLastLevel(light.level);
     const on = light.reachable && light.level > 0;
+    const now = useSecondTick(Boolean(on && timer));
+    const left = on && timer ? Math.max(0, timer.endsAt - now) : 0;
+    const showTimer = left > 0;
     const { dragging, handlers } = useLevelGesture(light.level, (v) => light.dimmable && onLevel(v), () => onLevel(on ? 0 : lastLevel.current));
 
     if (!light.reachable) {
@@ -79,7 +122,7 @@ function LampTile({ light, onLevel }: { light: DashLight; onLevel: (v: number) =
     }
 
     return (
-        <div className={`lamp-tile ${on ? 'on' : ''} ${dragging ? 'dragging' : ''}`}
+        <div className={`lamp-tile ${on ? 'on' : ''} ${dragging ? 'dragging' : ''} ${showTimer && left <= 15_000 ? 'ending' : ''}`}
             role="slider" tabIndex={0} aria-label={light.name}
             aria-valuemin={0} aria-valuemax={100} aria-valuenow={light.level} aria-valuetext={on ? `${light.level} %` : 'éteinte'}
             {...handlers}>
@@ -89,13 +132,20 @@ function LampTile({ light, onLevel }: { light: DashLight; onLevel: (v: number) =
             )}
             <span className="lamp-tile-top">
                 <span className="lamp-bulb" style={on ? { background: light.color, boxShadow: `0 0 24px ${light.color}66` } : undefined}>
+                    {showTimer && timer && (
+                        <span className="lamp-timer-ring" aria-hidden="true"
+                            style={{ '--p': Math.min(1, left / timer.total), '--ring': light.color } as CSSProperties} />
+                    )}
                     <Icon name="lights" size={20} strokeWidth={2} />
                 </span>
                 {on && light.dimmable && <span className="room-pct">{light.level} %</span>}
             </span>
             <span className="lamp-label">
                 <span className="lamp-tile-name">{light.name}</span>
-                <span className="muted">{!light.dimmable ? 'Prise' : on ? 'Allumée' : 'Éteinte'}</span>
+                <span className="muted">
+                    {!light.dimmable ? 'Prise' : on ? 'Allumée' : 'Éteinte'}
+                    {showTimer && <> · <span className="lamp-timer-left" title="S'éteint toute seule (détecteur)">{mmss(left)}</span></>}
+                </span>
             </span>
         </div>
     );
@@ -113,6 +163,7 @@ export function LightsPanel({ home, room, onRoom }: {
 
     const current = roomLights.find(([r]) => r === room) ?? roomLights[0];
     const [roomName, lights] = current ?? ['', []];
+    const entranceTimer = useEntranceTimer(lights.some((l) => l.reachable && l.level > 0));
     const roomIds = lights.filter((l) => l.reachable).map((l) => l.id);
     const roomLevel = avgLevel(lights);
     const scenes = home.roomScenes[roomName] ?? [];
@@ -165,7 +216,8 @@ export function LightsPanel({ home, room, onRoom }: {
                     )}
                     <div className="lamp-grid">
                         {lights.map((l) => (
-                            <LampTile key={l.id} light={l} onLevel={(v) => home.setLevel([l.id], v)} />
+                            <LampTile key={l.id} light={l} onLevel={(v) => home.setLevel([l.id], v)}
+                                timer={entranceTimer?.lightId === l.id ? entranceTimer : null} />
                         ))}
                     </div>
                 </section>

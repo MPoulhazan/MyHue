@@ -63,6 +63,15 @@
 .lamp-tile-top { position: relative; display: flex; align-items: center; justify-content: space-between; }
 .lamp-bulb { width: 40px; height: 40px; flex: none; border-radius: 999px; background: #30332c; color: var(--h-muted); display: inline-flex; align-items: center; justify-content: center; transition: background 0.3s; }
 .lamp-tile.on .lamp-bulb { color: var(--h-on-accent); }
+/* Entrée allumée par le détecteur : l'anneau se vide jusqu'à l'extinction */
+.lamp-bulb { position: relative; }
+.lamp-timer-ring { position: absolute; inset: -5px; border-radius: 999px; pointer-events: none; opacity: 0.9;
+    background: conic-gradient(var(--ring, var(--h-light)) calc(var(--p) * 1turn), transparent 0);
+    -webkit-mask: radial-gradient(circle, transparent 23px, #000 23.5px); mask: radial-gradient(circle, transparent 23px, #000 23.5px); }
+.lamp-timer-left { font-family: var(--h-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; color: var(--h-light-text); }
+.lamp-tile.ending .lamp-timer-ring, .lamp-tile.ending .lamp-timer-left { animation: lamp-timer-blink 1s ease-in-out infinite; }
+@keyframes lamp-timer-blink { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .lamp-tile.ending .lamp-timer-ring, .lamp-tile.ending .lamp-timer-left { animation: none; } }
 .lamp-label { position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12px; }
 .lamp-tile-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

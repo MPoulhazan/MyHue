@@ -4,7 +4,8 @@
  *
  * L'interrupteur est bloqué sur ON : l'ampoule s'éteint toujours 2 min après le dernier
  * passage, même allumée autrement (appli Hue, retour du courant) ; une ronde chaque minute
- * rattrape ces cas. Allumée à la main depuis MyHue, elle reste 15 min. La nuit, blanc plus chaud.
+ * rattrape ces cas. Allumée à la main depuis MyHue, elle reste allumée jusqu'à ce qu'on l'éteigne
+ * (les passages et la ronde la laissent tranquille). La nuit, blanc plus chaud.
  *
  * Le matin, autour de la sortie (même plage que lightSignals), elle montre d'abord quelques
  * secondes la couleur de ce qui attend dehors (pluie, orage, verglas, BIXI, courrier), une fois
@@ -36,6 +37,7 @@ const DEFAULTS = {
     night: { ct: 2700, bright: 100 },
     morningColors: true,
     colorsShownOn: null, // date locale du dernier signal du matin
+    manual: false, // allumée à la main depuis MyHue : gardée jusqu'à ce qu'on l'éteigne (survit au redémarrage)
 };
 
 // Couleurs en xy (gamut C), mêmes sens que les lampes-signal du salon
@@ -162,11 +164,10 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // --- Allumage / extinction ---
 
 let owned = null; // { scene } quand c'est nous qui l'avons allumée
-// Allumée à la main depuis MyHue : on la laisse tranquille jusqu'à cette heure
-let manualUntil = 0;
-export const MANUAL_HOLD_MS = 15 * 60_000;
-const manualHold = () => Date.now() < manualUntil;
+// Allumée à la main depuis MyHue : l'appui volontaire passe avant le détecteur, sans minuterie
+const manualHold = () => config.manual === true;
 let offTimer = null;
+let offAt = null; // heure d'extinction prévue (l'anneau de la tuile)
 let busy = Promise.resolve();
 const lastTrigger = { at: null, source: null };
 
@@ -175,6 +176,7 @@ const OFF_MAX_TRIES = 40;
 
 const scheduleOff = (delayMs = config.offAfterSec * 1000) => {
     clearTimeout(offTimer);
+    offAt = Date.now() + delayMs;
     offTimer = setTimeout(() => {
         busy = busy.then(turnOff, turnOff);
     }, delayMs);
@@ -185,11 +187,14 @@ const turnOff = async () => {
     try {
         await withBulb(() => put({ on: false, transitiontime: 8 }));
         owned = null;
+        offAt = null;
     } catch (err) {
         owned.offTries = (owned.offTries || 0) + 1;
         console.warn(`⚠️  Lampe de l’entrée (extinction, essai ${owned.offTries}):`, err.message);
-        if (owned.offTries >= OFF_MAX_TRIES) owned = null;
-        else scheduleOff(OFF_RETRY_MS);
+        if (owned.offTries >= OFF_MAX_TRIES) {
+            owned = null;
+            offAt = null;
+        } else scheduleOff(OFF_RETRY_MS);
     }
 };
 
@@ -254,7 +259,9 @@ const turnOn = async (source) => {
 const SWEEP_MS = 60_000;
 let sweepFailing = false;
 const sweep = async () => {
-    if (!config.enabled || manualHold() || !shouldSweep(Date.now(), lastTrigger.at, config.offAfterSec, owned)) return;
+    if (!config.enabled) return;
+    if (manualHold()) return checkManualStillOn();
+    if (!shouldSweep(Date.now(), lastTrigger.at, config.offAfterSec, owned)) return;
     try {
         await withBulb(async (b) => {
             const { data } = await hueClient.get(`/lights/${b.id}`);
@@ -269,6 +276,24 @@ const sweep = async () => {
     }
 };
 
+const setManual = (on) => {
+    if (config.manual === on) return;
+    config.manual = on;
+    save();
+};
+
+// Allumée à la main mais éteinte ailleurs (appli Hue, courant coupé) : le détecteur reprend la main
+const checkManualStillOn = async () => {
+    try {
+        await withBulb(async (b) => {
+            const { data } = await hueClient.get(`/lights/${b.id}`);
+            if (data.state && !data.state.on) setManual(false);
+        });
+    } catch {
+        // pont injoignable : on garde l'état manuel
+    }
+};
+
 export const trigger = (source) => {
     if (!config.enabled) return busy;
     busy = busy.then(() => turnOn(source), () => turnOn(source));
@@ -277,7 +302,7 @@ export const trigger = (source) => {
 
 /**
  * Commande Hue envoyée à la main depuis MyHue (proxy /api/hue) : allumée ainsi, elle reste
- * MANUAL_HOLD_MS, puis la règle « éteinte 2 min après le dernier passage » reprend.
+ * allumée jusqu'à ce qu'on l'éteigne ; éteinte ainsi, le détecteur reprend la main.
  */
 export const noteHueCommand = (path, body) => {
     if (!bulb || !body) return;
@@ -285,7 +310,8 @@ export const noteHueCommand = (path, body) => {
     if (!m || m[1] !== bulb.id) return;
     clearTimeout(offTimer);
     owned = null;
-    manualUntil = body.on === false ? 0 : Date.now() + MANUAL_HOLD_MS;
+    offAt = null;
+    setManual(body.on !== false);
 };
 
 // --- Déclencheurs ---
@@ -335,7 +361,9 @@ export const getStatus = () => ({
     morningColors: config.morningColors,
     colorsShownOn: config.colorsShownOn,
     lit: Boolean(owned),
-    manualUntil: manualHold() ? manualUntil : null,
+    manual: manualHold(),
+    offAt: owned && !manualHold() ? offAt : null, // fin de la minuterie du détecteur
+    now: Date.now(), // l'horloge du Pi, pour que la tablette compte juste
     lastTrigger: lastTrigger.at ? { ...lastTrigger } : null,
 });
 
