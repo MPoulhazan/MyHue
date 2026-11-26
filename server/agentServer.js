@@ -40,7 +40,7 @@ import * as health from './health.js';
 import { installAuth, TOKEN, PUBLIC_PORT } from './auth.js';
 import { installWakewordRoutes } from './wakewordSamples.js';
 import { installTtsRoutes } from './tts.js';
-import { hueProxy } from './hue.js';
+import { hueProxy, hueV2Proxy } from './hue.js';
 import { getSensors } from './sensors.js';
 import { getTile, validTile } from './mapTiles.js';
 import * as climateChart from './climateChart.js';
@@ -68,6 +68,8 @@ app.use('/api/hue', (req, res) => {
     }
     hueProxy(req, res);
 });
+
+app.use('/api/hue-v2', hueV2Proxy);
 
 // Tuiles du plan BIXI, relayées et gardées en cache par le Pi (OSM bloque la tablette)
 app.get('/api/tiles/:z/:x/:y.png', async (req, res) => {
