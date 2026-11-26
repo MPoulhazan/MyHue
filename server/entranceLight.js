@@ -233,7 +233,7 @@ const turnOn = async (source) => {
         await withBulb(async (b) => {
             circadian.markManual([b.id]); // le circadien ne touche pas à son blanc
             const now = Date.now();
-            const kinds = b.color ? await colorsFor(now) : [];
+            const kinds = b.color ? await colorsFor(now) : alarmActive() ? ['alarm'] : [];
             if (kinds.length) {
                 await playFlow(flowFor(kinds));
                 if (!kinds.includes('alarm')) {
@@ -403,8 +403,8 @@ export const test = async (kind) => {
     if (kind) {
         if (!COLORS[kind] && kind !== 'alarm') throw new Error('Couleur inconnue');
         await withBulb(async (b) => {
-            if (!b.color) throw new Error('Cette ampoule ne fait pas la couleur');
-            await playFlow(flowFor([kind]));
+            if (!b.color && kind !== 'alarm') throw new Error('Cette ampoule ne fait pas la couleur');
+            await playFlow(flowFor([kind], b.color));
             await put(whiteState(sceneFor(Date.now()), b.ct));
         });
         owned = owned || { scene: null };
