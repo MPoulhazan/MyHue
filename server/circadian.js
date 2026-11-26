@@ -17,7 +17,8 @@ import { hueClient, hueBaseUrl, getHueContext } from './hue.js';
 const FILE = dataFile('circadian.json');
 const TICK_MS = 60_000;
 
-let config = { enabled: false };
+// Pièces laissées à leur interrupteur (blanc chaud et couleurs choisis à la main) : le circadien n'y touche pas
+let config = { enabled: false, skipRooms: ['Chambre d’amis'] };
 try {
     if (existsSync(FILE)) config = { ...config, ...JSON.parse(readFileSync(FILE, 'utf8')) };
 } catch { /* fichier abîmé : désactivé */ }
@@ -56,6 +57,12 @@ export const targetCt = (elevation) => {
     if (elevation >= -6) return Math.round(lerp(400, 333, (elevation + 6) / 6));
     return 454;
 };
+const norm = (name) => String(name || '').toLowerCase().replace(/[’']/g, "'").trim();
+/** Lampes des pièces exclues (skipRooms), d'après les pièces du pont. */
+export const skippedLights = (groups = {}, skipRooms = []) => {
+    const wanted = new Set(skipRooms.map(norm));
+    return new Set(Object.values(groups).filter((g) => g.type === 'Room' && wanted.has(norm(g.name))).flatMap((g) => (g.lights || []).map(String)));
+};
 const kelvin = (ct) => Math.round(1e6 / ct / 100) * 100;
 
 // --- Réglages manuels (signalés par le proxy Hue et les actions) ---
@@ -92,8 +99,10 @@ const tick = async () => {
     const ct = targetCt(await sunElevation());
     if (ct == null) return;
     let lights;
+    let skip = new Set();
     try {
         ({ data: lights } = await hueClient.get('/lights'));
+        if (config.skipRooms?.length) skip = skippedLights((await hueClient.get('/groups')).data, config.skipRooms);
     } catch {
         return;
     }
@@ -107,7 +116,7 @@ const tick = async () => {
             applied.delete(id);
             continue;
         }
-        if (s.ct === undefined || manual.has(id)) continue; // pas de blanc réglable, ou réglée à la main
+        if (s.ct === undefined || manual.has(id) || skip.has(id)) continue; // pas de blanc réglable, ou réglée à la main
         // En couleur (sauf si on vient de l'allumer) : on n'y touche pas
         if (s.colormode && s.colormode !== 'ct' && !justOn) continue;
         // Blanc modifié par quelqu'un d'autre (appli Hue, interrupteur) depuis notre dernier envoi

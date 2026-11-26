@@ -259,19 +259,19 @@ export const hueProxy = async (req, res) => {
 };
 
 /**
- * Proxy /api/hue-v2/<resource>[/<id>] → API v2 du pont (routines de l'appli Hue, interrupteurs,
+ * Proxy /api/hue-v2/<resource>[/<id>] (GET, PUT, POST) → API v2 du pont (routines de l'appli Hue, interrupteurs,
  * pièces). Sert à rebrancher un interrupteur sur une autre pièce sans l'appli Hue.
  */
 export const hueV2Proxy = async (req, res) => {
     if (!BRIDGE_IP || !USERNAME) return res.status(503).json({ error: 'Hue Bridge not configured' });
     if (!/^\/[a-z_]+(\/[0-9a-f-]{36})?\/?(\?.*)?$/.test(req.url)) return res.status(400).json({ error: 'ressource invalide' });
-    if (!['GET', 'PUT'].includes(req.method)) return res.status(405).json({ error: 'GET ou PUT seulement' });
+    if (!['GET', 'PUT', 'POST'].includes(req.method)) return res.status(405).json({ error: 'GET, PUT ou POST seulement' });
     try {
         const https = await import('https');
         const { status, data } = await axios({
             method: req.method,
             url: `https://${BRIDGE_IP}/clip/v2/resource${req.url}`,
-            data: req.method === 'PUT' ? req.body : undefined,
+            data: req.method === 'GET' ? undefined : req.body,
             headers: { 'hue-application-key': USERNAME },
             httpsAgent: new https.Agent({ rejectUnauthorized: false }),
             timeout: 8000,
