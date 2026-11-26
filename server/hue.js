@@ -3,18 +3,143 @@
  */
 import 'dotenv/config';
 import axios from 'axios';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { dataFile } from './dataDir.js';
+import { parseArp } from './wifiPresenceLogic.js';
 
-export const BRIDGE_IP = process.env.VITE_HUE_BRIDGE_IP;
 const USERNAME = process.env.VITE_HUE_USERNAME;
 
-export const hueBaseUrl =
-    BRIDGE_IP && USERNAME ? `http://${BRIDGE_IP}/api/${USERNAME}` : null;
+// Dernière adresse où le pont a répondu : la box peut lui en donner une autre (DHCP),
+// on la retient pour qu'un redémarrage ne reparte pas sur l'ancienne adresse de l'option.
+const BRIDGE_FILE = dataFile('hue-bridge.json');
+let saved = {};
+try {
+    if (existsSync(BRIDGE_FILE)) saved = JSON.parse(readFileSync(BRIDGE_FILE, 'utf8'));
+} catch {
+    saved = {};
+}
+
+export let BRIDGE_IP = saved.ip || process.env.VITE_HUE_BRIDGE_IP;
+const urlFor = (ip) => (ip && USERNAME ? `http://${ip}/api/${USERNAME}` : null);
+export let hueBaseUrl = urlFor(BRIDGE_IP);
 
 export const hueClient = axios.create({
     baseURL: hueBaseUrl ?? undefined,
     headers: { 'Content-Type': 'application/json' },
     timeout: 8000,
 });
+
+// --- Pont introuvable : on le retrouve tout seul ---
+const NETWORK_ERRORS = new Set(['ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'ETIMEDOUT', 'ECONNABORTED', 'ECONNRESET']);
+const REDISCOVER_EVERY_MS = 2 * 60_000;
+// Préfixes MAC de Philips / Signify
+const PHILIPS_MAC = /^(00:17:88|ec:b5:fa)/i;
+
+/** Le pont répond-il à cette adresse ? → son identifiant, sinon null. */
+const probe = async (ip) => {
+    try {
+        const { data } = await axios.get(`http://${ip}/api/config`, { timeout: 3000 });
+        return typeof data?.bridgeid === 'string' ? data.bridgeid.toLowerCase() : null;
+    } catch {
+        return null;
+    }
+};
+
+const candidates = async () => {
+    const ips = [process.env.VITE_HUE_BRIDGE_IP]; // l'adresse de l'option, si on l'a corrigée à la main
+    // 1. Le service de découverte de Philips (le pont s'y annonce avec son adresse locale)
+    try {
+        const { data } = await axios.get('https://discovery.meethue.com/', { timeout: 5000 });
+        for (const b of Array.isArray(data) ? data : []) {
+            if (!saved.id || String(b.id).toLowerCase() === saved.id) ips.push(b.internalipaddress);
+        }
+    } catch {
+        // hors ligne ou limité : on passe à la table ARP
+    }
+    // 2. Les appareils Philips vus sur le réseau local
+    try {
+        for (const { ip, mac } of parseArp(readFileSync('/proc/net/arp', 'utf8'))) {
+            if (PHILIPS_MAC.test(mac)) ips.push(ip);
+        }
+    } catch {
+        // pas de /proc/net/arp (PC de dev)
+    }
+    return [...new Set(ips.filter(Boolean))].filter((ip) => ip !== BRIDGE_IP);
+};
+
+const persist = () => {
+    try {
+        writeFileSync(BRIDGE_FILE, JSON.stringify(saved, null, 2), 'utf8');
+    } catch (err) {
+        console.error('❌ hue-bridge.json :', err.message);
+    }
+};
+
+const useBridge = (ip, id) => {
+    const from = BRIDGE_IP;
+    BRIDGE_IP = ip;
+    hueBaseUrl = urlFor(ip);
+    hueClient.defaults.baseURL = hueBaseUrl;
+    saved = { ip, id: id || saved.id || null, at: new Date().toISOString() };
+    persist();
+    console.log(`💡 Pont Hue retrouvé : ${from} → ${ip}`);
+    import('./journal.js')
+        .then((j) => j.log({ kind: 'system', title: `Pont Hue retrouvé à une nouvelle adresse (${from} → ${ip})`, data: { from, ip } }))
+        .catch(() => {});
+};
+
+let lastSearch = 0;
+let searching = null;
+/** Cherche le pont ailleurs sur le réseau ; true s'il a changé d'adresse. */
+export const rediscoverBridge = () => {
+    if (!USERNAME) return Promise.resolve(false);
+    if (searching) return searching;
+    if (Date.now() - lastSearch < REDISCOVER_EVERY_MS) return Promise.resolve(false);
+    lastSearch = Date.now();
+    searching = (async () => {
+        for (const ip of await candidates()) {
+            const id = await probe(ip);
+            if (id && (!saved.id || id === saved.id)) {
+                useBridge(ip, id);
+                return true;
+            }
+        }
+        console.warn('💡 Pont Hue injoignable et introuvable sur le réseau');
+        return false;
+    })().finally(() => {
+        searching = null;
+    });
+    return searching;
+};
+
+/** Une erreur réseau vers le pont : on le cherche ailleurs. true si on peut réessayer. */
+const isBridgeDown = (err) => !err.response && NETWORK_ERRORS.has(err.code);
+
+// Le pont répond : on retient son identifiant, pour ne jamais adopter le pont d'un voisin
+let idAsked = false;
+const rememberId = () => {
+    if (saved.id || idAsked || !BRIDGE_IP) return;
+    idAsked = true;
+    const ip = BRIDGE_IP;
+    probe(ip).then((id) => {
+        if (!id || saved.id) return void (idAsked = false);
+        saved = { ip, id, at: new Date().toISOString() };
+        persist();
+    });
+};
+
+hueClient.interceptors.response.use(
+    (res) => {
+        rememberId();
+        return res;
+    },
+    async (err) => {
+        const cfg = err.config;
+        if (!cfg || cfg.__hueRetried || !isBridgeDown(err)) throw err;
+        if (!(await rediscoverBridge())) throw err;
+        return hueClient.request({ ...cfg, __hueRetried: true, baseURL: hueBaseUrl });
+    },
+);
 
 export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -113,13 +238,20 @@ export const getHueScenes = async () => {
 
 /** Proxy /api/hue/* → bridge : le front ne connaît ni l'IP ni le username. */
 export const hueProxy = async (req, res) => {
+    const send = () => axios({
+        method: req.method,
+        url: `http://${BRIDGE_IP}/api/${USERNAME}${req.url}`,
+        data: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,
+        timeout: 5000,
+    });
     try {
-        const response = await axios({
-            method: req.method,
-            url: `http://${BRIDGE_IP}/api/${USERNAME}${req.url}`,
-            data: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,
-            timeout: 5000,
-        });
+        let response;
+        try {
+            response = await send();
+        } catch (err) {
+            if (!isBridgeDown(err) || !(await rediscoverBridge())) throw err;
+            response = await send();
+        }
         res.status(response.status).json(response.data);
     } catch (err) {
         res.status(err.response?.status || 502).json({ error: err.message });

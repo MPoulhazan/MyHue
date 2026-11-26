@@ -156,15 +156,13 @@ export const TEMPLATES = {
     },
     leave_home: {
         label: 'Je pars',
-        description: 'Quand plus personne n’est à la maison (HA Companion) : tout s’éteint et le chauffage passe en éco.',
+        description: 'Quand plus personne n’est à la maison : tout s’éteint et le chauffage passe en éco, sans message.',
         build: () => ({
             name: 'Je pars',
             trigger: { type: 'presence', state: 'away' },
             conditions: [],
-            actions: [
-                { type: 'moment', id: 'depart' },
-                { type: 'notify', message: '🏃 Plus personne à la maison : lumières éteintes, chauffage en éco.' },
-            ],
+            // Pas de Telegram : on sort plusieurs fois par jour (promenades), ça bombardait
+            actions: [{ type: 'moment', id: 'depart' }],
             cooldownMinutes: 10,
         }),
     },
@@ -411,6 +409,12 @@ const ensureSafety = () => {
         Object.assign(a, { conditions: fresh.conditions, actions: fresh.actions });
         upgraded = true;
     }
+    // « Je pars » envoyait un Telegram à chaque départ : retiré
+    for (const a of automations) {
+        if (a.template !== 'leave_home' || !a.actions.some((x) => x.type === 'notify')) continue;
+        a.actions = a.actions.filter((x) => x.type !== 'notify');
+        upgraded = true;
+    }
     for (const id of ['water_leak', 'leak_sensor_silent', 'smoke_alarm', 'smoke_sensor_silent']) {
         if (automations.some((a) => a.template === id)) continue;
         automations.push(normalize({ ...TEMPLATES[id].build(), template: id }));
@@ -608,7 +612,10 @@ const conditionsMet = async (a, ctx = {}) => {
 
 const sensorValue = (sensor, prop) => {
     if (prop === 'silentHours') {
-        const last = sensor.lastUpdated ? Date.parse(sensor.lastUpdated) : STARTED_AT;
+        // Au démarrage, l'heure reprise de Home Assistant peut dater de la dernière fois que la
+        // valeur a changé (un détecteur sec reste « sec » des jours) : le silence ne compte
+        // qu'à partir du démarrage, sinon chaque redémarrage crie « capteur muet » à tort.
+        const last = Math.max(sensor.lastUpdated ? Date.parse(sensor.lastUpdated) || 0 : 0, STARTED_AT);
         return Math.floor((Date.now() - last) / 3_600_000);
     }
     return sensor.props?.[prop] ?? null;
