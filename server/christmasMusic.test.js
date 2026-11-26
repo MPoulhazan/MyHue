@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { christmasMusicOn, christmasQuery, christmasHint, christmasDefault, snowIntensity } from './christmasMusic.js';
+import { christmasMusicOn, christmasDefault, snowIntensity } from './christmasMusic.js';
 
 const TZ = 'America/Toronto';
 
@@ -9,13 +9,6 @@ test('ambiance Noël : de la dernière semaine de novembre au 31 décembre', () 
     assert.equal(christmasMusicOn(Date.parse('2026-11-24T12:00:00-05:00'), TZ), true);
     assert.equal(christmasMusicOn(Date.parse('2026-12-31T22:00:00-05:00'), TZ), true);
     assert.equal(christmasMusicOn(Date.parse('2027-01-01T10:00:00-05:00'), TZ), false);
-});
-
-test('ambiance Noël : la recherche suit le moment de la journée', () => {
-    assert.match(christmasQuery('matin'), /françaises/);
-    assert.match(christmasQuery('soir'), /jazz/);
-    assert.match(christmasQuery('nuit'), /piano/);
-    assert.equal(christmasHint('inconnu'), christmasHint('soir'));
 });
 
 test('ambiance Noël suggérée le matin, au repas et le soir', () => {

@@ -8,7 +8,7 @@ import * as yt from './youtubeService.js';
 import { getYtDlpAudioUrl } from './ytdlp.js';
 import { dataFile } from './dataDir.js';
 import * as habits from './musicHabits.js';
-import { christmasMusicOn, christmasQuery, christmasHint, christmasDefault } from './christmasMusic.js';
+import { christmasMusicOn, christmasDefault } from './christmasMusic.js';
 
 const TZ = process.env.TZ || 'America/Toronto';
 
@@ -25,7 +25,12 @@ export const RADIOS = [
     { id: 'rock', name: 'Rock', description: 'Les grands classiques', streamUrl: 'https://streams.ilovemusic.de/iloveradio3.mp3' },
     { id: 'classical', name: 'Classique', description: 'Orchestre et musique de chambre', streamUrl: 'https://stream.srg-ssr.ch/m/rsc_de/mp3_128' },
     { id: 'chillout', name: 'Chill-out', description: 'Ambiance détendue', streamUrl: 'https://streams.ilovemusic.de/iloveradio7.mp3' },
+    // En saison seulement (fin novembre au 31 décembre) : Sinatra, Crosby, Nat King Cole en direct
+    { id: 'noel', name: 'Noël crooners', description: 'Les grands crooners de Noël en direct', streamUrl: 'https://listen.181fm.com/181-xstandards_128k.mp3', seasonal: true },
 ];
+
+/** Les radios du moment : celle de Noël n'existe qu'en saison. */
+export const radiosNow = (now = Date.now()) => RADIOS.filter((r) => !r.seasonal || christmasMusicOn(now, TZ));
 
 // Une ambiance joue la playlist qu'on lui a associée (mélangée), sinon sa radio
 export const MOODS = [
@@ -35,8 +40,8 @@ export const MOODS = [
     { id: 'diner', name: 'Dîner', hint: 'Jazz, soul, bossa', radio: 'jazz' },
     { id: 'soiree', name: 'Soirée', hint: 'Détente entre amis', radio: 'chillout' },
     { id: 'dodo', name: 'Dodo', hint: 'S’arrête tout seul après 45 min', radio: 'ambient', sleepMinutes: 45 },
-    // De fin novembre au 31 décembre seulement ; sans playlist, une recherche qui suit l'heure
-    { id: 'noel', name: 'Noël', hint: 'Chants, tubes et jazz de Noël', radio: 'jazz', seasonal: true },
+    // De fin novembre au 31 décembre seulement ; sans playlist, la radio des crooners de Noël
+    { id: 'noel', name: 'Noël', hint: 'Les crooners de Noël en direct', radio: 'noel', seasonal: true },
 ];
 
 const readJson = (file, fallback) => {
@@ -50,12 +55,11 @@ const writeJson = (file, data) => {
 const MOODS_FILE = dataFile('music-moods.json');
 let moodLinks = readJson(MOODS_FILE, {}); // moodId -> { playlistId, playlistName }
 
-/** Les ambiances du moment : « Noël » n'existe qu'en saison, et son sous-titre suit l'heure. */
+/** Les ambiances du moment : « Noël » n'existe qu'en saison. */
 export const getMoods = (now = Date.now()) => MOODS
     .filter((m) => !m.seasonal || christmasMusicOn(now, TZ))
     .map((m) => ({
         ...m,
-        hint: m.id === 'noel' ? christmasHint(habits.slotOf(now, TZ).band) : m.hint,
         playlistId: moodLinks[m.id]?.playlistId || null,
         playlistName: moodLinks[m.id]?.playlistName || null,
     }));
@@ -187,16 +191,6 @@ export async function play(req) {
                 played = true;
             } catch (err) {
                 console.warn(`music: mood ${mood.id} playlist failed, using its radio (${err?.message})`);
-            }
-        }
-        // Noël sans playlist : des titres trouvés pour ce moment de la journée
-        if (!played && mood.id === 'noel') {
-            try {
-                const found = await yt.search(christmasQuery(habits.slotOf(Date.now(), TZ).band), 30);
-                await playTracks(deviceId, shuffled(found), 0, source);
-                played = true;
-            } catch (err) {
-                console.warn(`music: Christmas search failed, using its radio (${err?.message})`);
             }
         }
         if (!played) await playRadio(deviceId, RADIOS.find((r) => r.id === mood.radio), source);

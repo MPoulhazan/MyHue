@@ -190,7 +190,7 @@ const fail = (res, error, status = 500) => res.status(status).json({ error: erro
 // Tout ce qu'il faut pour afficher l'écran Musique en un appel
 router.get('/api/music/home', (_req, res) => {
     res.json({
-        radios: musicPlayer.RADIOS.map(({ id, name, description }) => ({ id, name, description })),
+        radios: musicPlayer.radiosNow().map(({ id, name, description }) => ({ id, name, description })),
         moods: musicPlayer.getMoods(),
         suggestion: musicPlayer.suggestion(),
         state: musicPlayer.state(),
