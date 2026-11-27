@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { cooperPoll } from '../home/widgets/polls';
 import { StatusPill, WidgetCard } from '../home/widgets/WidgetCard';
+import { isWallScreen, startCall, useCallState } from './callStore';
 import './Cooper.css';
 
 // ── Données de /api/cooper (server/cooper.js) ────────────────────────────────
@@ -29,8 +30,18 @@ const MOMENT_PHOTO: Record<string, string> = { dodo: '/cooper-dodo.webp', pousse
 /** Carte « Cooper parle » de l'accueil : sa bulle dit s'il a eu ses repas de 12 h et 18 h. */
 export function CooperCard() {
     const view = cooperPoll.use();
+    const call = useCallState();
     const [busy, setBusy] = useState(false);
     if (!view?.enabled || !view.sensor) return null;
+
+    // Appel manqué : reste là jusqu'au repas (ou la promenade) ; touché sur la tablette, il rappelle
+    const missed = call?.missed ?? [];
+    const missedN = missed.reduce((n, m) => n + m.n, 0);
+    const canReplay = isWallScreen(call) && !call?.active;
+    const replay = () => {
+        const m = missed[0];
+        if (m) startCall(m.key === 'walk' ? { kind: 'walk' } : { kind: 'meal', key: m.key }).catch(() => {});
+    };
 
     const late = view.mood === 'late' && view.meals.some((m) => m.status === 'late');
 
@@ -66,6 +77,16 @@ export function CooperCard() {
                     : <img className={`cooper-photo ${late ? 'late' : ''}`} src="/cooper.jpg" alt="" width={64} height={64} />}
                 <p className="cooper-bubble" aria-live="polite">{view.line}</p>
             </div>
+            {missedN > 0 && (
+                <div className="cooper-missed">
+                    <span className="cooper-missed-dot" aria-hidden="true" />
+                    <span className="cooper-missed-text">
+                        <strong>Appel manqué de Cooper{missedN > 1 ? ` (${missedN})` : ''}</strong>
+                        <span>pour {missed.map((m) => m.label).join(' et ')}</span>
+                    </span>
+                    {canReplay && <button type="button" className="cooper-missed-btn" onClick={replay}>Rappeler</button>}
+                </div>
+            )}
             {late && (
                 <div className="cooper-foot">
                     <button type="button" className="cooper-done" onClick={markFed} disabled={busy}>C'est fait</button>

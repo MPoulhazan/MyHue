@@ -10,6 +10,7 @@ import { Climate } from './pages/Climate';
 import { Weather } from './pages/Weather';
 import { Settings } from './pages/Settings';
 import { WidgetSettings } from './pages/WidgetSettings';
+import { CooperSettings } from './pages/CooperSettings';
 import { Sensors } from './pages/Sensors';
 import { Speakers } from './pages/Speakers';
 import { WakewordRecorder } from './pages/WakewordRecorder';
@@ -37,6 +38,7 @@ function App() {
                     <Route path="/agent" element={<Navigate to="/" replace />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/settings/widgets" element={<WidgetSettings />} />
+                    <Route path="/settings/cooper" element={<CooperSettings />} />
                     <Route path="/sensors" element={<Sensors />} />
                     <Route path="/speakers" element={<Speakers />} />
                     <Route path="/rules" element={<Rules />} />

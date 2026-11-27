@@ -6,7 +6,7 @@
 // Le reste des avertissements vit en carte, dans « Maintenant ».
 
 /** Plein écran : il faut agir tout de suite. Dans cet ordre de priorité. */
-export type TakeoverKind = 'smoke' | 'leak' | 'intrusion' | 'city';
+export type TakeoverKind = 'smoke' | 'leak' | 'intrusion' | 'city' | 'cooper';
 /** Bannière en haut de tous les écrans : à savoir, sans bloquer. */
 export type BannerKind = 'service' | 'paused' | 'city';
 
@@ -27,6 +27,8 @@ export interface AlertsIn {
     city: CityIn | null;
     services: ServiceIn[];
     sensors: SensorIn[];
+    /** Cooper appelle en visio (tablette murale seulement) : passe après toutes les vraies alertes */
+    cooperCall?: { id: string } | null;
     now: number;
 }
 
@@ -36,7 +38,7 @@ export interface Banner { id: string; kind: BannerKind; ref: string }
 /** Un passage pendant l'absence reste en plein écran une demi-heure, ou jusqu'à « J'ai vu ». */
 export const INTRUSION_MS = 30 * 60_000;
 
-const RANK: Record<TakeoverKind, number> = { smoke: 0, leak: 1, intrusion: 2, city: 3 };
+const RANK: Record<TakeoverKind, number> = { smoke: 0, leak: 1, intrusion: 2, city: 3, cooper: 4 };
 
 /** Le dernier passage qui demande le plein écran, s'il y en a un. */
 export function freshIntrusion(guard: GuardIn | null, seenAt: number, now: number) {
@@ -53,6 +55,7 @@ export function buildAlerts(v: AlertsIn): { takeovers: Takeover[]; banners: Bann
     const intrusion = freshIntrusion(v.guard, v.guardSeenAt, v.now);
     if (intrusion) takeovers.push({ id: `intrusion-${intrusion.at}`, kind: 'intrusion' });
     if (v.city?.takeover) takeovers.push({ id: `city-${v.city.takeover.id}`, kind: 'city' });
+    if (v.cooperCall) takeovers.push({ id: `cooper-${v.cooperCall.id}`, kind: 'cooper' });
     takeovers.sort((a, b) => RANK[a.kind] - RANK[b.kind]);
 
     const banners: Banner[] = [

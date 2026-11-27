@@ -33,7 +33,7 @@ const MAIN: Destination[] = [
 const SETTINGS: Destination = { to: '/settings', label: 'Réglages', icon: 'settings' };
 
 /** Écrans rangés sous Réglages. */
-const SETTINGS_PAGES = ['/sensors', '/speakers', '/rules', '/remote', '/wakeword'];
+const SETTINGS_PAGES = ['/sensors', '/speakers', '/rules', '/remote', '/wakeword', '/settings/cooper'];
 
 // Tablette murale : retour à l'accueil après ce délai sans toucher
 const IDLE_MS = 2 * 60_000;

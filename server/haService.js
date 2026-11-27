@@ -64,9 +64,10 @@ export async function callService(domain, service, serviceData = {}) {
 }
 
 /** Audio (mp3) d'une phrase synthétisée par un moteur TTS de HA. */
-export async function ttsAudio(engineId, message, language) {
+export async function ttsAudio(engineId, message, language, options = null) {
     ensureConfigured();
-    const { data } = await client.post('/tts_get_url', { engine_id: engineId, message, language }, { timeout: 15000 });
+    const body = { engine_id: engineId, message, language, ...(options ? { options } : {}) };
+    const { data } = await client.post('/tts_get_url', body, { timeout: 30000 });
     const audio = await client.get(data.path.replace(/^\/api/, ''), { responseType: 'arraybuffer', timeout: 15000 });
     return Buffer.from(audio.data);
 }

@@ -11,6 +11,9 @@ import type { GuardView } from '../guard/GuardCard';
 import { alarmPoll, guardPoll } from '../home/widgets/polls';
 import { hhmm } from '../home/cards';
 import { Icon } from '../Icon';
+import { CooperCall } from '../cooper/CooperCall';
+import { isWallScreen, useCallState } from '../cooper/callStore';
+import type { ActiveCall } from '../cooper/callStore';
 import { buildAlerts, freshIntrusion } from './alertQueue';
 import './Alerts.css';
 
@@ -42,7 +45,7 @@ const pausedUntil = (u: Sensor['pausedUntil']) => {
     return ` jusqu’à ${d.toDateString() === new Date().toDateString() ? '' : 'demain '}${hhmm(d)}`;
 };
 
-// ── Données de démonstration : ?alertdemo=smoke,leak,intrusion,city,service,paused,citybanner ──
+// ── Données de démonstration : ?alertdemo=smoke,leak,intrusion,city,service,paused,citybanner,cooper ──
 // Pour vérifier chaque écran sans déclencher une vraie alarme. Les boutons n'y touchent rien.
 
 function demoData(kinds: string[], now: number) {
@@ -64,7 +67,10 @@ function demoData(kinds: string[], now: number) {
     } : null;
     const services: ServiceHealth[] = has('service') ? [{ id: 'demo-z2m', ok: false, label: 'Zigbee2MQTT', since: new Date(now - 600_000).toISOString(), hint: 'Les capteurs ne remontent plus : redémarre l’add-on.' } as ServiceHealth] : [];
     const sensors = has('paused') ? [{ did: 'demo-stairs', name: 'Escalier', pausedUntil: now + 3600_000 } as Sensor] : [];
-    return { alarms, guard, city, services, sensors };
+    const cooperCall: ActiveCall | null = has('cooper')
+        ? { id: 'demo-call', kind: 'meal', key: 'soir', retry: false, at: now, line: "Hey oh. Vous m'avez oublié ou quoi ? J'ai la dalle, là. Filez-moi la croquette… et plus vite que ça." }
+        : null;
+    return { alarms, guard, city, services, sensors, cooperCall };
 }
 
 export function AlertHost({ services, sensors }: { services: ServiceHealth[]; sensors: Sensor[] }) {
@@ -80,6 +86,10 @@ export function AlertHost({ services, sensors }: { services: ServiceHealth[]; se
     const guardView = guardPoll.use();
     const { view: cityView, ack } = useCity();
     const [seenAt, setSeenAt] = useState(readSeen);
+    // Cooper appelle : seulement sur la tablette murale ; un appel fermé ne revient pas
+    const callState = useCallState();
+    const [shownCall, setShownCall] = useState<ActiveCall | null>(null);
+    const [closedCalls, setClosedCalls] = useState<string[]>([]);
     // L'heure avance pour qu'un passage sorte du plein écran après sa demi-heure
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
@@ -94,7 +104,13 @@ export function AlertHost({ services, sensors }: { services: ServiceHealth[]; se
     const allServices = fake ? fake.services : services;
     const allSensors = fake ? fake.sensors : sensors;
 
-    const { takeovers, banners } = buildAlerts({ alarms, guard, guardSeenAt: seenAt, city, services: allServices, sensors: allSensors, now });
+    const liveCall = fake ? fake.cooperCall : isWallScreen(callState) ? callState?.active ?? null : null;
+    // Nouvel appel : on le garde en main (réglé pendant le rendu, sans effet)
+    if (liveCall && !closedCalls.includes(liveCall.id) && liveCall.id !== shownCall?.id) setShownCall(liveCall);
+    // L'appel reste à l'écran le temps de sa fin, même quand le serveur l'a déjà clos
+    const cooperCall = shownCall && !closedCalls.includes(shownCall.id) ? shownCall : null;
+
+    const { takeovers, banners } = buildAlerts({ alarms, guard, guardSeenAt: seenAt, city, services: allServices, sensors: allSensors, cooperCall, now });
     const first = takeovers[0];
     const waiting = takeovers.length - 1;
 
@@ -120,6 +136,9 @@ export function AlertHost({ services, sensors }: { services: ServiceHealth[]; se
         if (ev) takeover = <GuardAlert view={guard} event={ev} waiting={waiting} onSeen={fake ? () => setSeenAt(ev.at) : seen} demo={Boolean(fake)} />;
     } else if (first?.kind === 'city' && city?.takeover) {
         takeover = <CityAlert event={city.takeover} waiting={waiting} onAck={fake ? () => {} : ack} />;
+    } else if (first?.kind === 'cooper' && cooperCall) {
+        takeover = <CooperCall key={cooperCall.id} call={cooperCall} ended={fake ? null : callState?.ended ?? null} waiting={waiting} demo={Boolean(fake)}
+            onClose={() => setClosedCalls((ids) => [...ids.slice(-20), cooperCall.id])} />;
     }
 
     return (

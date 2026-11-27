@@ -22,6 +22,7 @@ export function Settings() {
             to: '/speakers', icon: 'cast', label: 'Enceintes',
             hint: home.cast.speakers.length ? `${speakersOn} sur ${home.cast.speakers.length} en ligne` : 'Enceintes Google Cast',
         },
+        { to: '/settings/cooper', icon: 'bowl', label: 'Cooper appelle', hint: 'Appel vidéo sur la tablette quand on l’oublie : fréquence, volume, essai' },
         { to: '/rules', icon: 'rules', label: 'Automatismes', hint: 'Alertes et réactions automatiques' },
         { to: '/remote', icon: 'heating', label: 'Télécommande infrarouge', hint: 'Émetteur Broadlink, vérifier les trames' },
         { to: '/wakeword', icon: 'agent', label: 'Mot d’activation', hint: 'Enregistrer des exemples de voix' },

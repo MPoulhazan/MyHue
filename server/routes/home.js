@@ -54,6 +54,9 @@ import * as outingMedia from '../outingMedia.js';
 import * as outingSearch from '../outingSearch.js';
 import * as together from '../together.js';
 import * as tabletDebug from '../communautoApp.js';
+import { existsSync, writeFileSync } from 'fs';
+import { dataFile } from '../dataDir.js';
+import { synthesize } from '../tts.js';
 import { hueV2Get } from '../hue.js';
 
 export const router = express.Router();
@@ -350,6 +353,68 @@ router.post('/api/cooper/test', async (req, res) => {
         res.json({ ok: true });
     } catch (err) {
         res.status(400).json({ error: err.message });
+    }
+});
+
+// --- Cooper appelle en visio (tablette murale) ---
+
+const CALL_VIDEO = dataFile('cooper-call.mp4'); // sur le ThinkCentre, hors du dépôt public
+const fromWallTablet = (req) => {
+    const host = tabletDebug.currentTarget()?.host;
+    const ip = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+    return Boolean(host && ip === host);
+};
+
+router.get('/api/cooper/call', (req, res) => {
+    res.json({ ...cooper.getCallState(), wall: fromWallTablet(req), video: existsSync(CALL_VIDEO) });
+});
+
+router.post('/api/cooper/call/start', (req, res) => {
+    const kind = req.body?.kind === 'test' ? 'test' : req.body?.kind === 'walk' ? 'walk' : 'meal';
+    const key = kind === 'walk' ? 'walk' : kind === 'test' ? null : String(req.body?.key || '');
+    if (kind === 'meal' && !key) return res.status(400).json({ error: 'repas manquant' });
+    cooper.startCall({ kind, key });
+    res.json(cooper.getCallState());
+});
+
+router.post('/api/cooper/call/end', async (req, res) => {
+    const { id, outcome } = req.body || {};
+    if (!['later', 'hung', 'timeout', 'fed', 'walked'].includes(outcome)) return res.status(400).json({ error: 'fin inconnue' });
+    try {
+        const call = cooper.getCallState().active;
+        // « Je le nourris » : c'est comme la boîte ouverte (le repas en attente est noté)
+        if (outcome === 'fed' && call?.kind === 'meal') await cooper.markFed(call.key, 'appel');
+        else if (outcome === 'walked') cooper.walkStarted();
+        else cooper.endCall(id, outcome === 'fed' ? 'hung' : outcome);
+        res.json(cooper.getCallState());
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.get('/api/cooper/call/audio', async (req, res) => {
+    const text = cooper.callText(String(req.query.id || ''), req.query.what === 'end' ? 'end' : 'line');
+    if (!text) return res.status(404).end();
+    try {
+        const audio = await synthesize(text, { voice: cooper.callVoice() });
+        res.set('Cache-Control', 'private, max-age=600').set('X-Text', encodeURIComponent(text)).type('audio/mpeg').send(audio);
+    } catch (err) {
+        res.status(503).json({ error: err.message });
+    }
+});
+
+router.get('/api/cooper/call/video', (_req, res) => {
+    if (!existsSync(CALL_VIDEO)) return res.status(404).end();
+    res.sendFile(CALL_VIDEO, { maxAge: '1h' });
+});
+
+router.put('/api/cooper/call/video', express.raw({ type: ['video/*', 'application/octet-stream'], limit: '60mb' }), (req, res) => {
+    if (!Buffer.isBuffer(req.body) || req.body.length < 10_000) return res.status(400).json({ error: 'vidéo vide ou trop petite' });
+    try {
+        writeFileSync(CALL_VIDEO, req.body);
+        res.json({ ok: true, bytes: req.body.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

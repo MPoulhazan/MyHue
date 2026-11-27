@@ -53,3 +53,9 @@ test('un danger en ville en plein écran n’est pas répété en bannière', ()
     assert.equal(takeovers[0].kind, 'city');
     assert.equal(banners.length, 0);
 });
+
+test('Cooper qui appelle passe après toutes les vraies alertes', () => {
+    const { takeovers } = buildAlerts({ ...base, cooperCall: { id: 'c1' }, city: cityDanger, alarms: [{ did: 's', type: 'smoke', since: 1 }] });
+    assert.deepEqual(takeovers.map((t) => t.kind), ['smoke', 'city', 'cooper']);
+    assert.deepEqual(buildAlerts({ ...base, cooperCall: { id: 'c1' } }).takeovers, [{ id: 'cooper-c1', kind: 'cooper' }]);
+});

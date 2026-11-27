@@ -30,3 +30,10 @@
 @media (prefers-reduced-motion: reduce) {
     .cooper-photo.late { animation: none; box-shadow: 0 0 0 4px var(--cooper-alert); }
 }
+
+/* Appel manqué (Cooper appelle en visio sur la tablette) */
+.cooper-missed { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 12px; border-radius: 16px; background: var(--h-bad-bg); color: var(--h-bad-text); }
+.cooper-missed-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--h-bad); }
+.cooper-missed-text { flex: 1; min-width: 0; display: grid; font-size: 14px; line-height: 1.35; }
+.cooper-missed-text span { opacity: 0.85; }
+.cooper-missed-btn { flex: none; min-height: 44px; padding: 0 18px; border-radius: 999px; border: none; background: var(--h-bad); color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }

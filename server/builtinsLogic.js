@@ -15,6 +15,7 @@ export const REGISTRY = [
     { id: 'stove.alert', area: 'Cuisinière', name: 'Cuisinière oubliée', desc: 'Cuisinière allumée depuis longtemps ou maison vide : message Telegram.', channels: { telegram: 'Telegram' }, locked: true },
     // Cooper
     { id: 'cooper.late', area: 'Cooper', name: 'Repas de Cooper oublié', desc: 'La boîte de croquettes n’a pas été ouverte à l’heure du repas : MyHue le dit, fait clignoter le bar et écrit sur Telegram.', channels: { voice: 'Enceinte de la cuisine', lamp: 'Lampe du bar', telegram: 'Telegram' } },
+    { id: 'cooper.call', area: 'Cooper', name: 'Cooper appelle en visio', desc: 'Repas oublié ou promenade pas faite à 9 h 30 : de temps en temps, la tablette murale sonne et Cooper râle en vidéo. Réglages : Réglages › Cooper.', channels: { voice: 'Appel sur la tablette murale' } },
     { id: 'cooper.double', area: 'Cooper', name: 'Cooper déjà nourri', desc: 'La boîte est rouverte alors que Cooper a déjà mangé : avertissement.', channels: { voice: 'Enceinte de la cuisine', telegram: 'Telegram' } },
     { id: 'cooper.fed', area: 'Cooper', name: 'Repas servi après un rappel', desc: 'Après un rappel, confirmation Telegram quand Cooper a mangé.', channels: { telegram: 'Telegram' } },
     { id: 'cooper.bowl', area: 'Cooper', name: 'Lumière sur la gamelle', desc: 'Boîte de croquettes ouverte quand il fait sombre : le bar s’allume en blanc quelques minutes.', channels: { lamp: 'Lampe du bar' } },

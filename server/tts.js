@@ -25,14 +25,24 @@ export const ttsEngine = async () => {
 const audioCache = new Map();
 const CACHE_MAX = 60;
 
-/** mp3 d'une phrase, pour la lire dans le navigateur. */
-export const synthesize = async (text) => {
+/**
+ * mp3 d'une phrase, pour la lire dans le navigateur.
+ * voice : une autre voix Piper (Cooper parle avec fr_FR-tom-medium) ; si elle échoue, voix par défaut.
+ */
+export const synthesize = async (text, { voice = null } = {}) => {
     const message = String(text || '').replace(/https?:\/\/\S+/g, '').trim().slice(0, 1000);
     if (!message) throw new Error('Texte vide');
-    if (audioCache.has(message)) return audioCache.get(message);
+    const key = voice ? `${voice}|${message}` : message;
+    if (audioCache.has(key)) return audioCache.get(key);
     const engine = await ttsEngine();
-    const audio = await haService.ttsAudio(engine, message, ttsLanguage(engine));
-    audioCache.set(message, audio);
+    const lang = ttsLanguage(engine);
+    const audio = voice && /piper/.test(engine)
+        ? await haService.ttsAudio(engine, message, lang, { voice }).catch((err) => {
+            console.warn(`⚠️  Voix ${voice} indisponible, voix par défaut :`, err.message);
+            return haService.ttsAudio(engine, message, lang);
+        })
+        : await haService.ttsAudio(engine, message, lang);
+    audioCache.set(key, audio);
     if (audioCache.size > CACHE_MAX) audioCache.delete(audioCache.keys().next().value);
     return audio;
 };

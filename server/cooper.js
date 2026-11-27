@@ -23,6 +23,9 @@ import * as presence from './presence.js';
 import * as alarm from './alarm.js';
 import { announce, getSpeakers } from './briefing.js';
 import { bus } from './events.js';
+import * as guard from './guard.js';
+import * as tablet from './communautoApp.js';
+import { CALL_MODES, RING_MAX_MS, shouldRing, walkDue, retryDelay, endLine, pickLine } from './cooperCallLogic.js';
 
 const FILE = dataFile('cooper.json');
 const TZ = process.env.TZ || 'America/Toronto';
@@ -54,11 +57,17 @@ const DEFAULTS = {
     lastDouble: null, // { at, meal, fedAt }
     lamp: null, // état du bar à remettre si le serveur redémarre en plein signal
     since: null, // début du suivi : les repas d'avant ce jour-là ne sont pas comptés comme oubliés
+    // Appel vidéo sur la tablette murale (cooperCallLogic.js)
+    call: { mode: 'sometimes', walk: true, voice: 'fr_FR-tom-medium', volume: null },
+    calls: { last: null, rolled: {}, active: null, ended: null, retry: null, missed: {}, volumeBefore: null },
 };
 
 let config = structuredClone(DEFAULTS);
 try {
-    if (existsSync(FILE)) config = { ...config, ...JSON.parse(readFileSync(FILE, 'utf8')) };
+    if (existsSync(FILE)) {
+        const saved = JSON.parse(readFileSync(FILE, 'utf8'));
+        config = { ...config, ...saved, call: { ...DEFAULTS.call, ...saved.call }, calls: { ...DEFAULTS.calls, ...saved.calls } };
+    }
 } catch (err) {
     console.error('❌ cooper.json illisible, réglages par défaut:', err.message);
 }
@@ -415,6 +424,7 @@ const recordMeal = async (mealId, { at = Date.now(), source, late = false }) => 
     prune();
     save();
     journal.log({ kind: 'system', title: `Cooper a eu son repas de ${mealLabel(mealId)} (${hm(at)})`, data: { meal: mealId, source } });
+    settleCall(mealId, 'fed');
     if (config.alerted[date]?.[mealId]) {
         notifier.notify({ text: `✅ Cooper a eu son repas de ${mealLabel(mealId)} à ${hm(at)}.`, silent: true, builtin: 'cooper.fed' }).catch(() => {});
     }
@@ -482,7 +492,8 @@ const alertLate = async (meal, date) => {
         })
         .catch(() => {});
     if (!someoneHome()) return;
-    say(`Cooper n'a pas encore eu son repas de ${meal.label}.`, 'cooper.late');
+    // Cooper appelle sur la tablette : l'enceinte de la cuisine se tait pour ne pas doubler
+    if (!maybeCall({ kind: 'meal', key: meal.id })) say(`Cooper n'a pas encore eu son repas de ${meal.label}.`, 'cooper.late');
     if (!builtins.allows('cooper.late', 'lamp')) return;
     try {
         await startBlink();
@@ -493,7 +504,9 @@ const alertLate = async (meal, date) => {
 };
 
 const tick = async () => {
-    if (!config.enabled || !findSensor()) return;
+    if (!config.enabled) return;
+    callTick();
+    if (!findSensor()) return;
     const { date, minutes } = localParts();
     const fed = todayFed(date);
     for (const meal of config.meals) {
@@ -509,6 +522,7 @@ export const start = () => {
     if (config.lamp) endLamp().catch(() => {});
     bus.on('sensor', ({ sensor, prop, value, ts }) => {
         if (prop !== 'isOpen' || value !== true) return;
+        if (sensor.did === entranceDid()) settleCall('walk', 'walked');
         if (sensor.did !== findSensor()?.ieee) return;
         onOpen(ts).catch((err) => console.warn('⚠️  Cooper:', err.message));
     });
@@ -519,7 +533,7 @@ export const start = () => {
 // --- API ---
 
 export const getSettings = () => {
-    const { days, alerted, lastDouble, lamp, ...rest } = config;
+    const { days, alerted, lastDouble, lamp, calls, ...rest } = config;
     return rest;
 };
 
@@ -536,6 +550,19 @@ export const update = (patch = {}) => {
         if (!Number.isFinite(n) || n < min || n > max) throw new Error(`${key} invalide`);
         config[key] = n;
     }
+    if (patch.call && typeof patch.call === 'object') {
+        const c = patch.call;
+        if (c.mode !== undefined) {
+            if (!CALL_MODES.includes(c.mode)) throw new Error('mode d’appel invalide');
+            config.call.mode = c.mode;
+        }
+        if (c.walk !== undefined) config.call.walk = Boolean(c.walk);
+        if (c.volume !== undefined) {
+            const n = c.volume === null || c.volume === '' ? null : Number(c.volume);
+            if (n !== null && (!Number.isInteger(n) || n < 0 || n > 15)) throw new Error('volume invalide (0 à 15)');
+            config.call.volume = n;
+        }
+    }
     if (!config.enabled && config.lamp) endLamp().catch(() => {});
     save();
     return getSettings();
@@ -547,3 +574,155 @@ export const test = async (kind) => {
     if (kind === 'bowl') return showBowl();
     throw new Error('Essai inconnu');
 };
+
+// --- Appel vidéo sur la tablette murale ---
+//
+// Le serveur décide et garde l'état ; la tablette (CooperCall.tsx) sonne, décroche, joue la vidéo
+// et la voix de GET /api/cooper/call/audio, puis dit comment ça s'est fini (POST /api/cooper/call/end).
+
+const ENDED_SHOWN_MS = 20_000;
+const calls = () => config.calls;
+
+const entranceDid = () => sensorRegistry.getAll().find((s) => s.type === 'door' && sensorRegistry.isEntrance(s.name))?.ieee ?? null;
+
+const callAllowed = () => builtins.allows('cooper.call', 'voice') && !guard.getView().mode && !alarm.anyActive() && someoneHome();
+
+const keyLabel = (key) => (key === 'walk' ? 'la promenade' : `le repas de ${mealLabel(key)}`);
+
+/** Volume de la tablette pendant l'appel, puis celui d'avant. Au mieux : sans ADB, rien. */
+const raiseVolume = async () => {
+    if (config.call.volume == null) return;
+    try {
+        const before = await tablet.getMediaVolume();
+        if (before == null) return;
+        calls().volumeBefore = before;
+        save();
+        await tablet.setMediaVolume(config.call.volume);
+    } catch (err) {
+        console.warn('⚠️  Cooper, volume de la tablette:', err.message);
+    }
+};
+const restoreVolume = () => {
+    const before = calls().volumeBefore;
+    if (before == null) return;
+    calls().volumeBefore = null;
+    save();
+    // Après la phrase de fin
+    setTimeout(() => tablet.setMediaVolume(before).catch(() => {}), 12_000);
+};
+
+/** Lance un appel tout de suite (essai, rappel, appel manqué qu'on rejoue). */
+export const startCall = ({ kind, key = null, retry = false, spontaneous = false }) => {
+    const c = calls();
+    if (c.active) return c.active;
+    const { date } = localParts();
+    const meal = kind === 'meal' ? mealLabel(key) : '';
+    c.active = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind, key, retry, at: Date.now(), line: pickLine({ kind, retry, meal }) };
+    c.ended = null;
+    if (spontaneous) c.last = date;
+    if (c.retry?.key === key) c.retry = null;
+    save();
+    journal.log({ kind: 'system', title: kind === 'test' ? 'Cooper appelle (essai)' : `Cooper appelle sur la tablette pour ${keyLabel(key)}${retry ? ' (rappel)' : ''}`, data: { call: c.active.id, kind, key } });
+    if (kind !== 'test') builtins.ran('cooper.call', 'voice', 'Appel sur la tablette');
+    raiseVolume();
+    return c.active;
+};
+
+/** Au moment de l'alerte : appelle-t-il cette fois-ci ? Un seul tirage par oubli. */
+const maybeCall = ({ kind, key }) => {
+    const c = calls();
+    const { date, minutes } = localParts();
+    if (c.rolled[date]?.[key] || c.active || !callAllowed()) return false;
+    c.rolled = { [date]: { ...(c.rolled[date] || {}), [key]: true } };
+    save();
+    if (!shouldRing({ mode: config.call.mode, date, minutes, lastCall: c.last, roll: Math.random() })) return false;
+    startCall({ kind, key, spontaneous: true });
+    return true;
+};
+
+/**
+ * Fin d'un appel. outcome : fed, walked (le motif est réglé), later, hung, timeout (sans réponse).
+ * Sans repas : appel manqué noté, un rappel prévu.
+ */
+export const endCall = (id, outcome) => {
+    const c = calls();
+    const call = c.active;
+    if (!call || (id && call.id !== id)) return getCallState();
+    c.active = null;
+    const settled = outcome === 'fed' || outcome === 'walked';
+    const delay = settled ? null : retryDelay({ outcome, wasRetry: call.retry, kind: call.kind });
+    if (!settled && call.kind !== 'test') {
+        const { date } = localParts();
+        c.missed = { [date]: { ...(c.missed[date] || {}), [call.key]: (c.missed[date]?.[call.key] || 0) + 1 } };
+    }
+    c.retry = delay ? { kind: call.kind, key: call.key, at: Date.now() + delay } : null;
+    c.ended = { id: call.id, kind: call.kind, key: call.key, outcome, at: Date.now(), line: endLine({ outcome, kind: call.kind, willRetry: Boolean(delay) }) };
+    save();
+    restoreVolume();
+    const how = { fed: 'Cooper a été nourri', walked: 'on sort Cooper', later: '« Dans 10 min »', hung: 'raccroché', timeout: 'sans réponse' }[outcome] || outcome;
+    journal.log({ kind: 'system', title: `Fin de l'appel de Cooper : ${how}`, data: { call: call.id, outcome } });
+    return getCallState();
+};
+
+/** Le motif de l'appel est réglé (boîte ouverte, porte d'entrée) : fin, plus de rappel ni d'appel manqué. */
+const settleCall = (key, outcome) => {
+    const c = calls();
+    const { date } = localParts();
+    let changed = false;
+    if (c.missed[date]?.[key]) {
+        delete c.missed[date][key];
+        changed = true;
+    }
+    if (c.retry?.key === key) {
+        c.retry = null;
+        changed = true;
+    }
+    if (c.active && (c.active.key === key || c.active.kind === 'test')) {
+        endCall(c.active.id, outcome);
+        return;
+    }
+    if (changed) save();
+};
+
+/** « On sort ! » sur la tablette pendant l'appel de la promenade. */
+export const walkStarted = () => settleCall('walk', 'walked');
+
+const callTick = () => {
+    const c = calls();
+    const now = Date.now();
+    const parts = localParts(now);
+    if (c.active && now - c.active.at > RING_MAX_MS) endCall(c.active.id, 'timeout');
+    if (c.retry && now >= c.retry.at && !c.active) {
+        const { key, kind } = c.retry;
+        c.retry = null;
+        save();
+        const stillDue = kind === 'walk'
+            ? walkDue({ minutes: Math.min(parts.minutes, 10 * 60 + 59), walkedAt: lastEntranceOpen(now), now })
+            : getView(now).meals.some((m) => m.id === key && m.status === 'late');
+        if (stillDue && callAllowed()) startCall({ kind, key, retry: true });
+    }
+    if (config.call.walk && walkDue({ minutes: parts.minutes, walkedAt: lastEntranceOpen(now), now })) maybeCall({ kind: 'walk', key: 'walk' });
+};
+
+/** État pour la tablette (et la carte : appel manqué). */
+export const getCallState = (now = Date.now()) => {
+    const c = calls();
+    const { date } = localParts(now);
+    const missed = Object.entries(c.missed[date] || {}).filter(([, n]) => n > 0).map(([key, n]) => ({ key, n, label: keyLabel(key) }));
+    return {
+        active: c.active,
+        ended: c.ended && now - c.ended.at < ENDED_SHOWN_MS ? c.ended : null,
+        missed,
+        retryAt: c.retry?.at ?? null,
+        settings: config.call,
+    };
+};
+
+/** Phrase à faire dire par Piper : celle de l'appel en cours, ou celle de fin. */
+export const callText = (id, what) => {
+    const c = calls();
+    if (what === 'end' && c.ended?.id === id) return c.ended.line;
+    if (what === 'line' && c.active?.id === id) return c.active.line;
+    return null;
+};
+export const callVoice = () => config.call.voice;

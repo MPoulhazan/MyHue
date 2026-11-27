@@ -272,3 +272,22 @@ export const debugAction = ({ type, x, y, dy, pkg }) => exclusive(async () => {
     if (type === 'myhue') return backToMyHue();
     throw new Error('action inconnue');
 });
+
+// --- Volume des médias de la tablette (appel de Cooper) ---
+
+/** Volume « médias » de la tablette (0–15), ou null si elle ne répond pas. */
+export const getMediaVolume = () => exclusive(async () => {
+    if (!target?.host) return null;
+    await ensureOnline();
+    const out = await shell('cmd', 'media_session', 'volume', '--stream', '3', '--get');
+    const m = /volume is (\d+)/.exec(out);
+    return m ? Number(m[1]) : null;
+});
+
+export const setMediaVolume = (level) => exclusive(async () => {
+    if (!target?.host) return;
+    const n = Math.max(0, Math.min(15, Math.round(Number(level))));
+    if (!Number.isFinite(n)) return;
+    await ensureOnline();
+    await shell('cmd', 'media_session', 'volume', '--stream', '3', '--set', String(n));
+});
