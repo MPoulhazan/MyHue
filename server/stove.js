@@ -3,7 +3,7 @@
  * - « cuisinière oubliée » : Telegram si plus personne n'est là (ou mode garde) et qu'elle chauffe,
  *   ou si elle chauffe depuis plus d'1 h 30 ;
  * - « l'eau bout » : annonce sur l'enceinte de la cuisine (Nest Hub) ;
- * - lumière de cuisson : le soir, Cuisine et Bar passent en blanc vif, puis reviennent comme avant ;
+ * - lumière de cuisson : à toute heure, la cuisine passe en blanc tiède à 100 %, puis revient comme avant ;
  * - contexte pour l'alarme fumée (automations.js).
  * Réglages et état dans data/stove.json. Logique pure : stoveLogic.js.
  */
@@ -30,7 +30,7 @@ const QUIET = { from: 22 * 60 + 30, to: 7 * 60 };
 
 const DEFAULTS = {
     enabled: true,
-    lights: true, // blanc vif le soir pendant la cuisson
+    lights: true, // blanc tiède à 100 % pendant la cuisson
     boilVoice: true, // « l'eau bout » sur l'enceinte de la cuisine
     speaker: null, // null = enceinte dont le nom contient « cuisine »
     tuning: {}, // surcharges des seuils de stoveLogic (onDelta, boilJump…)
@@ -75,19 +75,6 @@ const isQuiet = () => {
 // Personne (HA Companion) ou mode garde actif. null (pas de téléphone connu) = quelqu'un est là.
 const isAway = () => presence.anyoneHome() === false || Boolean(guard.getView().mode);
 
-let sunCache = { at: 0, dark: false };
-const isDark = async () => {
-    if (Date.now() - sunCache.at < 5 * 60_000) return sunCache.dark;
-    try {
-        const sun = await haService.getState('sun.sun');
-        sunCache = { at: Date.now(), dark: Number(sun.attributes?.elevation) < 3 };
-    } catch {
-        const m = localMinutes();
-        sunCache = { at: Date.now(), dark: m >= 17 * 60 || m < 7 * 60 };
-    }
-    return sunCache.dark;
-};
-
 // --- Lumière de cuisson ---
 
 const kitchenLights = async () => {
@@ -96,12 +83,12 @@ const kitchenLights = async () => {
     return room?.lights || [];
 };
 
-const COOK = { bri: 254, ct: 250 }; // blanc neutre 4000 K, à fond
+const COOK = { bri: 254, ct: 370 }; // blanc tiède 2700 K, à fond
 
 const lightsUp = async () => {
     if (!config.lights || !hueBaseUrl || config.lamp) return;
     if (!builtins.allows('stove.cooking', 'lamp')) return;
-    if (!(await isDark()) || isAway()) return;
+    if (isAway()) return;
     try {
         const ids = await kitchenLights();
         const { data: lights } = await hueClient.get('/lights');
@@ -116,12 +103,12 @@ const lightsUp = async () => {
             used.push(id);
         }
         if (!used.length) return;
-        circadian.markManual(used); // le circadien ne repasse pas en 2200 K pendant la cuisson
+        circadian.markManual(used); // le circadien ne touche pas au blanc pendant la cuisson
         for (const id of used) await hueClient.put(`/lights/${id}/state`, { on: true, ...COOK, transitiontime: 10 });
         config.lamp = { ids: used, before };
         save();
-        journal.log({ kind: 'stove', title: 'Cuisson : lumière de la cuisine en blanc vif', data: { lights: used } });
-        builtins.ran('stove.cooking', 'lamp', 'Cuisine en blanc vif');
+        journal.log({ kind: 'stove', title: 'Cuisson : cuisine en blanc tiède à 100 %', data: { lights: used } });
+        builtins.ran('stove.cooking', 'lamp', 'Cuisine en blanc tiède 100 %');
     } catch (err) {
         console.warn('⚠️  Cuisinière, lumière:', err.message);
     }

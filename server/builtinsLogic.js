@@ -11,7 +11,7 @@ export const CHANNELS = ['voice', 'lamp', 'telegram'];
 export const REGISTRY = [
     // Cuisine
     { id: 'stove.boil', area: 'Cuisinière', name: 'L’eau bout', desc: 'Quand la vapeur monte vite sur la hotte, MyHue dit « L’eau bout ! » dans la cuisine.', channels: { voice: 'Enceinte de la cuisine' } },
-    { id: 'stove.cooking', area: 'Cuisinière', name: 'Lumière de cuisson', desc: 'Cuisinière allumée : la cuisine passe en blanc franc, puis revient comme avant.', channels: { lamp: 'Lumières de la cuisine' } },
+    { id: 'stove.cooking', area: 'Cuisinière', name: 'Lumière de cuisson', desc: 'Cuisinière allumée : la cuisine passe en blanc tiède à 100 %, puis revient comme avant.', channels: { lamp: 'Lumières de la cuisine' } },
     { id: 'stove.alert', area: 'Cuisinière', name: 'Cuisinière oubliée', desc: 'Cuisinière allumée depuis longtemps ou maison vide : message Telegram.', channels: { telegram: 'Telegram' }, locked: true },
     // Cooper
     { id: 'cooper.late', area: 'Cooper', name: 'Repas de Cooper oublié', desc: 'La boîte de croquettes n’a pas été ouverte à l’heure du repas : MyHue le dit, fait clignoter le bar et écrit sur Telegram.', channels: { voice: 'Enceinte de la cuisine', lamp: 'Lampe du bar', telegram: 'Telegram' } },

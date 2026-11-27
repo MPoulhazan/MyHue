@@ -6,6 +6,7 @@ import type { IconName } from '../components/Icon';
 import { RoomCard, fmt, hhmm, useClock } from '../components/home/cards';
 import { HomeWidgets } from '../components/home/widgets/registry';
 import { useHomeWidgets } from '../components/home/widgets/useHomeWidgets';
+import { StoveFlame } from '../components/kitchen/StoveFlame';
 import './Dashboard.css';
 import '../components/lights/LightsPanel.css';
 import './Kitchen.css';
@@ -58,6 +59,7 @@ function Kitchen() {
                         {clock.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </span>
                 </div>
+                <StoveFlame />
                 <div className="kitchen-weather">
                     {home.weather && (
                         <span className="kitchen-out">
