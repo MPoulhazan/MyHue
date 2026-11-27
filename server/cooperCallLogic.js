@@ -8,6 +8,8 @@
  *   20 min après « Raccrocher » ou un appel resté sans réponse).
  */
 
+import { createHash } from 'crypto';
+
 export const CALL_MODES = ['never', 'sometimes', 'always'];
 export const CHANCE = 1 / 3;
 export const HOURS = { from: 8 * 60, to: 21 * 60 + 30 };
@@ -99,4 +101,19 @@ export const pickLine = ({ kind, retry, meal = '' }, roll = Math.random()) => {
             : retry ? LINES.mealRetry : LINES.meal;
     const line = list[Math.min(list.length - 1, Math.floor(roll * list.length))];
     return line.replace('{meal}', meal);
+};
+
+/** Fichier de la réplique enregistrée (voix ElevenLabs, scripts/cooper-voices.mjs) : nommé d'après son texte. */
+export const clipName = (text) => `${createHash('sha1').update(String(text)).digest('hex').slice(0, 12)}.mp3`;
+
+/** Toutes les phrases qu'il peut dire, {meal} remplacé : ce que le script doit enregistrer. */
+export const allLines = (meals = ['midi', 'soir']) => {
+    const out = new Set();
+    for (const v of Object.values(LINES)) {
+        for (const line of Array.isArray(v) ? v : [v]) {
+            if (line.includes('{meal}')) meals.forEach((m) => out.add(line.replace('{meal}', m)));
+            else out.add(line);
+        }
+    }
+    return [...out];
 };

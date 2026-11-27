@@ -20,6 +20,8 @@ export interface CallState {
     /** Le serveur reconnaît la tablette murale à son adresse (celle de l'appairage ADB) */
     wall: boolean;
     video: boolean;
+    /** Répliques enregistrées (ElevenLabs) sur le serveur ; sinon Piper */
+    voicePack?: boolean;
 }
 
 // Cet écran est-il la tablette murale ? « 1 » / « 0 » force le choix (Réglages › Cooper)

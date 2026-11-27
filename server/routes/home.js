@@ -54,7 +54,9 @@ import * as outingMedia from '../outingMedia.js';
 import * as outingSearch from '../outingSearch.js';
 import * as together from '../together.js';
 import * as tabletDebug from '../communautoApp.js';
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync, writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import { clipName, LINES } from '../cooperCallLogic.js';
 import { dataFile } from '../dataDir.js';
 import { synthesize } from '../tts.js';
 import { hueV2Get } from '../hue.js';
@@ -359,6 +361,10 @@ router.post('/api/cooper/test', async (req, res) => {
 // --- Cooper appelle en visio (tablette murale) ---
 
 const CALL_VIDEO = dataFile('cooper-call.mp4'); // sur le ThinkCentre, hors du dépôt public
+// Répliques enregistrées (voix ElevenLabs « Charlie cartoon, son de visio ») ; sinon Piper
+const VOICE_DIR = dataFile('cooper-voice');
+mkdirSync(VOICE_DIR, { recursive: true });
+const clipFor = (text) => join(VOICE_DIR, clipName(text));
 const fromWallTablet = (req) => {
     const host = tabletDebug.currentTarget()?.host;
     const ip = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
@@ -366,7 +372,7 @@ const fromWallTablet = (req) => {
 };
 
 router.get('/api/cooper/call', (req, res) => {
-    res.json({ ...cooper.getCallState(), wall: fromWallTablet(req), video: existsSync(CALL_VIDEO) });
+    res.json({ ...cooper.getCallState(), wall: fromWallTablet(req), video: existsSync(CALL_VIDEO), voicePack: existsSync(clipFor(LINES.nudge)) });
 });
 
 router.post('/api/cooper/call/start', (req, res) => {
@@ -395,12 +401,20 @@ router.post('/api/cooper/call/end', async (req, res) => {
 router.get('/api/cooper/call/audio', async (req, res) => {
     const text = cooper.callText(String(req.query.id || ''), ['end', 'nudge'].includes(req.query.what) ? req.query.what : 'line');
     if (!text) return res.status(404).end();
+    if (existsSync(clipFor(text))) return res.sendFile(clipFor(text), { maxAge: '1h' });
     try {
         const audio = await synthesize(text, { voice: cooper.callVoice() });
         res.set('Cache-Control', 'private, max-age=600').set('X-Text', encodeURIComponent(text)).type('audio/mpeg').send(audio);
     } catch (err) {
         res.status(503).json({ error: err.message });
     }
+});
+
+router.put('/api/cooper/call/voice/:name', express.raw({ type: ['audio/*', 'application/octet-stream'], limit: '5mb' }), (req, res) => {
+    if (!/^[0-9a-f]{12}.mp3$/.test(req.params.name)) return res.status(400).json({ error: 'nom invalide' });
+    if (!Buffer.isBuffer(req.body) || req.body.length < 1000) return res.status(400).json({ error: 'audio vide' });
+    writeFileSync(join(VOICE_DIR, req.params.name), req.body);
+    res.json({ ok: true });
 });
 
 router.get('/api/cooper/call/video', (_req, res) => {

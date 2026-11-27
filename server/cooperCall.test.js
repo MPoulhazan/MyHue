@@ -1,7 +1,7 @@
 // Cooper appelle en visio : quand ça sonne, quand il rappelle, ce qu'il dit
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { shouldRing, walkDue, retryDelay, endLine, pickLine, dayBefore, inCallHours, LINES } from './cooperCallLogic.js';
+import { shouldRing, walkDue, retryDelay, endLine, pickLine, dayBefore, inCallHours, LINES, clipName, allLines } from './cooperCallLogic.js';
 
 const m = (hhmm) => {
     const [h, mm] = hhmm.split(':').map(Number);
@@ -71,4 +71,13 @@ test('répliques : tirage borné, repas nommé', () => {
     assert.equal(pickLine({ kind: 'meal', retry: true }, 0), LINES.mealRetry[0]);
     assert.equal(pickLine({ kind: 'walk' }, 0), LINES.walk[0]);
     assert.equal(pickLine({ kind: 'test' }, 0.5), LINES.test[0]);
+});
+
+test('répliques enregistrées : un fichier par texte, toutes listées', () => {
+    assert.match(clipName(LINES.fed), /^[0-9a-f]{12}.mp3$/);
+    assert.notEqual(clipName(LINES.fed), clipName(LINES.walked));
+    const all = allLines();
+    assert.ok(all.includes(LINES.nudge));
+    assert.ok(all.some((l) => /repas de midi/.test(l)) && all.some((l) => /repas de soir/.test(l)));
+    assert.ok(!all.some((l) => l.includes('{meal}')));
 });

@@ -137,7 +137,7 @@ export function AlertHost({ services, sensors }: { services: ServiceHealth[]; se
     } else if (first?.kind === 'city' && city?.takeover) {
         takeover = <CityAlert event={city.takeover} waiting={waiting} onAck={fake ? () => {} : ack} />;
     } else if (first?.kind === 'cooper' && cooperCall) {
-        takeover = <CooperCall key={cooperCall.id} call={cooperCall} ended={fake ? null : callState?.ended ?? null} waiting={waiting} demo={Boolean(fake)}
+        takeover = <CooperCall key={cooperCall.id} call={cooperCall} ended={fake ? null : callState?.ended ?? null} waiting={waiting} demo={Boolean(fake)} natural={Boolean(callState?.voicePack)}
             onClose={() => setClosedCalls((ids) => [...ids.slice(-20), cooperCall.id])} />;
     }
 

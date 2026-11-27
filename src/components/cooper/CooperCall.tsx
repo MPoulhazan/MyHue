@@ -44,11 +44,14 @@ function ringTone() {
     }
 }
 
-const voice = (url: string) => {
+/** Répliques enregistrées (natural) : jouées telles quelles ; voix Piper de secours : ralentie, plus grave. */
+const voice = (url: string, natural: boolean) => {
     const a = new Audio(url);
     a.preload = 'auto';
-    a.playbackRate = VOICE_RATE;
-    (a as HTMLAudioElement & { preservesPitch?: boolean }).preservesPitch = false;
+    if (!natural) {
+        a.playbackRate = VOICE_RATE;
+        (a as HTMLAudioElement & { preservesPitch?: boolean }).preservesPitch = false;
+    }
     return a;
 };
 
@@ -73,12 +76,14 @@ const DEMO_END: Record<CallOutcome, string> = {
     timeout: 'Bon. Personne. Je rappelle dans vingt minutes.',
 };
 
-export function CooperCall({ call, ended, waiting = 0, demo = false, onClose }: {
+export function CooperCall({ call, ended, waiting = 0, demo = false, natural = false, onClose }: {
     call: ActiveCall;
     /** Fin vue par le serveur (boîte ouverte, porte d'entrée) ou après nos boutons */
     ended: EndedCall | null;
     waiting?: number;
     demo?: boolean;
+    /** Les répliques enregistrées sont en place sur le serveur */
+    natural?: boolean;
     onClose: () => void;
 }) {
     const [phase, setPhase] = useState<Phase>('ring');
@@ -122,10 +127,10 @@ export function CooperCall({ call, ended, waiting = 0, demo = false, onClose }: 
     // Voix chargée pendant que ça sonne : elle part dès qu'on décroche
     useEffect(() => {
         if (demo) return;
-        const a = voice(`/api/cooper/call/audio?id=${encodeURIComponent(call.id)}&what=line`);
+        const a = voice(`/api/cooper/call/audio?id=${encodeURIComponent(call.id)}&what=line`, natural);
         a.load();
         lineAudio.current = a;
-        const n = voice(`/api/cooper/call/audio?id=${encodeURIComponent(call.id)}&what=nudge`);
+        const n = voice(`/api/cooper/call/audio?id=${encodeURIComponent(call.id)}&what=nudge`, natural);
         n.preload = 'none';
         nudgeAudio.current = n;
         return () => {
@@ -211,7 +216,7 @@ export function CooperCall({ call, ended, waiting = 0, demo = false, onClose }: 
         if (phase !== 'end') return;
         let closeAt = window.setTimeout(onClose, END_SHOWN_MS);
         if (!demo) {
-            const a = voice(`/api/cooper/call/audio?id=${encodeURIComponent(call.id)}&what=end`);
+            const a = voice(`/api/cooper/call/audio?id=${encodeURIComponent(call.id)}&what=end`, natural);
             a.onended = () => {
                 window.clearTimeout(closeAt);
                 closeAt = window.setTimeout(onClose, 1_500);
