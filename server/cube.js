@@ -90,12 +90,19 @@ const remember = (gesture, text) => {
     last = { at: Date.now(), gesture, text };
 };
 
+// Rallume le salon sans les prises (pas de luminosité : l'étagère, trop forte, s'allume à la main)
+const turnOnSalon = async (extra = {}) => {
+    const [{ data: group }, { data: lights }] = await Promise.all([hueClient.get(`/groups/${config.groupId}`), hueClient.get('/lights')]);
+    const dimmable = (group?.lights || []).filter((id) => lights?.[id]?.state && 'bri' in lights[id].state);
+    await executeActions(dimmable.map((id) => ({ type: 'set_light_state', id, state: { on: true, ...extra } })), 'cube');
+};
+
 // turnOn : salon éteint qu'on rallume (secouer) ; les teintes ne touchent que les lampes allumées
 const applyFace = async (n, { turnOn = false } = {}) => {
     const def = config.faces[n];
     if (!def) return null;
     if (def.moment) {
-        if (turnOn) await executeActions([{ type: 'set_group_state', id: config.groupId, state: { on: true } }], 'cube');
+        if (turnOn) await turnOnSalon();
         await moments.run(def.moment);
         return def.label;
     }
@@ -138,7 +145,15 @@ const handle = async ({ gesture, face: side, angle }) => {
                 return;
             }
             const bri_inc = briDelta(angle);
-            await executeActions([{ type: 'set_group_state', id: config.groupId, state: { on: true, bri_inc, transitiontime: 3 } }], 'cube');
+            // Salon allumé : la variation ne touche que les lampes déjà allumées (une prise éteinte,
+            // comme l'étagère, reste éteinte). Salon tout éteint : on rallume les lampes réglables
+            // seulement, jamais les prises (pas de luminosité, état choisi à la main).
+            const { data } = await hueClient.get(`/groups/${config.groupId}`);
+            if (data?.state?.any_on) {
+                await executeActions([{ type: 'set_group_state', id: config.groupId, state: { bri_inc, transitiontime: 3 } }], 'cube');
+            } else {
+                await turnOnSalon({ bri_inc, transitiontime: 3 });
+            }
             remember('rotate', `Lumière ${bri_inc > 0 ? '+' : ''}${Math.round((bri_inc / 254) * 100)} %`);
             return;
         }
@@ -158,7 +173,7 @@ const handle = async ({ gesture, face: side, angle }) => {
                 remember('shake', 'Salon éteint');
             } else {
                 const label = Number.isInteger(face) ? await applyFace(face, { turnOn: true }).catch(() => null) : null;
-                if (!label) await executeActions([{ type: 'set_group_state', id: config.groupId, state: { on: true } }], 'cube');
+                if (!label) await turnOnSalon();
                 remember('shake', `Salon rallumé${label ? ` : ${label}` : ''}`);
             }
             return;
