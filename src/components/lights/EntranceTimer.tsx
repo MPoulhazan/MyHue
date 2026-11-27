@@ -1,43 +1,35 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { entrancePoll } from '../home/widgets/polls';
 
-const mmss = (ms: number) => {
-    const s = Math.ceil(ms / 1000);
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-};
+export interface RoomTimer {
+    /** Minuterie du détecteur en cours : l'anneau autour du bouton se vide jusqu'à l'extinction */
+    ring: { key: number; style: CSSProperties } | null;
+    /** Ligne du bas de la carte à la place du texte habituel */
+    sub: string | null;
+}
 
 /**
- * Bas d'une carte de pièce allumée. Si la pièce contient la lampe de l'entrée et que sa minuterie
- * tourne : le temps avant l'extinction et une barre qui se vide ; sinon le texte habituel.
+ * Minuterie de la lampe de l'entrée vue par une carte de pièce : rien si la pièce ne contient pas
+ * cette lampe. L'anneau est une animation CSS (durée totale, décalée du temps déjà écoulé), relancée
+ * seulement quand le Pi repousse l'extinction.
  */
-export function RoomTimerSub({ lightIds, sub }: { lightIds: string[]; sub: string }) {
+export function useRoomTimer(lightIds: string[], lit: boolean): RoomTimer {
     const view = entrancePoll.use();
-    const mine = Boolean(view?.lightId && lightIds.includes(String(view.lightId)));
+    const mine = Boolean(lit && view?.lightId && lightIds.includes(String(view.lightId)));
     const running = Boolean(mine && view?.lit && !view.manual && view.offAt);
-    // Relu à chaque lecture du Pi : compté sur l'horloge de l'écran, l'écart entre les deux ne compte pas
-    const base = useMemo(
-        // eslint-disable-next-line react-hooks/purity
-        () => (running && view?.offAt ? { endsAt: Date.now() + (view.offAt - view.now), total: (view.offTotalSec ?? view.offAfterSec) * 1000 } : null),
-        [running, view?.offAt, view?.now, view?.offTotalSec, view?.offAfterSec],
-    );
-    const [now, setNow] = useState(Date.now);
-    useEffect(() => {
-        if (!base) return;
-        const t = setInterval(() => setNow(Date.now()), 250);
-        return () => clearInterval(t);
-    }, [base]);
+    const offAt = running ? view!.offAt : null;
+    // Figé à la première lecture de cette fin d'extinction : l'animation ne saute pas à chaque relecture
+    const ring = useMemo(() => {
+        if (!offAt || !view) return null;
+        const total = (view.offTotalSec ?? view.offAfterSec) * 1000;
+        const left = Math.max(0, offAt - view.now);
+        return { key: offAt, style: { '--dur': `${total}ms`, '--delay': `${left - total}ms` } as CSSProperties };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [offAt]);
 
-    if (mine && view?.manual) return <span className="room-sub">Allumée · sans minuterie</span>;
-    if (!base) return <span className="room-sub">{sub}</span>;
-    const left = Math.max(0, base.endsAt - now);
-    const ending = left <= 15_000;
-    return (
-        <>
-            <span className={`room-sub room-timer ${ending ? 'ending' : ''}`} title="S’éteint toute seule (détecteur)">
-                S’éteint dans <b>{mmss(left)}</b>{view?.long ? ' · quelqu’un en bas' : ''}
-            </span>
-            <span className={`room-timer-bar ${ending ? 'ending' : ''}`} aria-hidden="true" style={{ '--p': Math.min(1, left / base.total) } as CSSProperties} />
-        </>
-    );
+    if (!mine || !view) return { ring: null, sub: null };
+    if (view.manual) return { ring: null, sub: 'Allumée · sans minuterie' };
+    if (!ring) return { ring: null, sub: null };
+    return { ring, sub: view.long ? 'Quelqu’un en bas' : 'S’éteint toute seule' };
 }

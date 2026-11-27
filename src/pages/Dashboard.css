@@ -353,13 +353,20 @@ a.weather-pill:hover { background: var(--h-surface-2); }
 }
 .warn-line .row-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 
-
-
-/* Entrée allumée par le détecteur : le temps restant et une barre qui se vide au bas de la carte */
-.room-card:has(.room-timer-bar) .room-bottom { position: static; }
-.room-card:has(.room-timer-bar) .room-bottom > * { position: relative; }
-.room-timer b { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; font-weight: 700; }
-.room-card .room-timer-bar { position: absolute; left: 0; bottom: 0; height: 5px; width: calc(var(--p) * 100%); background: var(--h-light); pointer-events: none; transition: width 0.25s linear; }
-.room-timer.ending b, .room-timer-bar.ending { animation: room-timer-blink 1s ease-in-out infinite; }
-@keyframes room-timer-blink { 50% { opacity: 0.35; } }
-@media (prefers-reduced-motion: reduce) { .room-timer.ending b, .room-timer-bar.ending { animation: none; } .room-card .room-timer-bar { transition: none; } }
+/* Entrée allumée par le détecteur : un anneau se vide autour du rond de l'interrupteur jusqu'à
+   l'extinction. Animation CSS sur toute la durée, décalée du temps déjà écoulé (EntranceTimer.tsx). */
+@property --room-timer-p { syntax: '<number>'; inherits: false; initial-value: 1; }
+.switch.timer span::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 999px;
+    pointer-events: none;
+    background: conic-gradient(var(--h-on-accent) calc(var(--room-timer-p) * 1turn), transparent 0);
+    -webkit-mask: radial-gradient(circle, transparent 15.5px, #000 16px);
+    mask: radial-gradient(circle, transparent 15.5px, #000 16px);
+    animation: room-timer-drain var(--dur, 120s) linear var(--delay, 0s) forwards, room-timer-blink 1s ease-in-out calc(var(--dur, 120s) + var(--delay, 0s) - 15s) infinite;
+}
+@keyframes room-timer-drain { from { --room-timer-p: 1; } to { --room-timer-p: 0; } }
+@keyframes room-timer-blink { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .switch.timer span::after { animation: room-timer-drain var(--dur, 120s) linear var(--delay, 0s) forwards; } }

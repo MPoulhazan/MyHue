@@ -6,7 +6,7 @@ import type { useHome, DashLight, LogEntry, Sensor } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import { avgLevel, useLastLevel, useLevelGesture } from './levels';
 import { WidgetCard } from './widgets/WidgetCard';
-import { RoomTimerSub } from '../lights/EntranceTimer';
+import { useRoomTimer } from '../lights/EntranceTimer';
 
 // Cartes du tableau de bord, partagées par la tablette et le téléphone
 
@@ -54,6 +54,8 @@ export function RoomCard({ name, lights, sensors = [], selected = false, onLevel
     const level = avgLevel(lights);
     const lastLevel = useLastLevel(level);
     const { dragging, handlers } = useLevelGesture(level, onLevel, onOpen);
+    // L'entrée allumée par le détecteur : un anneau se vide autour du bouton jusqu'à l'extinction
+    const timer = useRoomTimer(lights.map((l) => l.id), on.length > 0);
 
     if (!lights.length) {
         // Pièce sans lampe : seulement ses capteurs
@@ -78,14 +80,14 @@ export function RoomCard({ name, lights, sensors = [], selected = false, onLevel
                 animate={{ width: `${level}%` }} transition={{ type: 'spring', stiffness: dragging ? 700 : 200, damping: 34 }} />
             <span className="room-top">
                 <span className="room-name">{name}<Icon name="chevron" size={18} strokeWidth={2.4} /></span>
-                <button type="button" className={`switch ${on.length ? 'on light' : ''}`} aria-pressed={on.length > 0}
+                <button type="button" className={`switch ${on.length ? 'on light' : ''} ${timer.ring ? 'timer' : ''}`} aria-pressed={on.length > 0}
                     aria-label={`${on.length ? 'Éteindre' : 'Allumer'} ${name}`} disabled={!live.length}
                     onClick={() => onLevel(on.length ? 0 : lastLevel.current)}>
-                    <span />
+                    <span key={timer.ring?.key} style={timer.ring?.style} />
                 </button>
             </span>
             <span className="room-bottom">
-                {on.length > 0 ? <RoomTimerSub lightIds={lights.map((l) => l.id)} sub={sub} /> : <span className="room-sub">{sub}</span>}
+                <span className="room-sub">{timer.sub ?? sub}</span>
                 {on.length > 0 && <span className="room-pct">{level} %</span>}
             </span>
         </div>
