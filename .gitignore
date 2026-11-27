@@ -43,3 +43,7 @@ server/data/music-history.json
 server/data/music-session.json
 server/data/music-moods.json
 server/data/tiles/
+server/data/automations.json
+server/data/cooper.json
+server/data/flexd.json
+server/data/iss-tle.json
