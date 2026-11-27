@@ -43,9 +43,10 @@ export const feedPoll = createSharedPoll<HomeFeed>('/api/home-feed', 20_000);
 export interface PinsView { pins: Partial<Record<WidgetId, Pin>> }
 export const pinsPoll = createSharedPoll<PinsView>('/api/home-widgets', 60_000);
 
-/** Lampe de l'entrée (server/entranceLight.js) : la carte compte les secondes avant l'extinction */
+/** Lampe de l'entrée (server/entranceLight.js) : sa carte de pièce compte les secondes avant l'extinction */
 export interface EntranceView {
     enabled: boolean;
+    lightId: string | null;
     lit: boolean;
     manual: boolean;
     long: boolean;

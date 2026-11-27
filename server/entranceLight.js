@@ -331,34 +331,6 @@ export const trigger = (source, kind = 'door') => {
     return busy;
 };
 
-const queue = (fn) => {
-    const run = busy.then(fn, fn);
-    busy = run.catch(() => {});
-    return run;
-};
-
-/** Depuis la carte de l'accueil : allumée et gardée jusqu'à ce qu'on l'éteigne (comme à la main). */
-export const hold = () => queue(() => withBulb(async (b) => {
-    clearTimeout(offTimer);
-    owned = null;
-    offAt = null;
-    setManual(true);
-    const { data } = await hueClient.get(`/lights/${b.id}`);
-    if (!data.state?.on) {
-        circadian.markManual([b.id]);
-        await put(whiteState(sceneFor(Date.now()), b.ct));
-    }
-})).then(getStatus);
-
-/** Depuis la carte de l'accueil : éteinte tout de suite, le détecteur reprend la main. */
-export const off = () => queue(() => withBulb(async () => {
-    clearTimeout(offTimer);
-    owned = null;
-    offAt = null;
-    setManual(false);
-    await put({ on: false, transitiontime: 4 });
-})).then(getStatus);
-
 /**
  * Commande Hue envoyée à la main depuis MyHue (proxy /api/hue) : allumée ainsi, elle reste
  * allumée jusqu'à ce qu'on l'éteigne ; éteinte ainsi, le détecteur reprend la main.

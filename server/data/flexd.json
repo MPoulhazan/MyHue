@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "preheatMinutes": 60,
+  "boost": 1,
+  "reduction": 2,
+  "events": [],
+  "notified": [],
+  "skipped": [],
+  "applied": null,
+  "lastFetchAt": 1793829929110,
+  "lastError": null
+}

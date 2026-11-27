@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
     arrange, cityRelevance, cooperRelevance, houseRelevance,
     journalRelevance, mailRelevance, movesForm, movesRelevance, musicRelevance, skyRelevance,
-    buildFeed, feedBriefingLine, guardRelevance, nextAt, entranceRelevance,
+    buildFeed, feedBriefingLine, guardRelevance, nextAt,
 } from './homeFeedLogic.js';
 
 const s = (id, relevance) => ({ id, relevance, summary: '' });
@@ -220,14 +220,4 @@ test('feedBriefingLine : l’urgent seulement, pas ce que le briefing dit déjà
     ];
     assert.equal(feedBriefingLine({ items }), 'À voir sur l’écran : Déplacements, BIXI, 15 min.');
     assert.equal(feedBriefingLine({ items: [] }), null);
-});
-
-test('entranceRelevance : en carte seulement allumée', () => {
-    assert.equal(entranceRelevance(null).relevance, 'hidden');
-    assert.equal(entranceRelevance({ enabled: true, lit: false, manual: false }).relevance, 'hidden');
-    const lit = entranceRelevance({ enabled: true, lit: true, manual: false, long: false, offAt: 5000 });
-    assert.equal(lit.relevance, 'now');
-    assert.equal(lit.until, 5000, 'relue à l’extinction');
-    assert.equal(entranceRelevance({ enabled: true, lit: true, long: true, longOffAfterSec: 300 }).summary, 'allumée, 5 min');
-    assert.equal(entranceRelevance({ enabled: true, manual: true }).summary, 'allumée, sans minuterie');
 });

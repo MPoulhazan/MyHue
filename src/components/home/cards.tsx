@@ -6,6 +6,7 @@ import type { useHome, DashLight, LogEntry, Sensor } from '../../hooks/useHome';
 import { Icon } from '../Icon';
 import { avgLevel, useLastLevel, useLevelGesture } from './levels';
 import { WidgetCard } from './widgets/WidgetCard';
+import { RoomTimerSub } from '../lights/EntranceTimer';
 
 // Cartes du tableau de bord, partagées par la tablette et le téléphone
 
@@ -84,7 +85,7 @@ export function RoomCard({ name, lights, sensors = [], selected = false, onLevel
                 </button>
             </span>
             <span className="room-bottom">
-                <span className="room-sub">{sub}</span>
+                {on.length > 0 ? <RoomTimerSub lightIds={lights.map((l) => l.id)} sub={sub} /> : <span className="room-sub">{sub}</span>}
                 {on.length > 0 && <span className="room-pct">{level} %</span>}
             </span>
         </div>

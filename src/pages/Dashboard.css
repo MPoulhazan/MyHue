@@ -354,3 +354,12 @@ a.weather-pill:hover { background: var(--h-surface-2); }
 .warn-line .row-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 
 
+
+/* Entrée allumée par le détecteur : le temps restant et une barre qui se vide au bas de la carte */
+.room-card:has(.room-timer-bar) .room-bottom { position: static; }
+.room-card:has(.room-timer-bar) .room-bottom > * { position: relative; }
+.room-timer b { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; font-weight: 700; }
+.room-card .room-timer-bar { position: absolute; left: 0; bottom: 0; height: 5px; width: calc(var(--p) * 100%); background: var(--h-light); pointer-events: none; transition: width 0.25s linear; }
+.room-timer.ending b, .room-timer-bar.ending { animation: room-timer-blink 1s ease-in-out infinite; }
+@keyframes room-timer-blink { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .room-timer.ending b, .room-timer-bar.ending { animation: none; } .room-card .room-timer-bar { transition: none; } }

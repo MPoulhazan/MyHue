@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import type { Home } from '../../../hooks/useHome';
-import { entrancePoll, feedPoll } from './polls';
+import { feedPoll } from './polls';
 import type { FeedItem, HomeFeed, WidgetId } from './meta';
 
 /** Une pastille touchée montre sa carte pendant ce temps, puis repart dans le bandeau. */
@@ -46,16 +46,6 @@ export function useHomeWidgets(home: Home): {
         const t = setTimeout(loadFresh, 800);
         return () => clearTimeout(t);
     }, [key]);
-
-    // La lampe de l'entrée s'allume ou s'éteint : sa carte arrive ou part sans attendre
-    const entrance = entrancePoll.use();
-    const entranceKey = entrance ? `${entrance.lit ? 1 : 0}:${entrance.manual ? 1 : 0}` : null;
-    const firstEntrance = useRef(entranceKey);
-    useEffect(() => {
-        if (entranceKey === firstEntrance.current) return;
-        firstEntrance.current = entranceKey;
-        loadFresh();
-    }, [entranceKey]);
 
     const states = useMemo(() => feed?.items ?? [], [feed]);
     const arrangement = useMemo(() => ({ cards: feed?.cards ?? [], chips: feed?.chips ?? [] }), [feed]);
