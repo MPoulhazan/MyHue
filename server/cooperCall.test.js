@@ -59,6 +59,8 @@ test('phrase de fin', () => {
     assert.equal(endLine({ outcome: 'walked', kind: 'walk' }), LINES.walked);
     assert.equal(endLine({ outcome: 'hung', kind: 'meal', willRetry: true }), LINES.hung);
     assert.equal(endLine({ outcome: 'hung', kind: 'meal', willRetry: false }), LINES.hungLast);
+    assert.equal(endLine({ outcome: 'timeout', kind: 'meal', willRetry: true }), LINES.noAnswer, 'raccroché tout seul : personne');
+    assert.equal(endLine({ outcome: 'timeout', kind: 'meal', willRetry: false }), LINES.hungLast);
     assert.equal(endLine({ outcome: 'fed', kind: 'test' }), LINES.testEnd);
 });
 

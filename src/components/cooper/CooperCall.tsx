@@ -12,7 +12,9 @@ import './CooperCall.css';
 
 const RINGS = 3;
 const RING_EVERY_MS = 2_200;
-const LIVE_MAX_MS = 3 * 60_000;
+const NUDGE_AT_MS = 20_000; // personne ne réagit : « Ooooh, tu m'entends ? »
+const LIVE_MAX_MS = 30_000; // puis il raccroche tout seul (appel manqué, un rappel)
+const NUDGE = "Ooooh ! Tu m'entends ? Allô ? Y'a quelqu'un ?";
 const END_SHOWN_MS = 7_000;
 const VOICE_RATE = 0.92; // plus lent et un peu plus grave : blasé
 
@@ -68,7 +70,7 @@ const DEMO_END: Record<CallOutcome, string> = {
     walked: "Ah, enfin. Je prends la laisse, j'arrive.",
     later: "D'accord. Dix minutes. Je compte.",
     hung: 'Tu raccroches ?! Je rappelle dans vingt minutes.',
-    timeout: 'Tu raccroches ?! Je rappelle dans vingt minutes.',
+    timeout: 'Bon. Personne. Je rappelle dans vingt minutes.',
 };
 
 export function CooperCall({ call, ended, waiting = 0, demo = false, onClose }: {
@@ -87,12 +89,15 @@ export function CooperCall({ call, ended, waiting = 0, demo = false, onClose }: 
     const [blocked, setBlocked] = useState(false);
     const [noVideo, setNoVideo] = useState(false);
     const [end, setEnd] = useState<{ outcome: CallOutcome; line: string; took: number } | null>(null);
+    const [nudged, setNudged] = useState(false);
     const lineAudio = useRef<HTMLAudioElement | null>(null);
+    const nudgeAudio = useRef<HTMLAudioElement | null>(null);
     const busy = useRef(false);
     const words = call.line.split(' ');
 
     function showEnd(outcome: CallOutcome, line: string) {
         lineAudio.current?.pause();
+        nudgeAudio.current?.pause();
         setEnd({ outcome, line, took: liveAt ? Date.now() - liveAt : 0 });
         setPhase('end');
     }
@@ -120,9 +125,14 @@ export function CooperCall({ call, ended, waiting = 0, demo = false, onClose }: 
         const a = voice(`/api/cooper/call/audio?id=${encodeURIComponent(call.id)}&what=line`);
         a.load();
         lineAudio.current = a;
+        const n = voice(`/api/cooper/call/audio?id=${encodeURIComponent(call.id)}&what=nudge`);
+        n.preload = 'none';
+        nudgeAudio.current = n;
         return () => {
             a.pause();
+            n.pause();
             lineAudio.current = null;
+            nudgeAudio.current = null;
         };
     }, [call.id, demo]);
 
@@ -174,11 +184,19 @@ export function CooperCall({ call, ended, waiting = 0, demo = false, onClose }: 
         };
     }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Personne ne répond : appel manqué
+    // Personne ne réagit : « Ooooh, tu m'entends ? » à 20 s, il raccroche à 30 s (appel manqué)
     useEffect(() => {
         if (phase !== 'live') return;
+        const nudge = window.setTimeout(() => {
+            lineAudio.current?.pause();
+            nudgeAudio.current?.play().catch(() => {});
+            setNudged(true);
+        }, NUDGE_AT_MS);
         const t = window.setTimeout(() => finish('timeout'), LIVE_MAX_MS);
-        return () => window.clearTimeout(t);
+        return () => {
+            window.clearTimeout(nudge);
+            window.clearTimeout(t);
+        };
     }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Le serveur a fini l'appel (boîte ouverte pendant qu'il parle…)
@@ -270,7 +288,7 @@ export function CooperCall({ call, ended, waiting = 0, demo = false, onClose }: 
                     )}
                     {phase === 'live' && (
                         <>
-                            {shown > 0 && <p className="cc-cap">{words.slice(0, shown).join(' ')}</p>}
+                            {nudged ? <p className="cc-cap">{NUDGE}</p> : shown > 0 && <p className="cc-cap">{words.slice(0, shown).join(' ')}</p>}
                             {blocked && <button type="button" className="cc-hear" onClick={hearIt}>Touchez pour entendre Cooper</button>}
                             <div className="cc-bar">
                                 {call.kind !== 'test' && <button type="button" className="cc-btn later" onClick={() => finish('later')}>Dans 10 min</button>}

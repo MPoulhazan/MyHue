@@ -13,8 +13,8 @@ export const CHANCE = 1 / 3;
 export const HOURS = { from: 8 * 60, to: 21 * 60 + 30 };
 export const WALK = { at: 9 * 60 + 30, until: 11 * 60 };
 export const WAKE = 8 * 60;
-/** Au-delà, l'appel resté ouvert compte comme sans réponse */
-export const RING_MAX_MS = 4 * 60_000;
+/** Filet du serveur : la tablette raccroche seule 30 s après le décroché ; au-delà, sans réponse */
+export const RING_MAX_MS = 90_000;
 
 /** Voix C, « l'ado blasé » : lente et traînante. Le navigateur la ralentit encore un peu. */
 export const LINES = {
@@ -33,12 +33,14 @@ export const LINES = {
         "Bon. La laisse est près de la porte. La porte est fermée. Vous voyez le problème ?",
     ],
     walkRetry: ["C'est encore moi. Toujours pas sorti. Je dis ça, je dis rien… mais ça pousse."],
+    nudge: "Ooooh ! Tu m'entends ? Allô ? Y'a quelqu'un ?",
     test: ["Allô ? Oui, c'est Cooper. C'est juste un essai. Mais tant que je vous ai… une croquette, peut-être ?"],
     fed: 'Ah ben voilà ! Merci, bisous. Je raccroche, je mange.',
     walked: 'Ah, enfin. Je prends la laisse, j\'arrive.',
     later: "D'accord. Dix minutes. Je compte.",
     hung: "Tu raccroches ?! Je rappelle dans vingt minutes.",
     hungLast: "Bon. Je n'insiste pas. Mais je m'en souviendrai.",
+    noAnswer: 'Bon. Personne. Je rappelle dans vingt minutes.',
     testEnd: 'Bon, ben, salut.',
 };
 
@@ -86,6 +88,7 @@ export const endLine = ({ outcome, kind, willRetry }) => {
     if (outcome === 'fed') return LINES.fed;
     if (outcome === 'walked') return LINES.walked;
     if (outcome === 'later') return LINES.later;
+    if (outcome === 'timeout' && willRetry) return LINES.noAnswer;
     return willRetry ? LINES.hung : LINES.hungLast;
 };
 

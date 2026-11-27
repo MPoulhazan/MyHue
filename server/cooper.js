@@ -25,7 +25,7 @@ import { announce, getSpeakers } from './briefing.js';
 import { bus } from './events.js';
 import * as guard from './guard.js';
 import * as tablet from './communautoApp.js';
-import { CALL_MODES, RING_MAX_MS, shouldRing, walkDue, retryDelay, endLine, pickLine } from './cooperCallLogic.js';
+import { LINES, CALL_MODES, RING_MAX_MS, shouldRing, walkDue, retryDelay, endLine, pickLine } from './cooperCallLogic.js';
 
 const FILE = dataFile('cooper.json');
 const TZ = process.env.TZ || 'America/Toronto';
@@ -722,6 +722,7 @@ export const getCallState = (now = Date.now()) => {
 export const callText = (id, what) => {
     const c = calls();
     if (what === 'end' && c.ended?.id === id) return c.ended.line;
+    if (what === 'nudge' && c.active?.id === id) return LINES.nudge;
     if (what === 'line' && c.active?.id === id) return c.active.line;
     return null;
 };

@@ -393,7 +393,7 @@ router.post('/api/cooper/call/end', async (req, res) => {
 });
 
 router.get('/api/cooper/call/audio', async (req, res) => {
-    const text = cooper.callText(String(req.query.id || ''), req.query.what === 'end' ? 'end' : 'line');
+    const text = cooper.callText(String(req.query.id || ''), ['end', 'nudge'].includes(req.query.what) ? req.query.what : 'line');
     if (!text) return res.status(404).end();
     try {
         const audio = await synthesize(text, { voice: cooper.callVoice() });
