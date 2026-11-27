@@ -1,7 +1,7 @@
 // node --test server/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inRange, sceneFor, shouldSweep, whiteState, pickEntrance } from './entranceLight.js';
+import { inRange, sceneFor, shouldSweep, whiteState, pickEntrance, countMotion } from './entranceLight.js';
 test('whiteState : kelvins en mireds bornés, pourcentage en 1-254', () => {
     assert.deepEqual(whiteState({ ct: 4000, bright: 100 }), { on: true, bri: 254, transitiontime: 3, ct: 250 });
     assert.equal(whiteState({ ct: 2000, bright: 50 }, { min: 153, max: 454 }).ct, 454);
@@ -41,4 +41,15 @@ test('shouldSweep : on éteint une lampe allumée sans passage récent', () => {
     assert.equal(shouldSweep(now, now - 121_000, 120, null), true, 'dernier passage il y a plus de 2 min');
     assert.equal(shouldSweep(now, now - 30_000, 120, null), false, 'quelqu’un vient de passer');
     assert.equal(shouldSweep(now, now - 500_000, 120, { scene: {} }), false, 'extinction déjà programmée');
+});
+
+test('countMotion : vue une 2ᵉ fois pendant qu’elle est allumée, minuterie longue', () => {
+    const t0 = 1_000_000;
+    const first = countMotion({}, t0);
+    assert.deepEqual(first, { motions: 1, lastMotionAt: t0, long: false }, 'un passage en haut de l’escalier');
+    assert.equal(countMotion(first, t0 + 5_000).long, false, 'le même message répété ne compte pas');
+    const second = countMotion(first, t0 + 70_000);
+    assert.equal(second.long, true, 'revue une minute plus tard : quelqu’un est resté en bas');
+    assert.equal(countMotion({ motions: 0, long: false }, t0).long, false, 'allumée par la porte, puis un mouvement');
+    assert.equal(countMotion(second, t0 + 71_000).long, true, 'reste longue');
 });

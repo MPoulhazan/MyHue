@@ -72,7 +72,7 @@ function useEntranceTimer(active: boolean): EntranceTimer | null {
         const load = () => fetch('/api/entrance-light').then((r) => (r.ok ? r.json() : null)).then((d) => {
             if (!alive || !d) return;
             // compté sur l'horloge de la tablette à partir du temps restant vu par le Pi
-            setTimer(d.offAt && d.lightId ? { lightId: String(d.lightId), endsAt: Date.now() + (d.offAt - d.now), total: d.offAfterSec * 1000 } : null);
+            setTimer(d.offAt && d.lightId ? { lightId: String(d.lightId), endsAt: Date.now() + (d.offAt - d.now), total: (d.offTotalSec ?? d.offAfterSec) * 1000 } : null);
         }).catch(() => {});
         load();
         const t = setInterval(load, 3000);

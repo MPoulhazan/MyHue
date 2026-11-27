@@ -42,3 +42,18 @@ export const feedPoll = createSharedPoll<HomeFeed>('/api/home-feed', 20_000);
 /** Réglages Auto / Toujours / Masqué, partagés par la tablette et le téléphone (server/homeWidgets.js) */
 export interface PinsView { pins: Partial<Record<WidgetId, Pin>> }
 export const pinsPoll = createSharedPoll<PinsView>('/api/home-widgets', 60_000);
+
+/** Lampe de l'entrée (server/entranceLight.js) : la carte compte les secondes avant l'extinction */
+export interface EntranceView {
+    enabled: boolean;
+    lit: boolean;
+    manual: boolean;
+    long: boolean;
+    offAt: number | null;
+    offTotalSec: number | null;
+    offAfterSec: number;
+    longOffAfterSec: number;
+    /** Horloge du Pi au moment de la lecture */
+    now: number;
+}
+export const entrancePoll = createSharedPoll<EntranceView>('/api/entrance-light', 4_000);

@@ -15,6 +15,7 @@ import { MailboxCard } from '../../mailbox/MailboxCard';
 import { MovesCard } from '../../moves/MovesCard';
 import { SkyCard } from '../../sky/SkyCard';
 import { GuardCard } from '../../guard/GuardCard';
+import { EntranceCard } from '../../lights/EntranceCard';
 import { MusicCard } from '../../music/MusicCard';
 import { WIDGET_META } from './meta';
 import { WidgetSheet } from './WidgetCard';
@@ -36,6 +37,7 @@ export interface WidgetCtx {
 const RENDER: Record<WidgetId, (ctx: WidgetCtx) => ReactNode> = {
     guard: () => <GuardCard />,
     city: () => <CityCard />,
+    entrance: () => <EntranceCard />,
     advent: () => <AdventCard />,
     veillee: () => <VeilleeCard />,
     tonight: () => <TonightCard />,
@@ -49,7 +51,7 @@ const RENDER: Record<WidgetId, (ctx: WidgetCtx) => ReactNode> = {
 };
 
 const CHIP_ICON: Record<WidgetId, IconName | null> = {
-    guard: 'shield', city: 'city', advent: 'gift', veillee: 'flame', tonight: 'heart', cooper: null, mail: 'mail', music: 'music', house: 'home', moves: 'bike', sky: 'moon', journal: 'list',
+    guard: 'shield', city: 'city', entrance: 'lights', advent: 'gift', veillee: 'flame', tonight: 'heart', cooper: null, mail: 'mail', music: 'music', house: 'home', moves: 'bike', sky: 'moon', journal: 'list',
 };
 
 /** Les cartes pleines des widgets demandés, dans l'ordre donné. */

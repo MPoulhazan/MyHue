@@ -194,6 +194,17 @@ router.post('/api/entrance-light/test', async (req, res) => {
     }
 });
 
+// Carte « Entrée » de l'accueil : garder allumée ou éteindre tout de suite
+for (const action of ['hold', 'off']) {
+    router.post(`/api/entrance-light/${action}`, async (_req, res) => {
+        try {
+            res.json(await entranceLight[action]());
+        } catch (err) {
+            res.status(502).json({ error: err.message });
+        }
+    });
+}
+
 // --- Mode alarme / vacances ---
 
 router.get('/api/guard', (_req, res) => res.json(guard.getView()));

@@ -1,6 +1,8 @@
 /**
  * Lampe de l'entrée (Hue) : s'allume quand la porte d'entrée s'ouvre ou que le capteur de
  * mouvement de l'entrée voit quelqu'un, à toute heure, et s'éteint 2 min après le dernier passage.
+ * Vue une 2ᵉ fois par le détecteur pendant qu'elle est allumée, quelqu'un est resté en bas
+ * (lessive, chaussures) : la minuterie passe à 5 min, relancée à chaque mouvement.
  *
  * L'interrupteur est bloqué sur ON : l'ampoule s'éteint toujours 2 min après le dernier
  * passage, même allumée autrement (appli Hue, retour du courant) ; une ronde chaque minute
@@ -31,6 +33,7 @@ const DEFAULTS = {
     enabled: true,
     lightId: null, // lampe Hue ; null = celle qui s'appelle « Entrée » ou qui est dans la pièce Entrée
     offAfterSec: 120,
+    longOffAfterSec: 300, // quelqu'un est resté en bas (vu deux fois)
     nightFrom: '22:30',
     nightTo: '06:30',
     day: { ct: 4000, bright: 100 },
@@ -130,6 +133,21 @@ export const pickEntrance = (lights = {}, groups = {}, wanted = null) => {
     return room?.lights?.length ? String(room.lights[0]) : null;
 };
 
+/** Deux messages du détecteur à moins de 20 s : le même passage (le capteur se tait ensuite ~1 min). */
+export const MOTION_GAP_MS = 20_000;
+
+/**
+ * Compte les mouvements d'une même période d'allumage. Le capteur Aqara ne dit pas combien de
+ * temps dure un mouvement : il prévient, puis se tait environ une minute. Vu une 2ᵉ fois alors
+ * que la lampe est encore allumée, quelqu'un est resté en bas : on passe à la minuterie longue.
+ */
+export const countMotion = (session = {}, now = Date.now()) => {
+    const motions = session.motions || 0;
+    if (session.lastMotionAt && now - session.lastMotionAt < MOTION_GAP_MS) return { motions, lastMotionAt: session.lastMotionAt, long: Boolean(session.long) };
+    const n = motions + 1;
+    return { motions: n, lastMotionAt: now, long: Boolean(session.long) || n >= 2 };
+};
+
 // --- Ampoule ---
 
 let bulb = null; // { id, color, ct: {min,max} | null }
@@ -168,15 +186,19 @@ let owned = null; // { scene } quand c'est nous qui l'avons allumée
 const manualHold = () => config.manual === true;
 let offTimer = null;
 let offAt = null; // heure d'extinction prévue (l'anneau de la tuile)
+let offTotal = null; // durée de la minuterie en cours (ms), pour que l'anneau se vide juste
 let busy = Promise.resolve();
 const lastTrigger = { at: null, source: null };
 
 const OFF_RETRY_MS = 15_000;
 const OFF_MAX_TRIES = 40;
 
-const scheduleOff = (delayMs = config.offAfterSec * 1000) => {
+const currentDelayMs = () => (owned?.long ? config.longOffAfterSec : config.offAfterSec) * 1000;
+
+const scheduleOff = (delayMs = currentDelayMs()) => {
     clearTimeout(offTimer);
     offAt = Date.now() + delayMs;
+    offTotal = delayMs;
     offTimer = setTimeout(() => {
         busy = busy.then(turnOff, turnOff);
     }, delayMs);
@@ -223,11 +245,19 @@ const playFlow = async (steps) => {
     }
 };
 
-const turnOn = async (source) => {
+const turnOn = async (source, kind) => {
     lastTrigger.at = Date.now();
     lastTrigger.source = source;
     if (manualHold()) return; // réglée à la main : un passage ne change ni la couleur ni l'intensité
-    if (owned) return scheduleOff(); // déjà allumée par nous : on repousse l'extinction
+    if (owned) {
+        // déjà allumée par nous : on repousse l'extinction, plus loin si quelqu'un est resté en bas
+        if (kind === 'motion') {
+            const wasLong = owned.long;
+            Object.assign(owned, countMotion(owned));
+            if (owned.long && !wasLong) console.log(`💡 Lampe de l’entrée : quelqu’un est resté en bas, minuterie ${Math.round(config.longOffAfterSec / 60)} min`);
+        }
+        return scheduleOff();
+    }
     if (!builtins.allows('entrance.light', 'lamp')) return;
     try {
         await withBulb(async (b) => {
@@ -246,7 +276,7 @@ const turnOn = async (source) => {
             await put(whiteState(scene, b.ct));
             builtins.ran('entrance.light', 'lamp', source);
             circadian.markManual([b.id]);
-            owned = { scene };
+            owned = { scene, ...(kind === 'motion' ? countMotion({}) : { motions: 0, long: false }) };
             scheduleOff();
         });
     } catch (err) {
@@ -294,11 +324,40 @@ const checkManualStillOn = async () => {
     }
 };
 
-export const trigger = (source) => {
+/** @param kind 'motion' (détecteur) ou 'door' (porte) : seuls les mouvements comptent pour la minuterie longue */
+export const trigger = (source, kind = 'door') => {
     if (!config.enabled) return busy;
-    busy = busy.then(() => turnOn(source), () => turnOn(source));
+    busy = busy.then(() => turnOn(source, kind), () => turnOn(source, kind));
     return busy;
 };
+
+const queue = (fn) => {
+    const run = busy.then(fn, fn);
+    busy = run.catch(() => {});
+    return run;
+};
+
+/** Depuis la carte de l'accueil : allumée et gardée jusqu'à ce qu'on l'éteigne (comme à la main). */
+export const hold = () => queue(() => withBulb(async (b) => {
+    clearTimeout(offTimer);
+    owned = null;
+    offAt = null;
+    setManual(true);
+    const { data } = await hueClient.get(`/lights/${b.id}`);
+    if (!data.state?.on) {
+        circadian.markManual([b.id]);
+        await put(whiteState(sceneFor(Date.now()), b.ct));
+    }
+})).then(getStatus);
+
+/** Depuis la carte de l'accueil : éteinte tout de suite, le détecteur reprend la main. */
+export const off = () => queue(() => withBulb(async () => {
+    clearTimeout(offTimer);
+    owned = null;
+    offAt = null;
+    setManual(false);
+    await put({ on: false, transitiontime: 4 });
+})).then(getStatus);
 
 /**
  * Commande Hue envoyée à la main depuis MyHue (proxy /api/hue) : allumée ainsi, elle reste
@@ -332,7 +391,7 @@ export const start = () => {
         const device = zigbeeService.getDevice(name);
         if (device?.state?.occupancy !== true || Date.now() - (device.lastSeen || 0) > 5000) return;
         const e = entranceMotion(device.ieeeAddr);
-        if (e && !sensorPause.isPaused(e.ieee)) trigger(e.name);
+        if (e && !sensorPause.isPaused(e.ieee)) trigger(e.name, 'motion');
     });
     setInterval(() => {
         busy = busy.then(sweep, sweep);
@@ -354,6 +413,7 @@ export const getStatus = () => ({
     lightName: bulb?.name ?? null,
     color: Boolean(bulb?.color),
     offAfterSec: config.offAfterSec,
+    longOffAfterSec: config.longOffAfterSec,
     nightFrom: config.nightFrom,
     nightTo: config.nightTo,
     day: config.day,
@@ -362,7 +422,9 @@ export const getStatus = () => ({
     colorsShownOn: config.colorsShownOn,
     lit: Boolean(owned),
     manual: manualHold(),
+    long: Boolean(owned?.long), // quelqu'un est resté en bas : minuterie longue
     offAt: owned && !manualHold() ? offAt : null, // fin de la minuterie du détecteur
+    offTotalSec: owned && !manualHold() && offTotal ? Math.round(offTotal / 1000) : null, // durée de cette minuterie
     now: Date.now(), // l'horloge du Pi, pour que la tablette compte juste
     lastTrigger: lastTrigger.at ? { ...lastTrigger } : null,
 });
@@ -386,6 +448,11 @@ export const update = (patch = {}) => {
         const s = Number(patch.offAfterSec);
         if (!(s >= 15 && s <= 3600)) throw new Error('Délai entre 15 s et 1 h');
         config.offAfterSec = Math.round(s);
+    }
+    if (patch.longOffAfterSec !== undefined) {
+        const s = Number(patch.longOffAfterSec);
+        if (!(s >= 60 && s <= 3600)) throw new Error('Délai long entre 1 min et 1 h');
+        config.longOffAfterSec = Math.round(s);
     }
     for (const k of ['nightFrom', 'nightTo']) {
         if (patch[k] === undefined) continue;

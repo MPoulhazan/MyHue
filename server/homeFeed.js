@@ -12,6 +12,7 @@ import * as advent from './advent.js';
 import * as veillee from './veillee.js';
 import * as myDay from './myDay.js';
 import * as mailbox from './mailbox.js';
+import * as entranceLight from './entranceLight.js';
 import * as musicPlayer from './musicPlayer.js';
 import * as castService from './castService.js';
 import * as bixi from './bixi.js';
@@ -50,6 +51,7 @@ async function gather() {
     return {
         guard: await safe(() => guard.getView()),
         city: await safe(() => city.getView()),
+        entrance: await safe(() => entranceLight.getStatus()),
         cooper: await safe(() => cooper.getView()),
         advent: await safe(() => advent.getView()),
         veillee: await safe(() => veillee.getStatus()),

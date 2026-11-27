@@ -10,7 +10,7 @@
 export const RELEVANCES = ['alert', 'now', 'calm', 'hidden'];
 
 /** Ordre du registre : il départage deux widgets de même pertinence. */
-export const WIDGET_ORDER = ['guard', 'city', 'advent', 'veillee', 'tonight', 'cooper', 'mail', 'music', 'house', 'moves', 'sky', 'journal'];
+export const WIDGET_ORDER = ['guard', 'city', 'entrance', 'advent', 'veillee', 'tonight', 'cooper', 'mail', 'music', 'house', 'moves', 'sky', 'journal'];
 
 /** Cooper reste toujours une carte : c'est le widget préféré de la maison. */
 export const DEFAULT_PINS = Object.fromEntries(WIDGET_ORDER.map((id) => [id, id === 'cooper' ? 'always' : 'auto']));
@@ -79,6 +79,14 @@ export function cityRelevance(v) {
     const today = v.events.find((e) => e.bucket === 'now' || e.bucket === 'today');
     if (today) return state('city', 'now', today.title);
     return state('city', 'calm', plural(v.events.length, 'avis'));
+}
+
+/** La lampe de l'entrée : en carte tant qu'elle est allumée (minuterie ou à la main), sinon rien. */
+export function entranceRelevance(v) {
+    if (!v?.enabled) return state('entrance', 'hidden', 'lampe désactivée');
+    if (v.manual) return state('entrance', 'now', 'allumée, sans minuterie');
+    if (v.lit) return state('entrance', 'now', v.long ? `allumée, ${Math.round(v.longOffAfterSec / 60)} min` : 'allumée, minuterie', { until: v.offAt ?? null });
+    return state('entrance', 'hidden', 'éteinte');
 }
 
 export function cooperRelevance(v) {
@@ -235,12 +243,13 @@ export function arrange(states, pins = {}, max = MAX_CARDS) {
 
 /**
  * La liste complète servie par /api/home-feed.
- * @param d { guard, city, advent, veillee, cooper, mail, music, playing, sensors, commute, bixi, communauto, sky, journalCount }
+ * @param d { guard, city, entrance, advent, veillee, cooper, mail, music, playing, sensors, commute, bixi, communauto, sky, journalCount }
  */
 export function buildFeed(d, pins = {}, now = Date.now(), tz = TZ) {
     const states = [
         guardRelevance(d.guard, now),
         cityRelevance(d.city),
+        entranceRelevance(d.entrance),
         adventRelevance(d.advent),
         veilleeRelevance(d.veillee, d.veillee?.season),
         tonightRelevance(d.tonight),
