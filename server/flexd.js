@@ -179,7 +179,7 @@ const clampT = (t) => Math.max(16, Math.min(31, t));
  * @returns null si rien ne change, sinon { applied, patch?, log? }
  *          patch ne contient JAMAIS power ni mode : seulement { temperature }.
  */
-export const decide = (applied, p, heating, cfg, thermostatOn = false) => {
+export const decide = (applied, p, heating, cfg, thermostatOn = false, hold = false) => {
     const a = applied;
     const phase = p?.phase ?? null;
     if ((a?.phase ?? null) === phase && (a?.id ?? null) === (p?.event.id ?? null)) return null;
@@ -193,6 +193,13 @@ export const decide = (applied, p, heating, cfg, thermostatOn = false) => {
     }
 
     const sameEvent = Boolean(a && p && a.id === p.event.id);
+    // Consigne choisie à la main, quelqu'un à la maison : on la laisse telle quelle
+    if (phase && hold && !(sameEvent && a.userTook)) {
+        return {
+            applied: { id: p.event.id, phase, base: sameEvent ? a.base : null, sent: sameEvent ? a.sent : null, userTook: true },
+            log: 'Pointe Flex D : consigne choisie à la main, on n’y touche pas',
+        };
+    }
     // Quelqu'un a changé la consigne depuis notre dernier envoi : on lui laisse la main
     const userTook = Boolean(a && (a.userTook || (a.sent != null && heating.temperature !== a.sent)));
     const heatingOn = heating.power && heating.mode === 'heat';
@@ -223,7 +230,7 @@ export const decide = (applied, p, heating, cfg, thermostatOn = false) => {
 
 const tick = async () => {
     const p = config.enabled ? phaseAt(config.events, Date.now(), config.preheatMinutes, config.skipped) : null;
-    const d = decide(config.applied, p, broadlinkService.getState(), config, thermostat.isEnabled());
+    const d = decide(config.applied, p, broadlinkService.getState(), config, thermostat.isEnabled(), thermostat.manualHold());
     if (!d) return;
     // État douteux : une trame rallumerait peut-être la clim, on retente au prochain tour
     if (d.patch && broadlinkService.isUncertain()) return;

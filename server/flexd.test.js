@@ -86,3 +86,14 @@ test('decide: thermostat intelligent actif, aucun envoi direct', () => {
     assert.equal(d.patch, undefined);
     assert.equal(d.applied.phase, 'peak');
 });
+
+test('decide: consigne choisie à la main à la maison, Flex D n’y touche pas, ni pendant ni après', () => {
+    const heat = { power: true, mode: 'heat', temperature: 22 };
+    const d1 = decide(null, phaseAt([ev], 9.5 * H, 60), heat, cfg, false, true);
+    assert.equal(d1.patch, undefined);
+    assert.equal(d1.applied.userTook, true);
+    const d2 = decide(d1.applied, phaseAt([ev], 10 * H, 60), heat, cfg, false, true);
+    assert.equal(d2?.patch, undefined);
+    const d3 = decide(d2?.applied ?? d1.applied, phaseAt([ev], 14 * H, 60), heat, cfg, false, true);
+    assert.equal(d3?.patch, undefined);
+});

@@ -132,7 +132,7 @@ async function startJazz() {
 
 /** Un degré de plus, le temps de la veillée, si le thermostat intelligent pilote la thermopompe. */
 function warmUp() {
-    if (!thermostat.isEnabled()) return null;
+    if (!thermostat.isEnabled() || thermostat.manualHold()) return null;
     const target = cozyTarget(thermostat.getStatus().target);
     if (target == null) return null;
     thermostat.setOverride(target, VEILLEE_MS / 3600_000);

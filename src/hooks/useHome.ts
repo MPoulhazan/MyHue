@@ -357,6 +357,9 @@ export function useHome() {
         return () => clearInterval(t);
     }, [loadHealth]);
 
+    // Chauffage changé ailleurs (téléphone, voix, automatisme) : le journal en direct prévient, on relit
+    const refreshHeatingRef = useRef<() => void>(() => {});
+
     // --- Journal de la maison (portes, clim, automatismes, compagnon) ---
     // Les échanges avec l'agent restent locaux : ils sont déjà affichés par askAgent
     useEffect(() => {
@@ -371,6 +374,7 @@ export function useHome() {
             try {
                 const e = JSON.parse(ev.data) as JournalEntry;
                 if (e.kind !== 'agent') setLog((l) => [fromJournal(e), ...l].slice(0, 40));
+                if (e.kind === 'heating' || e.kind === 'presence') refreshHeatingRef.current();
             } catch { /* ignore */ }
         };
         return () => {
@@ -432,6 +436,17 @@ export function useHome() {
         const t = setInterval(loadThermostat, 60_000);
         return () => clearInterval(t);
     }, [loadThermostat]);
+
+    useEffect(() => {
+        refreshHeatingRef.current = () => {
+            loadHeating();
+            loadThermostat();
+        };
+        // Écran rallumé (tablette en veille) : l'état a pu changer pendant ce temps
+        const onVisible = () => document.visibilityState === 'visible' && refreshHeatingRef.current();
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [loadHeating, loadThermostat]);
 
     const updateThermostat = useCallback(async (patch: Record<string, unknown>) => {
         const { data } = await axios.put('/api/thermostat', patch);

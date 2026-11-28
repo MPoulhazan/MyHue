@@ -37,7 +37,7 @@ const DEFAULTS = {
     ],
     awayTarget: 17,
     away: false, // absence forcée à la main
-    override: null, // { target, until }
+    override: null, // { target, until, untilLeave? }
     offset: 0,
 };
 
@@ -208,7 +208,7 @@ export const getStatus = () => {
         target,
         why,
         until: until ?? (untilMin != null ? Date.now() + msUntil(untilMin) : null),
-        untilLabel: untilMin != null ? fmtTime(untilMin) : null,
+        untilLabel: config.override?.untilLeave && why === 'dérogation' ? 'ton départ' : untilMin != null ? fmtTime(untilMin) : null,
         period: p ? { label: p.label, target: p.target, nextLabel: p.nextLabel } : null,
         away: config.away,
         anyoneHome: presence.anyoneHome(),
@@ -250,12 +250,13 @@ export const update = (patch = {}) => {
     return getStatus();
 };
 
-/** Dérogation jusqu'à la fin de la période en cours (ou `hours` heures). */
+// Sans durée : jusqu'au prochain départ. Une consigne choisie à la main pendant qu'on est là
+// ne bouge plus avec le programme (la veillée, elle, passe une durée).
 export const setOverride = (target, hours) => {
     if (!validTarget(target)) throw new Error('Consigne invalide');
-    const p = currentPeriod();
-    const until = hours ? Date.now() + hours * 3600_000 : Date.now() + (p ? msUntil(p.until) : 2 * 3600_000);
-    config.override = { target, until };
+    config.override = hours
+        ? { target, until: Date.now() + hours * 3600_000 }
+        : { target, until: Date.now() + 30 * 24 * 3600_000, untilLeave: true };
     lastCommandAt = 0;
     save();
     run();
@@ -272,11 +273,18 @@ export const clearOverride = () => {
 export const isEnabled = () => config.enabled;
 
 /**
+ * Consigne choisie à la main et quelqu'un à la maison : les automatismes (Flex D, veillée…)
+ * n'y touchent pas. Levé au prochain départ (l'absence reprend alors la main).
+ */
+export const manualHold = () => Boolean(broadlinkService.manualAt()) && presence.anyoneHome() !== false;
+
+/**
  * Commande de chauffage venant d'une personne (interface, agent, Claude).
  * Thermostat actif : une température devient une dérogation ; « arrêt » ou un autre
  * mode que le chauffage le désactive, sinon il relancerait la thermopompe tout seul.
  */
 export const userCommand = async (patch = {}, source = 'interface') => {
+    if (patch.temperature || patch.power !== undefined || patch.mode) broadlinkService.noteManual();
     if (!config.enabled) return broadlinkService.applyPatch(patch, source);
     const leavesHeat = patch.power === false || (patch.mode && patch.mode !== 'heat');
     if (leavesHeat) {
@@ -284,7 +292,9 @@ export const userCommand = async (patch = {}, source = 'interface') => {
         return broadlinkService.applyPatch(patch, source);
     }
     if (patch.temperature) {
-        setOverride(Math.max(16, Math.min(31, Number(patch.temperature))));
+        const target = Math.max(16, Math.min(31, Number(patch.temperature)));
+        setOverride(target);
+        journal.log({ kind: 'heating', title: `Consigne pièce ${target}° jusqu’à ton départ`, data: { source } });
         return broadlinkService.getState();
     }
     return broadlinkService.applyPatch(patch, source);
@@ -294,7 +304,17 @@ export const start = (getSensors) => {
     getSensorsFn = getSensors;
     // La température qui change ou quelqu'un qui part/rentre : on réévalue (les délais anti-rafale s'appliquent)
     bus.on('sensor', ({ prop }) => prop === 'temperature' && run());
-    bus.on('presence', () => run());
+    bus.on('presence', ({ anyoneHome } = {}) => {
+        // Départ : le choix à la main tombe, l'absence reprend la main
+        if (anyoneHome === false) {
+            broadlinkService.clearManual();
+            if (config.override?.untilLeave) {
+                config.override = null;
+                save();
+            }
+        }
+        run();
+    });
     setInterval(run, TICK_MS);
     setTimeout(run, 30_000);
     console.log(`🌡️  Thermostat intelligent ${config.enabled ? 'actif' : 'désactivé'}`);

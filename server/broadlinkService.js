@@ -107,9 +107,24 @@ export const clearUncertain = () => {
 };
 export const isUncertain = () => uncertain !== null;
 
+// --- Choix à la main ---
+// Une consigne choisie par quelqu'un (tablette, téléphone, voix, télécommande) pendant qu'on est
+// à la maison : aucun automatisme n'y touche avant le prochain départ (voir thermostat.manualHold).
+
+export const noteManual = () => {
+    currentState = { ...currentState, manualAt: Date.now() };
+    saveState(currentState);
+};
+export const clearManual = () => {
+    if (!currentState.manualAt) return;
+    currentState = { ...currentState, manualAt: null };
+    saveState(currentState);
+};
+export const manualAt = () => currentState.manualAt || null;
+
 /** L'utilisateur a changé la thermopompe lui-même (télécommande) : on recopie sans rien envoyer. */
 export const markState = (patch = {}, source = 'interface') => {
-    currentState = { ...currentState, ...patch, lastUpdated: new Date().toISOString() };
+    currentState = { ...currentState, ...patch, manualAt: Date.now(), lastUpdated: new Date().toISOString() };
     saveState(currentState);
     uncertain = null;
     journal.log({
@@ -140,6 +155,7 @@ export const sendCommand = async (newState) => {
     // L'infrarouge ne renvoie rien : c'est l'état de la dernière commande envoyée
     currentState = {
         ...newState,
+        manualAt: currentState.manualAt || null,
         lastUpdated: new Date().toISOString(),
     };
     saveState(currentState);
@@ -244,6 +260,7 @@ export const applyPatch = async (patch = {}, source = 'interface') => {
 export const sendCommandDryRun = (newState) => {
     currentState = {
         ...newState,
+        manualAt: currentState.manualAt || null,
         lastUpdated: new Date().toISOString(),
     };
     saveState(currentState);
