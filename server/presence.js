@@ -37,10 +37,13 @@ const poll = async () => {
 
 // Maison occupée ou vide : seul ce changement déclenche « Je pars » / « Je rentre »
 let lastCombined = null;
+let emptyAt = null;
 const emitIfChanged = () => {
     const now = anyoneHome();
     const prev = lastCombined;
     lastCombined = now;
+    if (now === false && emptyAt === null) emptyAt = Date.now();
+    if (now !== false) emptyAt = null;
     // Au premier passage on ne fait que mémoriser ; ensuite, seuls les vrais changements comptent
     if (prev === null || now === null || prev === now) return;
     const via = wifi.someoneHome() !== null ? 'Wi-Fi' : 'GPS';
@@ -63,6 +66,9 @@ export const anyoneHome = () => {
     const w = wifi.someoneHome();
     return w !== null ? w : gpsAnyoneHome();
 };
+
+/** Depuis quand la maison est vide (ms), ou null. */
+export const emptySince = () => emptyAt;
 
 export const getPeople = () =>
     [...people.entries()].map(([entity, p]) => ({ entity, name: p.name, home: isKnown(p.state) ? isHome(p.state) : null, since: p.since }));

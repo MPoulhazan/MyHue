@@ -5,7 +5,6 @@
  * les automatismes (Je pars quand plus personne n'est là) et le rappel des poubelles (Dodo).
  * Les scènes Hue sont retrouvées par leur nom ; sans scène, on se rabat sur un réglage simple.
  */
-import * as broadlinkService from './broadlinkService.js';
 import * as journal from './journal.js';
 import * as lightMoods from './lightMoods.js';
 import { getHueScenes } from './hue.js';
@@ -78,14 +77,8 @@ export const MOMENTS = [
         label: 'Je pars',
         icon: 'leave',
         hidden: true,
-        actions: async () => {
-            const heating = broadlinkService.getState();
-            // Clim allumée en chauffage : on passe en éco plutôt que de couper (pas de maison glacée au retour)
-            const eco = heating.power && heating.mode === 'heat' && heating.temperature > 17
-                ? [{ type: 'set_heating', temperature: 17 }]
-                : [];
-            return [...allOff, ...eco];
-        },
+        // Le chauffage n'est plus touché ici : heatingAway.js baisse par paliers et remet la consigne au retour
+        actions: async () => allOff,
     },
 ];
 

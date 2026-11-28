@@ -156,6 +156,19 @@ export const deltaNow = () => {
     return p ? deltaFor(p.phase, config) : 0;
 };
 
+/** Pointe en cours pour d'autres modules : { active, base, sent } ou null. */
+export const current = () => {
+    const a = config.applied;
+    return a ? { active: Boolean(a.phase), base: a.base, sent: a.sent } : null;
+};
+
+/** Quelqu'un d'autre (retour à la maison) a remis la consigne pendant la pointe : Flex D reprend la main. */
+export const handOver = (base, sent) => {
+    if (!config.applied?.phase) return;
+    config.applied = { ...config.applied, base, sent, userTook: false };
+    save();
+};
+
 const clampT = (t) => Math.max(16, Math.min(31, t));
 
 /**

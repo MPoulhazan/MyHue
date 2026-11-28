@@ -10,6 +10,7 @@ import * as automations from './automations.js';
 import * as companion from './companion.js';
 import * as presence from './presence.js';
 import * as thermostat from './thermostat.js';
+import * as heatingAway from './heatingAway.js';
 import * as flexd from './flexd.js';
 import * as briefing from './briefing.js';
 import * as skyAlerts from './skyAlerts.js';
@@ -108,6 +109,7 @@ app.listen(PORT, () => {
     entranceLight.start();
     guard.start();
     away.start();
+    heatingAway.start();
     noel.start();
     kitchenDisplay.start();
     circadian.start();

@@ -100,8 +100,14 @@ export const computeTarget = () => {
     // Pointe Flex D : préchauffage puis consigne réduite (une dérogation garde la priorité)
     const flex = flexd.deltaNow();
     const withFlex = (t) => (flex ? { ...t, target: t.target + flex, why: `${t.why} · ${flex > 0 ? 'préchauffage' : 'pointe'} Flex D` } : t);
-    if (isAway()) return withFlex({ target: config.awayTarget, why: config.away ? 'absence' : 'personne à la maison' });
     const p = currentPeriod();
+    if (isAway()) {
+        // Absence détectée : −2° les 2 premières heures (sortie courte), puis la consigne d'absence
+        const since = presence.emptySince();
+        const short = !config.away && since && Date.now() - since < 2 * 3600_000 && p;
+        const target = short ? Math.max(config.awayTarget, p.target - 2) : config.awayTarget;
+        return withFlex({ target, why: config.away ? 'absence' : 'personne à la maison' });
+    }
     if (!p) return { target: null, why: 'aucun programme' };
     return withFlex({ target: p.target, why: p.label, untilMin: p.until });
 };

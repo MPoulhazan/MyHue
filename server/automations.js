@@ -156,7 +156,7 @@ export const TEMPLATES = {
     },
     leave_home: {
         label: 'Je pars',
-        description: 'Quand plus personne n’est à la maison : tout s’éteint et le chauffage passe en éco, sans message.',
+        description: 'Quand plus personne n’est à la maison : tout s’éteint, le chauffage baisse de 2° puis passe à 17° après 2 h, et revient à la consigne d’avant au retour. Sans message.',
         build: () => ({
             name: 'Je pars',
             trigger: { type: 'presence', state: 'away' },
